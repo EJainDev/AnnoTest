@@ -1,5 +1,3 @@
-module;
-#include <limits>
 export module cpputils.data_structures:stream;
 
 import std;
@@ -12,7 +10,6 @@ struct Filter;
 template <typename T>
 concept FilterFn = requires(T val) {
   { val(std::declval<T&&>()) } -> std::convertible_to<bool>;
-}
 };
 
 template <typename T, typename Fn, typename Child>
