@@ -1,3 +1,5 @@
+module;
+#include <limits>
 export module cpputils.data_structures:stream;
 
 import std;
@@ -48,6 +50,8 @@ struct Filter {
     }
   }
 
+  void reserve(int capacity) { child.reserve(capacity); }
+
   template <typename FilterType, typename... ForwardArgs>
   Filter of(FilterType&& old, ForwardArgs&&... args) {
     if constexpr (std::is_same_v<Child, int>) {
@@ -65,6 +69,8 @@ struct Map {
   Child child;
 
   inline void operator()(T&& val) { child(map_fn(std::forward<T>(val))); }
+
+  void reserve(int capacity) { child.reserve(capacity); }
 
   template <typename MapType, typename... ForwardArgs>
   Map of(MapType&& old, ForwardArgs&&... args) {
@@ -86,6 +92,9 @@ struct StreamStart {
   int idx = 0;
 
   inline void operator()() {
+    if (size != std::numeric_limits<int>::max()) {
+      child.reserve(size);
+    }
     while (idx < size) {
       child(std::forward<T>(get(data, idx++)));
     }

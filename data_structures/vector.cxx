@@ -4,8 +4,10 @@ import :stream;
 
 #ifdef HARDENED
 #define BOUND_CHECK pre(index < _size)
+#define RESERVE_CHECK pre(new_capacity > 0)
 #else
 #define BOUND_CHECK
+#define RESERVE_CHECK
 #endif
 
 namespace cpputils::data_structures {
@@ -104,6 +106,16 @@ class vector {
     _data[_size++] = val;
   }
 
+  void reserve(int new_capacity) RESERVE_CHECK {
+    if (new_capacity > _capacity) {
+      T* new_data = new T[new_capacity];
+      std::move(_data, _data + _size, new_data);
+      delete[] _data;
+      _data = new_data;
+      _capacity = new_capacity;
+    }
+  }
+
   int size() const { return _size; }
 
   auto stream() const {
@@ -129,10 +141,12 @@ struct VectorFromStream {
 
   void operator()(T&& val) { data->add(std::forward<T>(val)); }
 
-  template <typename Old, typename ForwardArgs>
-  VectorFromStream of(Old&& old, ForwardArgs&& args) {
+  template <typename ForwardArgs>
+  VectorFromStream of(int&&, ForwardArgs&& args) {
     this->data = std::move(args.data);
     return *this;
   }
+
+  void reserve(int new_capacity) RESERVE_CHECK { data->reserve(new_capacity); }
 };
 }  // namespace cpputils::data_structures
