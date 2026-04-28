@@ -55,44 +55,6 @@ vector<int> build_input(std::size_t elements) {
   return values;
 }
 
-long long run_stream_api(const vector<int>& values, int passes) {
-  long long checksum = 0;
-  for (int pass = 0; pass < passes; ++pass) {
-    auto pipeline = values.stream()
-                        .filter([](const int& value) { return (value & 1) == 0; })
-                        .map([](const int& value) { return value + 1; })
-                        .map([](const int& value) { return value * 2; });
-
-    std::optional<int> current = pipeline();
-    while (current.has_value()) {
-      checksum += current.value();
-      current = pipeline();
-    }
-  }
-  return checksum;
-}
-
-long long run_std_ranges(const vector<int>& values, int passes) {
-  std::vector<int> standard_values;
-  standard_values.reserve(static_cast<std::size_t>(values.size()));
-  for (const int value : values) {
-    standard_values.push_back(value);
-  }
-
-  long long checksum = 0;
-  for (int pass = 0; pass < passes; ++pass) {
-    auto pipeline = standard_values |
-                    std::ranges::views::filter([](int value) { return (value & 1) == 0; }) |
-                    std::ranges::views::transform([](int value) { return value + 1; }) |
-                    std::ranges::views::transform([](int value) { return value * 2; });
-
-    for (int value : pipeline) {
-      checksum += value;
-    }
-  }
-  return checksum;
-}
-
 void print_result(const BenchResult& result) {
   std::cout << std::left << std::setw(16) << result.name << std::right << std::setw(12)
             << std::fixed << std::setprecision(3) << result.best_ms << " ms  " << std::setw(10)
@@ -114,10 +76,48 @@ int main(int argc, char** argv) {
 
   const vector<int> input = build_input(static_cast<std::size_t>(element_count));
 
-  const BenchResult stream_result = run_benchmark("stream API", input.size(), passes, trials,
-                                                  [&] { return run_stream_api(input, passes); });
-  const BenchResult ranges_result = run_benchmark("std::ranges", input.size(), passes, trials,
-                                                  [&] { return run_std_ranges(input, passes); });
+  // Build stream pipeline once (outside timing)
+  const BenchResult stream_result = run_benchmark("stream API", input.size(), passes, trials, [&] {
+    long long checksum = 0;
+    for (int pass = 0; pass < passes; ++pass) {
+      auto stream_pipeline = input.stream()
+                                 .filter([](const int& value) { return (value & 1) == 0; })
+                                 .map([](const int& value) { return value + 1; })
+                                 .map([](const int& value) { return value * 2; });
+
+      VectorFromStream<int> stream_result_data;
+      auto stream_collector = stream_pipeline.collect<VectorFromStream<int>>(stream_result_data);
+
+      stream_collector();
+      for (const auto& val : *stream_result_data.data) {
+        checksum += val;
+      }
+    }
+    return checksum;
+  });
+
+  // Build ranges pipeline once (outside timing)
+  std::vector<int> standard_values;
+  standard_values.reserve(static_cast<std::size_t>(input.size()));
+  for (const int value : input) {
+    standard_values.push_back(value);
+  }
+
+  const BenchResult ranges_result = run_benchmark("std::ranges", input.size(), passes, trials, [&] {
+    long long checksum = 0;
+    for (int pass = 0; pass < passes; ++pass) {
+      auto ranges_pipeline =
+          standard_values | std::ranges::views::filter([](int value) { return (value & 1) == 0; }) |
+          std::ranges::views::transform([](int value) { return value + 1; }) |
+          std::ranges::views::transform([](int value) { return value * 2; });
+
+      std::vector<int> ranges_result_data(ranges_pipeline.begin(), ranges_pipeline.end());
+      for (int value : ranges_result_data) {
+        checksum += value;
+      }
+    }
+    return checksum;
+  });
 
   std::cout << "Benchmarking a filter + transform + transform pipeline over " << input.size()
             << " integers, repeated " << passes << " times per trial.\n";

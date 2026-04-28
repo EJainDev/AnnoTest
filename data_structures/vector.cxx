@@ -86,15 +86,6 @@ class vector {
   }
   vector(int size) : _data(new T[size]), _size(size), _capacity(size) {}
 
-  template <StreamPart Init>
-  vector(Init init) : _data(new T[4]), _size(0), _capacity(4) {
-    auto val = init();
-    while (val.has_value()) {
-      add(val.value());
-      val = init();
-    }
-  }
-
   const T& operator[](int index) const noexcept BOUND_CHECK { return _data[index]; }
   T& operator[](int index) noexcept BOUND_CHECK { return _data[index]; }
 
@@ -116,8 +107,8 @@ class vector {
   int size() const { return _size; }
 
   auto stream() const {
-    auto get = [](T* data, int idx) -> const T& { return data[idx]; };
-    return StreamStart<T, decltype(get)>{std::move(get), _data, _size};
+    auto get = [](T* data, int idx) -> T { return data[idx]; };
+    return StreamStart<T, decltype(get)>{std::move(get), _data, _size, {}, 0};
   }
 
   // For STL compatibility
@@ -130,5 +121,18 @@ class vector {
   T* _data;
   int _size;
   int _capacity;
+};
+
+export template <typename T>
+struct VectorFromStream {
+  std::shared_ptr<vector<T>> data{std::make_shared<vector<T>>()};
+
+  void operator()(T&& val) { data->add(std::forward<T>(val)); }
+
+  template <typename Old, typename ForwardArgs>
+  VectorFromStream of(Old&& old, ForwardArgs&& args) {
+    this->data = std::move(args.data);
+    return *this;
+  }
 };
 }  // namespace cpputils::data_structures
