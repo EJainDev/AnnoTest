@@ -13,7 +13,8 @@ target_sources(
          data_structures.cxx
          stream.cxx
          vector.cxx
-         array.cxx)
+         array.cxx
+         memory.cxx)
 if(HARDENING)
   target_compile_definitions(data_structures PRIVATE HARDENED)
 endif()

@@ -84,9 +84,14 @@ class vector {
 
   vector(std::initializer_list<T> list)
       : _data(new T[list.size()]), _size(list.size()), _capacity(list.size()) {
-    std::copy(list.begin(), list.end(), _data);
+    std::move(list.begin(), list.end(), _data);
   }
-  vector(int size) : _data(new T[size]), _size(size), _capacity(size) {}
+  vector(int size)
+#ifdef HARDENED
+      pre(size >= 0)
+#endif
+      : _data(new T[size]), _size(size), _capacity(size) {
+  }
 
   const T& operator[](int index) const noexcept BOUND_CHECK { return _data[index]; }
   T& operator[](int index) noexcept BOUND_CHECK { return _data[index]; }
@@ -120,7 +125,7 @@ class vector {
 
   auto stream() const {
     auto get = [](T* data, int idx) -> T { return data[idx]; };
-    return StreamStart<T, decltype(get)>{std::move(get), _data, _size, {}, 0};
+    return StreamStart<decltype(get)>{std::move(get), _data, _size, {}, 0};
   }
 
   // For STL compatibility
@@ -130,9 +135,9 @@ class vector {
   Iterator end() const { return Iterator(_data + _size); }
 
  private:
-  T* _data;
-  int _size;
-  int _capacity;
+  T* _data = nullptr;
+  int _size = 0;
+  int _capacity = 0;
 };
 
 export template <typename T>

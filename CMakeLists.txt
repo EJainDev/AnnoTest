@@ -10,11 +10,18 @@ set(CMAKE_CXX_MODULE_STD 1)
 
 project(CppUtils LANGUAGES C CXX)
 
-add_subdirectory(refl_utils)
-add_subdirectory(data_structures)
+option(ENABLE_TESTING "Enable building and execution of tests" OFF)
 
-add_executable(test test.cpp)
-target_link_libraries(test PRIVATE data_structures)
+if(ENABLE_TESTING)
+  enable_testing()
+  find_package(GTest REQUIRED)
+endif()
 
-add_executable(benchmark benchmark.cpp)
-target_link_libraries(benchmark PRIVATE data_structures)
+# add_subdirectory(refl_utils) add_subdirectory(data_structures)
+add_subdirectory(memory)
+
+# add_executable(test test.cpp) target_link_libraries(test PRIVATE
+# data_structures)
+
+# add_executable(benchmark benchmark.cpp) target_link_libraries(benchmark
+# PRIVATE data_structures)

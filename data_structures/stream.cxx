@@ -4,7 +4,7 @@ import std;
 
 export namespace cpputils::data_structures {
 
-template <typename T, typename Fn, typename Child>
+template <typename Fn, typename Child>
 struct Filter;
 
 template <typename T>
@@ -12,36 +12,32 @@ concept FilterFn = requires(T val) {
   { val(std::declval<T&&>()) } -> std::convertible_to<bool>;
 };
 
-template <typename T, typename Fn, typename Child>
+template <typename Fn, typename Child>
 struct Map;
 
-template <typename T, typename GetFn, typename Child = int>
+template <typename Fn, typename Child = int>
 struct StreamStart;
 
 template <typename Current, typename NewChild,
-          typename Child = typename[:std::meta::template_arguments_of(^^Current)[2]:]>
+          typename Child = typename[:std::meta::template_arguments_of(^^Current)[1]:]>
 struct NewType {
   using Type = typename[:std::meta::template_of(^^Current):]<
-      typename[:std::meta::template_arguments_of(^^Current)[0]:],  // T
-                                                                typename
-              [:std::meta::template_arguments_of(
-                    ^^Current)[1]:],                                          // Fn
+      typename[:std::meta::template_arguments_of(
+                    ^^Current)[0]:],                                          // Fn
                                    typename NewType<Child, NewChild>::Type>;  // Recurse
 };
 
 template <typename Current, typename NewChild>
 struct NewType<Current, NewChild, int> {
   using Type = typename[:std::meta::template_of(^^Current):]<
-      typename[:std::meta::template_arguments_of(^^Current)[0]:],  // T
-                                                                typename
-              [:std::meta::template_arguments_of(^^Current)[1]:],  // Fn
+      typename[:std::meta::template_arguments_of(^^Current)[0]:],  // Fn
                                                                 NewChild>;
 };
 
-template <typename T, FilterFn Fn, typename Child>
+template <typename Fn, typename Child>
 struct Filter {
-  template <typename U>
-  concept SelfType = requires(U val) { std::same_as<Fn, val.filter_fn>; }
+  using T =
+      std::decay_t<typename[:std::meta::type_of(std::meta::parameters_of(^^Fn::operator())[0]):]>;
 
   Fn filter_fn;
   Child child;
@@ -54,7 +50,7 @@ struct Filter {
 
   void reserve(int capacity) { child.reserve(capacity); }
 
-  template <SelfType FilterType, typename... ForwardArgs>
+  template <typename FilterType, typename... ForwardArgs>
   Filter of(FilterType&& old, ForwardArgs&&... args) {
     if constexpr (std::is_same_v<Child, int>) {
       return Filter{std::forward<ForwardArgs>(args)...};
@@ -65,12 +61,16 @@ struct Filter {
   }
 };
 
-template <typename T, typename Fn, typename Child>
+template <typename Fn, typename Child>
 struct Map {
+  using T =
+      std::decay_t<typename[:std::meta::type_of(std::meta::parameters_of(^^Fn::operator())[0]):]>;
+  using U = std::decay_t<typename[:std::meta::return_type_of(^^Fn::operator()):]>;
+
   Fn map_fn;
   Child child;
 
-  inline void operator()(T&& val) { child(map_fn(std::forward<T>(val))); }
+  inline void operator()(T&& val) { child(std::forward<U>(map_fn(std::forward<T>(val)))); }
 
   void reserve(int capacity) { child.reserve(capacity); }
 
@@ -85,10 +85,13 @@ struct Map {
   }
 };
 
-template <typename T, typename GetFn, typename Child>
+template <typename Fn, typename Child>
 struct StreamStart {
-  GetFn get;
-  T* data;
+  static_assert("StreamStart Fn must take an int parameter");
+  using T = std::decay_t<typename[:std::meta::return_type_of(^^Fn::operator()):]>;
+
+  Fn get;
+  T* const data;
   int size;
   Child child;
   int idx = 0;
@@ -111,27 +114,24 @@ struct StreamStart {
                          Child{}.of(std::move(old.child), std::forward<ForwardArgs>(args)...)};
     }
   }
-
   template <typename PredicateFn>
-  typename NewType<StreamStart<T, GetFn, Child>, Filter<T, std::decay_t<PredicateFn>, int>>::Type
-  filter(PredicateFn filter_fn) {
-    return typename NewType<StreamStart<T, GetFn, Child>,
-                            Filter<T, std::decay_t<PredicateFn>, int>>::Type{}
-        .of(*this, std::move(filter_fn));
+  typename NewType<StreamStart<Fn, Child>, Filter<std::decay_t<PredicateFn>, int>>::Type filter(
+      PredicateFn filter_fn) {
+    return
+        typename NewType<StreamStart<Fn, Child>, Filter<std::decay_t<PredicateFn>, int>>::Type{}.of(
+            *this, std::move(filter_fn));
   }
 
   template <typename MapFn>
-  typename NewType<StreamStart<T, GetFn, Child>, Map<T, std::decay_t<MapFn>, int>>::Type map(
-      MapFn map_fn) {
-    return
-        typename NewType<StreamStart<T, GetFn, Child>, Map<T, std::decay_t<MapFn>, int>>::Type{}.of(
-            *this, std::move(map_fn));
+  typename NewType<StreamStart<Fn, Child>, Map<std::decay_t<MapFn>, int>>::Type map(MapFn map_fn) {
+    return typename NewType<StreamStart<Fn, Child>, Map<std::decay_t<MapFn>, int>>::Type{}.of(
+        *this, std::move(map_fn));
   }
 
   template <typename CollectStruct>
-  typename NewType<StreamStart<T, GetFn, Child>, CollectStruct>::Type collect(
+  typename NewType<StreamStart<Fn, Child>, CollectStruct>::Type collect(
       CollectStruct collect_struct) {
-    return typename NewType<StreamStart<T, GetFn, Child>, CollectStruct>::Type{}.of(
+    return typename NewType<StreamStart<Fn, Child>, CollectStruct>::Type{}.of(
         *this, std::move(collect_struct));
   }
 };
