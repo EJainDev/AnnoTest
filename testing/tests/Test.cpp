@@ -23,4 +23,4 @@ struct TestSuite {
   [[= AfterAll{}]] void teardownSuite() { std::cout << "Tearing down test suite...\n"; }
 };
 
-int main() { test(TestSuite{}); }
+int main(int argc, char** argv) { test<TestSuite>(argc, argv); }

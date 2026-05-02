@@ -161,7 +161,7 @@ export void assertEqual(auto expected, auto actual) {
 // Finds and calls all tests in a suite
 export template <typename T>
   requires(std::is_class_v<T>)
-void test(T suite = {}) {
+void test(int argc, char** argv, T suite = {}) {
   static constexpr auto result = getTests<T>();
 
   // Manually unpack the tuple
@@ -175,6 +175,22 @@ void test(T suite = {}) {
   static constexpr auto has_after_all = std::get<7>(result);
   static constexpr auto after_all_func = std::get<8>(result);
   static constexpr auto size = tests.size();
+
+  std::string test_name;
+
+  // Check mode
+  std::vector<std::string> args(argv, argv + argc);
+  for (const auto& arg : args) {
+    if (arg == "--list") {
+      std::cout << std::meta::identifier_of(^^T) << ".\n";
+      template for (constexpr auto test : tests) {
+        std::cout << "  " << std::meta::identifier_of(test) << '\n';
+      }
+      return;
+    } else {
+      test_name = arg;
+    }
+  }
 
   // The BeforeAll function is run once before any tests, and if it fails, the entire suite is
   // aborted
@@ -193,9 +209,11 @@ void test(T suite = {}) {
     }
   }
 
-  std::cout << "Running " << size << " tests in suite " << std::meta::identifier_of(^^T) << '\n';
-
   template for (constexpr auto test : tests) {
+    if (std::string(std::meta::identifier_of(test)) != test_name && !test_name.empty()) {
+      continue;
+    }
+
     bool disabled = false;
     static constexpr auto annotations = std::define_static_array(getAnnotations(test));
 

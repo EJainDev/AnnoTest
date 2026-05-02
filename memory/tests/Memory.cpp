@@ -45,7 +45,7 @@ class MemoryTests {
   }
 };
 
-int main() {
-  cpputils::testing::test(MemoryTests{});
+int main(int argc, char** argv) {
+  cpputils::testing::test<MemoryTests>(argc, argv);
   return 0;
 }
