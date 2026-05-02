@@ -28,7 +28,7 @@ endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -freflection")
 
-# add_subdirectory(refl_utils) add_subdirectory(data_structures)
+add_subdirectory(refl_utils)
 add_subdirectory(testing)
 add_subdirectory(memory)
 

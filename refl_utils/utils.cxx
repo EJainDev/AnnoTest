@@ -2,8 +2,8 @@ export module cpputils.refl_utils;
 
 import std;
 
-export namespace cpputils {
-template <typename E>
+namespace cpputils::refl_utils {
+export template <typename E>
   requires std::is_enum_v<E>
 constexpr std::string enum_to_string(E value) {
   template for (constexpr auto e : std::define_static_array(std::meta::enumerators_of(^^E))) {
@@ -14,4 +14,4 @@ constexpr std::string enum_to_string(E value) {
 
   return "<invalid enum value>";
 }
-}  // namespace cpputils
+}  // namespace cpputils::refl_utils
