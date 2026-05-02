@@ -70,8 +70,7 @@ void test(T suite) {
   static constexpr auto size = std::get<2>(result).size();
   static constexpr auto members_size = std::get<5>(result);
 
-  std::cout << "Found " << members_size << " members in test suite\n";
-  std::cout << "Running " << size << " tests in suite\n";
+  std::cout << "Running " << size << " tests in suite " << std::meta::identifier_of(^^T) << '\n';
 
   template for (constexpr auto test : tests) {
     std::cout << "Running test: " << std::meta::identifier_of(test) << '\n';
