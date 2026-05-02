@@ -23,7 +23,11 @@ class MemoryTests {
  public:
   void simpleTest() {
     Allocator<int> allocator;
-    cpputils::memory::Memory<int, decltype(allocator)>::init(allocator, 1);
+    {
+      cpputils::memory::Memory<int, decltype(allocator)>::init(allocator, 1);
+    }
+    cpputils::testing::assertEqual(4, allocator.alloc_size);
+    cpputils::testing::assertEqual(4, allocator.dealloc_size);
   }
 };
 
