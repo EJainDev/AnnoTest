@@ -10,13 +10,24 @@ project(CppUtils LANGUAGES C CXX)
 option(ENABLE_TESTING "Enable building and execution of tests" OFF)
 
 if(ENABLE_TESTING)
-  enable_testing()
+  find_program(GCOV_PATH gcov)
+  if(GCOV_PATH)
+    set(CTEST_COVERAGE_COMMAND "${GCOV_PATH}")
+  endif()
+
+  include(CTest)
+
   find_package(GTest REQUIRED)
+
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_options(--coverage)
+    set(CMAKE_CXX_FLAGS
+        "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage -g -O0")
+  endif()
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -freflection") # This is so that the std
-                                                       # module also compiles
-                                                       # with full C++26 support
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -freflection")
+
 # add_subdirectory(refl_utils) add_subdirectory(data_structures)
 add_subdirectory(testing)
 add_subdirectory(memory)
