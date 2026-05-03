@@ -33,9 +33,3 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -freflection")
 add_subdirectory(refl_utils)
 add_subdirectory(testing)
 add_subdirectory(memory)
-
-# add_executable(test test.cpp) target_link_libraries(test PRIVATE
-# data_structures)
-
-# add_executable(benchmark benchmark.cpp) target_link_libraries(benchmark
-# PRIVATE data_structures)
