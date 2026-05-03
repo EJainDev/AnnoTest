@@ -43,7 +43,7 @@ export void assertFalse(auto value) {
   }
 }
 
-export void assertNear(auto expected, auto actual, auto tol) {
+export void assertNear(auto expected, auto actual, auto tol = 1e-3f) {
   if (!(std::abs(expected - actual) <= tol)) {
     throw Error("Assertion failed: expected " + format(expected) + " ≈ " + format(actual) +
                 " within " + format(tol));
@@ -92,38 +92,15 @@ void assertThrows(auto func) {
   }
 }
 
-export template <typename E = std::exception>
-void assertThrowsMessage(auto func, std::string_view msg_substr) {
-  try {
-    func();
-    throw Error("Assertion failed: expected exception, none thrown");
-  } catch (const E& e) {
-    if (std::string_view(e.what()).find(msg_substr) == std::string_view::npos) {
-      throw Error("Assertion failed: exception message does not contain " +
-                  std::string(msg_substr));
-    }
-  } catch (...) {
-    throw Error("Assertion failed: thrown exception type did not match expected");
-  }
-}
-
 export template <typename E>
 void assertThrowsExact(auto func) {
   try {
     func();
     throw Error("Assertion failed: expected exception, none thrown");
-  } catch (...) {
-    auto ep = std::current_exception();
-    try {
-      std::rethrow_exception(ep);
-    } catch (const E& e) {
-      if (typeid(e) != typeid(E)) {
-        throw Error(std::string("Assertion failed: expected exact exception type ") +
-                    typeid(E).name() + ", got " + typeid(e).name());
-      }
-      return;  // exact match
-    } catch (...) {
-      throw Error("Assertion failed: thrown exception type did not match expected");
+  } catch (const E& e) {
+    if (typeid(e) != typeid(E)) {
+      throw Error(std::string("Assertion failed: expected exact exception type ") +
+                  typeid(E).name() + ", got " + typeid(e).name());
     }
   }
 }

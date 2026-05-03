@@ -92,21 +92,6 @@ void expectThrows(auto func) {
   }
 }
 
-export template <typename E = std::exception>
-void expectThrowsMessage(auto func, std::string_view msg_substr) {
-  try {
-    func();
-    throw Abort("Expectation failed: expected exception, none thrown");
-  } catch (const E& e) {
-    if (std::string_view(e.what()).find(msg_substr) == std::string_view::npos) {
-      throw Abort("Expectation failed: exception message does not contain " +
-                  std::string(msg_substr));
-    }
-  } catch (...) {
-    throw Abort("Expectation failed: thrown exception type did not match expected");
-  }
-}
-
 export template <typename E>
 void expectThrowsExact(auto func) {
   try {

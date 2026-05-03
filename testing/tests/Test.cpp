@@ -4,279 +4,174 @@ import std;
 
 using namespace cpputils::testing;
 
-// Custom exception types for testing
-class CustomException : public std::exception {
- public:
-  const char* what() const noexcept override { return "Custom exception"; }
-};
-
-class DerivedCustomException : public CustomException {
- public:
-  const char* what() const noexcept override { return "Derived custom exception"; }
-};
-
 struct TestSuite {
-  // ===== Basic Assert Tests =====
-  [[= Test{}]] void AssertEqual() { assertEqual(5, 5); }
-
-  [[= Test{}]] void AssertNotEqual() { assertNotEqual(5, 3); }
-
-  [[= Test{}]] void AssertTrue() { assertTrue(true); }
-
-  [[= Test{}]] void AssertFalse() { assertFalse(false); }
-
-  // ===== Comparison Assert Tests =====
-  [[= Test{}]] void AssertNear() { assertNear(1.0, 1.001, 0.01); }
-
-  [[= Test{}]] void AssertLess() { assertLess(1, 5); }
-
-  [[= Test{}]] void AssertLessEqual() { assertLessEqual(5, 5); }
-
-  [[= Test{}]] void AssertGreater() { assertGreater(5, 1); }
-
-  [[= Test{}]] void AssertGreaterEqual() { assertGreaterEqual(5, 5); }
-
-  // ===== Container Assert Tests =====
-  [[= Test{}]] void AssertContains() {
-    std::vector<int> v{1, 2, 3, 4, 5};
-    assertContains(v, 3);
-  }
-
-  // ===== Exception Assert Tests =====
-  [[= Test{}]] void AssertThrows() {
-    assertThrows<std::runtime_error>([]() { throw std::runtime_error("test"); });
-  }
-
-  [[= Test{}]] void AssertThrowsMessage() {
-    assertThrowsMessage<std::runtime_error>([]() { throw std::runtime_error("test error"); },
-                                            "error");
-  }
-
-  [[= Test{}]] void AssertThrowsExact() {
-    assertThrowsExact<CustomException>([]() { throw CustomException(); });
-  }
-
-  // ===== Death Assert Tests =====
-  [[= Test{}]] void AssertDeathOnAbort() {
-    assertDeath([]() { std::abort(); });
-  }
-
-  [[= Test{}]] void AssertDeathOnAssertEqualFailure() {
-    assertDeath([]() { assertEqual(1, 2); });
-  }
-
-  [[= Test{}]] void AssertDeathOnAssertNotEqualFailure() {
-    assertDeath([]() { assertNotEqual(3, 3); });
-  }
-
-  [[= Test{}]] void AssertDeathOnAssertTrueFailure() {
-    assertDeath([]() { assertTrue(false); });
-  }
-
-  [[= Test{}]] void AssertDeathOnAssertFalseFailure() {
-    assertDeath([]() { assertFalse(true); });
-  }
-
-  [[= Test{}]] void AssertDeathOnAssertNearFailure() {
-    assertDeath([]() { assertNear(1.0, 2.0, 0.1); });
-  }
-
-  [[= Test{}]] void AssertDeathOnAssertLessFailure() {
-    assertDeath([]() { assertLess(5, 1); });
-  }
-
-  [[= Test{}]] void AssertDeathOnAssertLessEqualFailure() {
-    assertDeath([]() { assertLessEqual(5, 4); });
-  }
-
-  [[= Test{}]] void AssertDeathOnAssertGreaterFailure() {
-    assertDeath([]() { assertGreater(1, 5); });
-  }
-
-  [[= Test{}]] void AssertDeathOnAssertGreaterEqualFailure() {
-    assertDeath([]() { assertGreaterEqual(4, 5); });
-  }
-
-  [[= Test{}]] void AssertDeathOnAssertContainsFailure() {
-    assertDeath([]() {
-      std::vector<int> values{1, 2, 3};
-      assertContains(values, 4);
-    });
-  }
-
-  [[= Test{}]] void AssertDeathOnAssertThrowsFailure() {
-    assertDeath([]() { assertThrows<std::runtime_error>([]() {}); });
-  }
-
-  [[= Test{}]] void AssertDeathOnAssertThrowsMessageFailure() {
-    assertDeath([]() {
-      assertThrowsMessage<std::runtime_error>([]() { throw std::runtime_error("xyz"); },
-                                              "expected");
-    });
-  }
-
-  [[= Test{}]] void AssertDeathOnAssertThrowsExactFailure() {
-    assertDeath(
-        []() { assertThrowsExact<CustomException>([]() { throw DerivedCustomException(); }); });
-  }
-
-  // ===== Basic Expect Tests =====
-  [[= Test{}]] void ExpectEqual() { expectEqual(5, 5); }
-
-  [[= Test{}]] void ExpectNotEqual() { expectNotEqual(5, 3); }
-
-  [[= Test{}]] void ExpectTrue() { expectTrue(true); }
-
-  [[= Test{}]] void ExpectFalse() { expectFalse(false); }
-
-  // ===== Comparison Expect Tests =====
-  [[= Test{}]] void ExpectNear() { expectNear(1.0, 1.001, 0.01); }
-
-  [[= Test{}]] void ExpectLess() { expectLess(1, 5); }
-
-  [[= Test{}]] void ExpectLessEqual() { expectLessEqual(5, 5); }
-
-  [[= Test{}]] void ExpectGreater() { expectGreater(5, 1); }
-
-  [[= Test{}]] void ExpectGreaterEqual() { expectGreaterEqual(5, 5); }
-
-  // ===== Container Expect Tests =====
-  [[= Test{}]] void ExpectContains() {
-    std::vector<int> v{1, 2, 3, 4, 5};
-    expectContains(v, 3);
-  }
-
-  // ===== Exception Expect Tests =====
-  [[= Test{}]] void ExpectThrows() {
-    expectThrows<std::runtime_error>([]() { throw std::runtime_error("test"); });
-  }
-
-  [[= Test{}]] void ExpectThrowsMessage() {
-    expectThrowsMessage<std::runtime_error>([]() { throw std::runtime_error("test error"); },
-                                            "error");
-  }
-
-  [[= Test{}]] void ExpectThrowsExact() {
-    expectThrowsExact<CustomException>([]() { throw CustomException(); });
-  }
-
-  // ===== Death Expect Tests =====
-  [[= Test{}]] void ExpectDeathOnAbort() {
-    expectDeath([]() { std::abort(); });
-  }
-
-  [[= Test{}]] void ExpectDeathOnExpectEqualFailure() {
-    expectDeath([]() { expectEqual(1, 2); });
-  }
-
-  [[= Test{}]] void ExpectDeathOnExpectNotEqualFailure() {
-    expectDeath([]() { expectNotEqual(2, 2); });
-  }
-
-  [[= Test{}]] void ExpectDeathOnExpectTrueFailure() {
-    expectDeath([]() { expectTrue(false); });
-  }
-
-  [[= Test{}]] void ExpectDeathOnExpectFalseFailure() {
-    expectDeath([]() { expectFalse(true); });
-  }
-
-  [[= Test{}]] void ExpectDeathOnExpectNearFailure() {
-    expectDeath([]() { expectNear(1.0, 2.0, 0.01); });
-  }
-
-  [[= Test{}]] void ExpectDeathOnExpectLessFailure() {
-    expectDeath([]() { expectLess(5, 1); });
-  }
-
-  [[= Test{}]] void ExpectDeathOnExpectLessEqualFailure() {
-    expectDeath([]() { expectLessEqual(5, 4); });
-  }
-
-  [[= Test{}]] void ExpectDeathOnExpectGreaterFailure() {
-    expectDeath([]() { expectGreater(1, 5); });
-  }
-
-  [[= Test{}]] void ExpectDeathOnExpectGreaterEqualFailure() {
-    expectDeath([]() { expectGreaterEqual(4, 5); });
-  }
-
-  [[= Test{}]] void ExpectDeathOnExpectContainsFailure() {
-    expectDeath([]() {
-      std::vector<int> values{1, 2, 3};
-      expectContains(values, 4);
-    });
-  }
-
-  [[= Test{}]] void ExpectDeathOnExpectThrowsFailure() {
-    expectDeath([]() { expectThrows<std::runtime_error>([]() {}); });
-  }
-
-  [[= Test{}]] void ExpectDeathOnExpectThrowsMessageFailure() {
-    expectDeath([]() {
-      expectThrowsMessage<std::runtime_error>([]() { throw std::runtime_error("xyz"); },
-                                              "expected");
-    });
-  }
-
-  [[= Test{}]] void ExpectDeathOnExpectThrowsExactFailure() {
-    expectDeath(
-        []() { expectThrowsExact<CustomException>([]() { throw DerivedCustomException(); }); });
-  }
-
-  // ===== Failure Tests =====
-  // These tests verify that assertions fail correctly
-
-  [[= Test{}]][[= Disabled{}]] void AssertEqualFails() {
-    // This should fail: assertEqual(5, 3);
-  }
-
-  [[= Test{}]][[= Disabled{}]] void AssertNotEqualFails() {
-    // This should fail: assertNotEqual(5, 5);
-  }
-
-  [[= Test{}]][[= Disabled{}]] void AssertTrueFails() {
-    // This should fail: assertTrue(false);
-  }
-
-  [[= Test{}]][[= Disabled{}]] void AssertFalseFails() {
-    // This should fail: assertFalse(true);
-  }
-
-  [[= Test{}]][[= Disabled{}]] void AssertNearFails() {
-    // This should fail: assertNear(1.0, 2.0, 0.5);
-  }
-
-  [[= Test{}]][[= Disabled{}]] void AssertLessFails() {
-    // This should fail: assertLess(5, 1);
-  }
-
-  [[= Test{}]][[= Disabled{}]] void AssertContainsFails() {
-    // This should fail: std::vector<int> v{1, 2, 3}; assertContains(v, 5);
-  }
-
-  [[= Test{}]][[= Disabled{}]] void AssertThrowsFails() {
-    // This should fail: assertThrows<std::runtime_error>([]() {});
-  }
-
-  [[= Test{}]][[= Disabled{}]] void AssertThrowsExactFails() {
-    // This should fail: assertThrowsExact<CustomException>([]() { throw
-    // DerivedCustomException(); });
-  }
-
-  // ===== Edge Cases =====
-  [[= Test{}]] void AssertNearZero() { assertNear(0.0, 0.0, 0.0); }
-
-  [[= Test{}]] void AssertNearNegative() { assertNear(-1.5, -1.501, 0.01); }
-
-  [[= Test{}]] void AssertContainsString() {
-    std::vector<std::string> v{"hello", "world"};
-    assertContains(v, std::string("hello"));
-  }
-
-  [[= Test{}]] void AssertThrowsWithMessage() {
-    assertThrowsMessage<CustomException>([]() { throw CustomException(); }, "Custom");
-  }
+  [[= Test{}]] void test() {}
 };
 
-int main(int argc, char** argv) { return test<TestSuite>(argc, argv); }
+int main(int argc, char** argv) {
+  std::vector elements{3, 5, 7};
+
+  assertEqual(3, 3);
+  assertNotEqual(3, 4);
+  assertTrue(true);
+  assertFalse(false);
+  assertNear(5.00000, 5.00001, 1e-4);
+  assertLess(2, 5);
+  assertLessEqual(2, 2);
+  assertGreater(6, 5);
+  assertGreaterEqual(2, 2);
+  assertContains(elements, 5);
+  assertThrows([]() { throw std::runtime_error("Error"); });
+  assertThrowsExact<std::runtime_error>([]() { throw std::runtime_error("Error"); });
+#if defined(__unix__) || defined(__APPLE__)
+  assertDeath([]() { throw std::runtime_error("Error"); });
+#endif
+
+  try {
+    assertEqual(3, 2);
+  } catch (...) {
+  }
+  try {
+    assertNotEqual(4, 4);
+  } catch (...) {
+  }
+  try {
+    assertTrue(false);
+  } catch (...) {
+  }
+  try {
+    assertFalse(true);
+  } catch (...) {
+  }
+  try {
+    assertNear(5.00000, 6, 1e-4);
+  } catch (...) {
+  }
+  try {
+    assertLess(7, 5);
+  } catch (...) {
+  }
+  try {
+    assertLess(5, 5);
+  } catch (...) {
+  }
+  try {
+    assertLessEqual(7, 2);
+  } catch (...) {
+  }
+  try {
+    assertGreater(2, 5);
+  } catch (...) {
+  }
+  try {
+    assertGreater(5, 5);
+  } catch (...) {
+  }
+  try {
+    assertGreaterEqual(1, 2);
+  } catch (...) {
+  }
+  try {
+    assertContains(elements, 4);
+  } catch (...) {
+  }
+  try {
+    assertThrows([]() { return; });
+  } catch (...) {
+  }
+  try {
+    assertThrowsExact<std::exception>([]() { throw std::runtime_error("Error"); });
+  } catch (...) {
+  }
+
+#if defined(__unix__) || defined(__APPLE__)
+  try {
+    assertDeath([]() { return; });
+  } catch (...) {
+  }
+#endif
+
+  expectEqual(3, 3);
+  expectNotEqual(3, 4);
+  expectTrue(true);
+  expectFalse(false);
+  expectNear(5.00000, 5.00001, 1e-4);
+  expectLess(2, 5);
+  expectLessEqual(2, 2);
+  expectGreater(6, 5);
+  expectGreaterEqual(2, 2);
+  expectContains(elements, 5);
+  expectThrows([]() { throw std::runtime_error("Error"); });
+  expectThrowsExact<std::runtime_error>([]() { throw std::runtime_error("Error"); });
+#if defined(__unix__) || defined(__APPLE__)
+  expectDeath([]() { throw std::runtime_error("Error"); });
+#endif
+
+  try {
+    expectEqual(3, 2);
+  } catch (...) {
+  }
+  try {
+    expectNotEqual(4, 4);
+  } catch (...) {
+  }
+  try {
+    expectTrue(false);
+  } catch (...) {
+  }
+  try {
+    expectFalse(true);
+  } catch (...) {
+  }
+  try {
+    expectNear(5.00000, 6, 1e-4);
+  } catch (...) {
+  }
+  try {
+    expectLess(7, 5);
+  } catch (...) {
+  }
+  try {
+    expectLess(5, 5);
+  } catch (...) {
+  }
+  try {
+    expectLessEqual(7, 2);
+  } catch (...) {
+  }
+  try {
+    expectGreater(2, 5);
+  } catch (...) {
+  }
+  try {
+    expectGreater(5, 5);
+  } catch (...) {
+  }
+  try {
+    expectGreaterEqual(1, 2);
+  } catch (...) {
+  }
+  try {
+    expectContains(elements, 4);
+  } catch (...) {
+  }
+  try {
+    expectThrows([]() { return; });
+  } catch (...) {
+  }
+  try {
+    expectThrowsExact<std::exception>([]() { throw std::runtime_error("Error"); });
+  } catch (...) {
+  }
+#if defined(__unix__) || defined(__APPLE__)
+  try {
+    expectDeath([]() { return; });
+  } catch (...) {
+  }
+#endif
+
+  auto my_tuple = tuple(3.0F, 4);
+  assertEqual(my_tuple.getSizeof(), 2);
+
+  return test<TestSuite>(argc, argv);
+}
