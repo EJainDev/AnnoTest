@@ -10,11 +10,11 @@ export module cpputils.testing:expects;
 
 import :exceptions;
 
-import cpputils.refl_utils;
+import cpputils.refl;
 
 import std;
 
-using namespace cpputils::refl_utils;
+using namespace cpputils::refl;
 
 namespace cpputils::testing {
 // Expect statements that can be called

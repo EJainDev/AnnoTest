@@ -1,8 +1,8 @@
-export module cpputils.refl_utils;
+export module cpputils.refl;
 
 import std;
 
-namespace cpputils::refl_utils {
+namespace cpputils::refl {
 export template <typename T>
 consteval auto getNonstaticDataMembers() {
   return std::meta::nonstatic_data_members_of(^^T, std::meta::access_context::current());
@@ -60,4 +60,4 @@ std::string format(const T& value) {
     }
   }
 }
-}  // namespace cpputils::refl_utils
+}  // namespace cpputils::refl

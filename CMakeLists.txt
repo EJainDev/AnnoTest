@@ -7,14 +7,14 @@ set(CMAKE_CXX_MODULE_STD 1)
 
 project(CppUtils LANGUAGES C CXX)
 
-option(REFL_UTILS_LIBRARY "Build the reflection utility library" ON)
+option(REFL_LIBRARY "Build the reflection utility library" ON)
 option(TESTING_LIBRARY "Build the testing library" ON)
 option(MEMORY_LIBRARY "Build the raw memory management library" OFF)
 option(ENABLE_TESTING "Enable building and execution of tests" OFF)
 option(BUILD_EXAMPLES "Enable building of the examples" OFF)
 
 if(TESTING_LIBRARY)
-  set(REFL_UTILS_LIBRARY ON)
+  set(REFL_LIBRARY ON)
 endif()
 
 if(ENABLE_TESTING)
@@ -39,8 +39,8 @@ endif()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -freflection")
 
 # Sub-libraries
-if(REFL_UTILS_LIBRARY)
-  add_subdirectory(refl_utils)
+if(REFL_LIBRARY)
+  add_subdirectory(refl)
 endif()
 
 if(TESTING_LIBRARY)

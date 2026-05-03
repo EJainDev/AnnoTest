@@ -6,11 +6,11 @@ export import :asserts;
 export import :expects;
 export import :death_test;
 
-import cpputils.refl_utils;
+import cpputils.refl;
 
 import std;
 
-using namespace cpputils::refl_utils;
+using namespace cpputils::refl;
 
 namespace cpputils::testing {
 // Helper function to call a test with all the parameters in a tuple

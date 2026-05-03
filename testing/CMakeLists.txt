@@ -14,7 +14,7 @@ target_sources(
          "Expects.cxx"
          "DeathTest.cxx"
          "Test.cxx")
-target_link_libraries(cpputils_testing PUBLIC cpputils_refl_utils)
+target_link_libraries(cpputils_testing PUBLIC cpputils_refl)
 
 function(cpputils_discover_tests TARGET)
   # Path where the generated test list will live

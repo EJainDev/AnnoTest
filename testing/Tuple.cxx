@@ -1,10 +1,10 @@
 export module cpputils.testing:tuple;
 
-import cpputils.refl_utils;
+import cpputils.refl;
 
 import std;
 
-using namespace cpputils::refl_utils;
+using namespace cpputils::refl;
 
 namespace cpputils::testing {
 template <std::size_t I>

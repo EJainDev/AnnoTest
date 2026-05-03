@@ -1,6 +1,6 @@
-add_library(cpputils_refl_utils SHARED)
+add_library(cpputils_refl SHARED)
 target_sources(
-  cpputils_refl_utils
+  cpputils_refl
   PUBLIC FILE_SET
          public_modules
          TYPE
