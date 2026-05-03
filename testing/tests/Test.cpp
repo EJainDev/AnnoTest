@@ -23,6 +23,7 @@ int main(int argc, char** argv) {
   assertContains(elements, 5);
   assertThrows([]() { throw std::runtime_error("Error"); });
   assertThrowsExact<std::runtime_error>([]() { throw std::runtime_error("Error"); });
+  assertNull(nullptr);
 #if defined(__unix__) || defined(__APPLE__)
   assertDeath([]() { throw std::runtime_error("Error"); });
 #endif
@@ -83,6 +84,10 @@ int main(int argc, char** argv) {
     assertThrowsExact<std::exception>([]() { throw std::runtime_error("Error"); });
   } catch (...) {
   }
+  try {
+    assertNull(elements.data());
+  } catch (...) {
+  }
 
 #if defined(__unix__) || defined(__APPLE__)
   try {
@@ -103,6 +108,7 @@ int main(int argc, char** argv) {
   expectContains(elements, 5);
   expectThrows([]() { throw std::runtime_error("Error"); });
   expectThrowsExact<std::runtime_error>([]() { throw std::runtime_error("Error"); });
+  expectNull(nullptr);
 #if defined(__unix__) || defined(__APPLE__)
   expectDeath([]() { throw std::runtime_error("Error"); });
 #endif
@@ -161,6 +167,10 @@ int main(int argc, char** argv) {
   }
   try {
     expectThrowsExact<std::exception>([]() { throw std::runtime_error("Error"); });
+  } catch (...) {
+  }
+  try {
+    expectNull(elements.data());
   } catch (...) {
   }
 #if defined(__unix__) || defined(__APPLE__)

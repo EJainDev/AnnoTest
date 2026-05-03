@@ -104,4 +104,10 @@ void assertThrowsExact(auto func) {
     }
   }
 }
+
+export void assertNull(auto ptr) {
+  if (ptr != nullptr) {
+    throw Error("Assertion failed: expected nullptr, got " + format(ptr));
+  }
+}
 }  // namespace cpputils::testing

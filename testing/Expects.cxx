@@ -112,4 +112,10 @@ void expectThrowsExact(auto func) {
     }
   }
 }
+
+export void expectNull(auto ptr) {
+  if (ptr != nullptr) {
+    throw Abort("Expectation failed: expected nullptr, got " + format(ptr));
+  }
+}
 }  // namespace cpputils::testing
