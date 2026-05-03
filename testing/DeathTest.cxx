@@ -47,20 +47,28 @@ DeathResult runDeathTest(F&& func) {
   }
   return {true, std::format("exited with status {}", status)};
 }
+#endif
 
 export void assertDeath(auto func) {
+#if defined(__unix__) || defined(__APPLE__)
   auto result = runDeathTest(std::move(func));
   if (!result.died) {
     throw Error("Assertion failed: expected process death, child " + result.detail);
   }
+#else
+#warning "assertDeath not implemented for Windows"
+#endif
 }
 
 export void expectDeath(auto func) {
+#if defined(__unix__) || defined(__APPLE__)
   auto result = runDeathTest(std::move(func));
   if (!result.died) {
     throw Abort("Expectation failed: expected process death, child " + result.detail);
   }
-}
+#else
+#warning "expectDeath not implemented for Windows"
 #endif
+}
 
 }  // namespace cpputils::testing
