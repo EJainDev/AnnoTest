@@ -38,4 +38,10 @@ function(cpputils_discover_tests TARGET)
     PROPERTY TEST_INCLUDE_FILES "${CTEST_DISCOVERY_FILE}")
 endfunction()
 
-add_subdirectory(tests)
+if(ENABLE_TESTING)
+  add_subdirectory(tests)
+endif()
+
+if(BUILD_EXAMPLES)
+  add_subdirectory(examples)
+endif()
