@@ -93,7 +93,7 @@ struct Parameterize {
   TupleType parameters[N];
 };
 
-export template <typename... Args, typename... Rest>
+template <typename... Args, typename... Rest>
 Parameterize(Tuple<Args...>, Rest...) -> Parameterize<1 + (int)sizeof...(Rest), Args...>;
 
 /**
