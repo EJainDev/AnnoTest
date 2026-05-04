@@ -86,6 +86,13 @@ struct AfterAll {};
 export template <typename T = int>
 struct Disabled {};
 
+/**
+ * @brief Marks this test to be parameterized
+ *
+ * @details Allows for value parameterization for a test. Pass in any amount of tuples, each
+ * representing a set of arguments to pass to the test. It will execute the test with each set of
+ * parameters.
+ */
 export template <int N, typename... TupleArgs>
   requires(N > 0)
 struct Parameterize {
