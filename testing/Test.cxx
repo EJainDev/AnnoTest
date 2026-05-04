@@ -21,17 +21,68 @@ constexpr auto with_indices(const F f) -> decltype(auto) {
   }(std::make_index_sequence<N>{});
 }
 
-// Different annotations recognized by the library
+/**
+ * @defgroup TestingAnnotations Annotations for Testing Library
+ * @brief This group contains the various annotations used by the library
+ * @{
+ */
+/**
+ * @brief Marks this function to execute once before each test in the suite
+ *
+ * @details Only one function in a test suite can be annotated with this, and it must be a
+ * non-static member. If the function throws an exception or fails an assertion, the current test
+ * will be aborted and execution will continue to the next test.
+ */
 export template <typename T = int>
 struct BeforeEach {};
+
+/**
+ * @brief Marks this function as a test case
+ *
+ * @details Any non-static member function can be annotated with this to mark it as a test case. If
+ * the function throws an exception or fails an assertion, the test will be marked as failed and
+ * execution will continue to the next test.
+ *
+ * @note The test must not use catch (...) because that will prevent failure
+ */
 export template <typename T = int>
 struct Test {};
+
+/**
+ * @brief Marks this function to execute once after each test in the suite
+ *
+ * @details Only one function in a test suite can be annotated with this, and it must be a
+ * non-static member. If the function throws an exception or fails an assertion, a warning will be
+ * printed.
+ */
 export template <typename T = int>
 struct AfterEach {};
+
+/**
+ * @brief Marks this function to execute once before any tests in the suite
+ *
+ * @details Only one function in a test suite can be annotated with this, and it must be a
+ * non-static member. If the function throws an exception or fails an assertion, the suite is
+ * aborted.
+ */
 export template <typename T = int>
 struct BeforeAll {};
+
+/**
+ * @brief Marks this function to execute once after all tests in the suite
+ *
+ * @details Only one function in a test suite can be annotated with this, and it must be a
+ * non-static member. If the function fails, a warning is printed.
+ */
 export template <typename T = int>
 struct AfterAll {};
+
+/**
+ * @brief Marks this test as disabled
+ *
+ * @details This is used to prevent a test from executing, such as when there is currently an issue
+ * targeting it.
+ */
 export template <typename T = int>
 struct Disabled {};
 
@@ -41,6 +92,10 @@ struct Parameterize {
   using TupleType = Tuple<TupleArgs...>;
   TupleType parameters[N];
 };
+
+/**
+ * @} // End of TestingAnnotations
+ */
 
 // Gets all required information from the testing class
 template <typename T>
