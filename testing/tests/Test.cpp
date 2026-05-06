@@ -9,7 +9,7 @@ struct TestSuite {
   [[= BeforeEach{}]] void beforeEach() { std::cout << "Running before each\n"; }
   [[ = Test{}, = Disabled{} ]] void disabledTest() {}
   [[= Test{}]] void test() {}
-  [[= Parameterize{tuple(5), tuple(50)}]] void parameterizedTest(int val) {
+  [[ = Test{}, = Parameterize{tuple(5), tuple(50)} ]] void parameterizedTest(int val) {
     assertTrue(val == 5 || val == 50);
   }
   [[= Test{}]][[= RequiresOS{OS::Windows}]] void windows() {}
