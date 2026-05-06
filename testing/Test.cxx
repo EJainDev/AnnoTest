@@ -254,6 +254,7 @@ int test(int argc, char** argv, T suite = {}) {
 
     bool disabled = false;
     bool osRequirementFailed = false;
+    bool osDisallowed = false;
     OS requiredOS = OS::Unknown;
     static constexpr auto annotations = std::define_static_array(getAnnotations(test));
 
@@ -267,11 +268,30 @@ int test(int argc, char** argv, T suite = {}) {
         disabled = true;
         break;
       } else if constexpr (t == ^^RequiresOS) {
-        auto osDetail = std::meta::extract<RequiresOS>(a).os;
+        static constexpr auto template_args =
+            std::define_static_array(std::meta::template_arguments_of(std::meta::type_of(a)));
+
+        auto osDetail =
+            std::meta::extract<typename[:std::meta::substitute(^^RequiresOS, template_args):]>(a)
+                .os;
         for (int i = 0; i < sizeof(osDetail.os) / sizeof(OS); ++i) {
           if (os != osDetail.os[i]) {
             osRequirementFailed = true;
             requiredOS = osDetail.os[i];
+            break;
+          }
+        }
+      } else if constexpr (t == ^^DisallowOS) {
+        static constexpr auto template_args =
+            std::define_static_array(std::meta::template_arguments_of(std::meta::type_of(a)));
+
+        auto osDetail =
+            std::meta::extract<typename[:std::meta::substitute(^^RequiresOS, template_args):]>(a)
+                .os;
+        for (int i = 0; i < sizeof(osDetail.os) / sizeof(OS); ++i) {
+          if (os == osDetail.os[i]) {
+            osDisallowd = true;
+            break;
           }
         }
       }
@@ -283,6 +303,9 @@ int test(int argc, char** argv, T suite = {}) {
       std::cout << "Skipping test " << std::meta::identifier_of(test) << " because the current OS "
                 << enum_to_string(os) << " does not match the required OS of "
                 << enum_to_string(requiredOS) << '\n';
+    } else if (osDisallowed) {
+      std::cout << "Skipping test " << std::meta::identifier_of(test) << " because the current OS "
+                << enum_to_string(os) << " is disallowed.";
     }
 
     template for (constexpr auto a : annotations) {
