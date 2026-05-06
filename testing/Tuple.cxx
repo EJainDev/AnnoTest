@@ -26,7 +26,7 @@ consteval auto make_specs(std::index_sequence<Is...>) {
                                             .name = member_name<Is>::value.data()})...};
 }
 
-export template <typename... Ts>
+template <typename... Ts>
 struct Tuple {
   struct storage;
 
