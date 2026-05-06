@@ -107,8 +107,14 @@ struct Parameterize {
   TupleType parameters[N];
 };
 
+export template <int N>
 struct RequiresOS {
-  OS os;
+  OS os[N];
+};
+
+export template <int N>
+struct DisallowOS {
+  OS os[N];
 };
 
 template <typename... Args, typename... Rest>
@@ -261,9 +267,12 @@ int test(int argc, char** argv, T suite = {}) {
         disabled = true;
         break;
       } else if constexpr (t == ^^RequiresOS) {
-        if (os != std::meta::extract<RequiresOS>(a).os) {
-          osRequirementFailed = true;
-          requiredOS = std::meta::extract<RequiresOS>(a).os;
+        auto osDetail = std::meta::extract<RequiresOS>(a).os;
+        for (int i = 0; i < sizeof(osDetail.os) / sizeof(OS); ++i) {
+          if (os != osDetail.os[i]) {
+            osRequirementFailed = true;
+            requiredOS = osDetail.os[i];
+          }
         }
       }
     }
