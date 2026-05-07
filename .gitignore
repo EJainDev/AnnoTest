@@ -2,4 +2,5 @@
 build/
 !.gitignore
 !.gitattributes
+!.github/
 !.clang*
