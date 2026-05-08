@@ -46,6 +46,9 @@ std::string format(const T& value) {
     return str;
   } else if constexpr (std::is_enum_v<T>) {
     return enum_to_string(value);
+  } else if constexpr (std::is_same_v<T, std::source_location>) {
+    return std::format("file {} {}:{} in function {}", value.file_name(), value.line(),
+                       value.column(), value.function_name());
   } else {
     if constexpr (std::is_pointer_v<T>) {
       if (value == nullptr) {
