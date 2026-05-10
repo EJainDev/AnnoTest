@@ -1,11 +1,3 @@
-module;
-
-#if defined(__unix__) || defined(__APPLE__)
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#endif
-
 export module cpputils.testing:expects;
 
 import :exceptions;
