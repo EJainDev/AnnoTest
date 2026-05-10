@@ -28,6 +28,7 @@ jobs:
               with:
                   build-dir: build
                   generator: Ninja
-                  cxx-compiler: gcc-16
+                  c-compiler: gcc-16
+                  cxx-compiler: g++-16
                   options: |
                       BUILD_TESTS=ON
