@@ -210,8 +210,7 @@ consteval bool notHasRequiredParameter() {
  *
  * @return The status code (0 for passed/aborted all and 1 for any failed)
  */
-export template <typename T>
-  requires(std::is_class_v<T>)
+export template <std::is_class T>
 int test(int argc, char** argv, T suite = {}) {
 #if defined(__linux__)
   static constexpr auto os = OS::Linux;
