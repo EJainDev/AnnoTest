@@ -4,7 +4,7 @@
 
 ![Cpp-Utils Banner](docs/source/_static/CppUtils.png)
 
-[![Build and Test](https://github.com/EJainDev/Cpp-Utils/actions/workflows/build.yml/badge.svg)](https://github.com/EJainDev/Cpp-Utils/actions/workflows/build.yml) ![Documentation](https://app.readthedocs.org/projects/cpp-utils/badge/?version=latest)
+[![Build and Test](https://github.com/EJainDev/Cpp-Utils/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/EJainDev/Cpp-Utils/actions/workflows/build_and_test.yml) ![Documentation](https://app.readthedocs.org/projects/cpp-utils/badge/?version=latest)
 
 </div>
 
