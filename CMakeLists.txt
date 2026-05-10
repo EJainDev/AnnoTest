@@ -24,8 +24,6 @@ if(ENABLE_TESTING)
 
   include(CTest)
 
-  find_package(GTest REQUIRED)
-
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_options(--coverage)
     add_link_options(--coverage)
