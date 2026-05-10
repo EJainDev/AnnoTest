@@ -1,0 +1,7 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/cpputils_targets.cmake")
+
+if(NOT TARGET cpputils)
+  add_library(cpputils ALIAS cpputils::cpputils)
+endif()
