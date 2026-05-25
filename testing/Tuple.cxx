@@ -49,14 +49,5 @@ struct Tuple {
 template <typename... Ts>
 Tuple(Ts...) -> Tuple<Ts...>;
 
-/**
- * @brief Constructs an aggregate tuple with the specified args
- *
- * @param args The values of that tuple
- * @return A tuple containing those values
- *
- * @note This is only intended for use with the @ref Parameterized annotation provided by the
- * framework. It does not support any methods.
- */
 export consteval auto tuple(auto... args) { return Tuple<decltype(args)...>{.s = {args...}}; }
 }  // namespace cpputils::testing
