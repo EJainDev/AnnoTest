@@ -33,7 +33,9 @@ export template <typename T = int>
 struct BeforeEach {};
 
 export template <typename T = int>
-struct Test {};
+struct Test {
+  char* name = nullptr;
+};
 
 export template <typename T = int>
 struct AfterEach {};
@@ -83,7 +85,7 @@ consteval auto getTests() {
   std::meta::info before_all_func;
   bool has_before_each = false;
   std::meta::info before_func;
-  std::vector<std::meta::info> tests;
+  std::vector<std::pair<std::meta::info, const char*>> tests;
   bool has_after_each = false;
   std::meta::info after_func;
   bool has_after_all = false;
@@ -96,7 +98,11 @@ consteval auto getTests() {
         constexpr auto t = std::meta::template_of(std::meta::type_of(a));
 
         if constexpr (t == ^^Test) {
-          tests.push_back(m);
+          auto test_info = std::meta::extract<Test<int>>(a);
+          const char* final_test_name =
+              test_info.name != nullptr ? test_info.name
+                                        : std::define_static_string(std::meta::identifier_of(m));
+          tests.push_back({m, final_test_name});
         } else if constexpr (t == ^^BeforeEach) {
           before_func = m;
           has_before_each = true;
@@ -167,8 +173,9 @@ int test(int argc, char** argv, T suite = {}) {
   for (const auto& arg : args) {
     if (arg == "--list") {
       std::cout << std::meta::identifier_of(^^T) << ".\n";
-      template for (constexpr auto test : tests) {
-        std::cout << "  " << std::meta::identifier_of(test) << '\n';
+      template for (constexpr auto test_info : tests) {
+        constexpr auto current_test_name = test_info.second;
+        std::cout << "  " << current_test_name << '\n';
       }
       return 0;
     } else {
@@ -193,8 +200,10 @@ int test(int argc, char** argv, T suite = {}) {
     }
   }
 
-  template for (constexpr auto test : tests) {
-    if (std::string(std::meta::identifier_of(test)) != test_name && !test_name.empty()) {
+  template for (constexpr auto test_info : tests) {
+    constexpr auto test = test_info.first;
+    constexpr auto current_test_name = test_info.second;
+    if (std::string(current_test_name) != test_name && !test_name.empty()) {
       continue;
     }
 
@@ -210,7 +219,7 @@ int test(int argc, char** argv, T suite = {}) {
       constexpr auto t = std::meta::template_of(std::meta::type_of(a));
 
       if constexpr (t == ^^Disabled) {
-        std::cout << "Skipping disabled test: " << std::meta::identifier_of(test) << '\n';
+        std::cout << "Skipping disabled test: " << current_test_name << '\n';
         disabled = true;
         break;
       } else if constexpr (t == ^^RequiresOS) {
@@ -246,11 +255,11 @@ int test(int argc, char** argv, T suite = {}) {
     if (disabled) {
       continue;
     } else if (osRequirementFailed) {
-      std::cout << "Skipping test " << std::meta::identifier_of(test) << " because the current OS "
+      std::cout << "Skipping test " << current_test_name << " because the current OS "
                 << enum_to_string(os) << " does not match the required OS of "
                 << enum_to_string(requiredOS) << '\n';
     } else if (osDisallowed) {
-      std::cout << "Skipping test " << std::meta::identifier_of(test) << " because the current OS "
+      std::cout << "Skipping test " << current_test_name << " because the current OS "
                 << enum_to_string(os) << " is disallowed.\n";
     }
 
@@ -266,8 +275,8 @@ int test(int argc, char** argv, T suite = {}) {
             std::define_static_array(std::meta::template_arguments_of(std::meta::type_of(a)));
         static constexpr auto num_sets = [:template_args[0]:];
 
-        std::cout << "Running parameterized test " << std::meta::identifier_of(test) << " with "
-                  << num_sets << " parameter sets\n";
+        std::cout << "Running parameterized test " << current_test_name << " with " << num_sets
+                  << " parameter sets\n";
 
         static constexpr auto param_members = std::define_static_array(
             getNonstaticDataMembers<
@@ -283,7 +292,7 @@ int test(int argc, char** argv, T suite = {}) {
             try {
               suite.[:before_each_func:]();
             } catch (...) {
-              std::cout << "BeforeEach function failed for test " << std::meta::identifier_of(test)
+              std::cout << "BeforeEach function failed for test " << current_test_name
                         << ", skipping...\n";
               continue;  // Skip the test if setup fails
             }
@@ -304,19 +313,18 @@ int test(int argc, char** argv, T suite = {}) {
 
             std::cout << " passed in " << duration.count() / 1'000'000.0 << " ms\n";
           } catch (const Error& e) {
-            std::cout << "Test " << std::meta::identifier_of(test)
-                      << " failed with error: " << e.message() << '\n';
+            std::cout << "Test " << current_test_name << " failed with error: " << e.message()
+                      << '\n';
             status_code = 1;
           } catch (const Abort& e) {
-            std::cout << "Test " << std::meta::identifier_of(test)
-                      << " aborted with message: " << e.message() << '\n';
+            std::cout << "Test " << current_test_name << " aborted with message: " << e.message()
+                      << '\n';
           } catch (const std::exception& e) {
-            std::cout << "Test " << std::meta::identifier_of(test)
+            std::cout << "Test " << current_test_name
                       << " failed with (uncaught) exception message: " << e.what() << '\n';
             status_code = 1;
           } catch (...) {
-            std::cout << "Test " << std::meta::identifier_of(test)
-                      << " failed with unknown error\n";
+            std::cout << "Test " << current_test_name << " failed with unknown error\n";
             status_code = 1;
           }
 
@@ -324,8 +332,7 @@ int test(int argc, char** argv, T suite = {}) {
             try {
               suite.[:after_each_func:]();
             } catch (...) {
-              std::cout << "AfterEach function failed for test " << std::meta::identifier_of(test)
-                        << '\n';
+              std::cout << "AfterEach function failed for test " << current_test_name << '\n';
             }
           }
         }
@@ -337,12 +344,12 @@ int test(int argc, char** argv, T suite = {}) {
     }
 
     if constexpr (notHasRequiredParameter<test>()) {
-      std::cout << "Running test: " << std::meta::identifier_of(test) << '\n';
+      std::cout << "Running test: " << current_test_name << '\n';
       if constexpr (has_before_each) {
         try {
           suite.[:before_each_func:]();
         } catch (...) {
-          std::cout << "BeforeEach function failed for test " << std::meta::identifier_of(test)
+          std::cout << "BeforeEach function failed for test " << current_test_name
                     << ", skipping...\n";
           continue;  // Skip the test if setup fails
         }
@@ -354,21 +361,20 @@ int test(int argc, char** argv, T suite = {}) {
         auto end = std::chrono::system_clock::now();
 
         auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-        std::cout << "Test " << std::meta::identifier_of(test) << " passed in "
-                  << duration.count() / 1'000'000.0 << " ms\n";
+        std::cout << "Test " << current_test_name << " passed in " << duration.count() / 1'000'000.0
+                  << " ms\n";
       } catch (const Error& e) {
-        std::cout << "Test " << std::meta::identifier_of(test)
-                  << " failed with error: " << e.message() << '\n';
+        std::cout << "Test " << current_test_name << " failed with error: " << e.message() << '\n';
         status_code = 1;
       } catch (const Abort& e) {
-        std::cout << "Test " << std::meta::identifier_of(test)
-                  << " aborted with message: " << e.message() << '\n';
+        std::cout << "Test " << current_test_name << " aborted with message: " << e.message()
+                  << '\n';
       } catch (const std::exception& e) {
-        std::cout << "Test " << std::meta::identifier_of(test)
+        std::cout << "Test " << current_test_name
                   << " failed with (uncaught) exception message: " << e.what() << '\n';
         status_code = 1;
       } catch (...) {
-        std::cout << "Test " << std::meta::identifier_of(test) << " failed with unknown error\n";
+        std::cout << "Test " << current_test_name << " failed with unknown error\n";
         status_code = 1;
       }
 
@@ -376,13 +382,12 @@ int test(int argc, char** argv, T suite = {}) {
         try {
           suite.[:after_each_func:]();
         } catch (...) {
-          std::cout << "AfterEach function failed for test " << std::meta::identifier_of(test)
-                    << '\n';
+          std::cout << "AfterEach function failed for test " << current_test_name << '\n';
         }
       }
     } else {
       if (!parameterized) {
-        std::cout << "Warning: Test " << std::meta::identifier_of(test)
+        std::cout << "Warning: Test " << current_test_name
                   << " did not execute because it has required arguments that were not given via "
                      "'Paremterized' annotation.\n";
       }
