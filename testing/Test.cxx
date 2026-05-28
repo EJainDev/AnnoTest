@@ -295,8 +295,7 @@ int test(int argc, char** argv, T suite = {}) {
             try {
               suite.[:before_each_func:]();
             } catch (...) {
-              std::cout << "BeforeEach function failed for test " << current_test_name
-                        << ", skipping...\n";
+              std::cout << " BeforeEach function failed\n";
               continue;  // Skip the test if setup fails
             }
           }
@@ -316,18 +315,15 @@ int test(int argc, char** argv, T suite = {}) {
 
             std::cout << " passed in " << duration.count() / 1'000'000.0 << " ms\n";
           } catch (const Error& e) {
-            std::cout << "Test " << current_test_name << " failed with error: " << e.message()
-                      << '\n';
+            std::cout << " failed with error: " << e.message() << '\n';
             status_code = 1;
           } catch (const Abort& e) {
-            std::cout << "Test " << current_test_name << " aborted with message: " << e.message()
-                      << '\n';
+            std::cout << " aborted with message: " << e.message() << '\n';
           } catch (const std::exception& e) {
-            std::cout << "Test " << current_test_name
-                      << " failed with (uncaught) exception message: " << e.what() << '\n';
+            std::cout << " failed with (uncaught) exception message: " << e.what() << '\n';
             status_code = 1;
           } catch (...) {
-            std::cout << "Test " << current_test_name << " failed with unknown error\n";
+            std::cout << " failed with unknown error\n";
             status_code = 1;
           }
 
@@ -335,7 +331,7 @@ int test(int argc, char** argv, T suite = {}) {
             try {
               suite.[:after_each_func:]();
             } catch (...) {
-              std::cout << "AfterEach function failed for test " << current_test_name << '\n';
+              std::cout << " AfterEach function failed\n";
             }
           }
         }
