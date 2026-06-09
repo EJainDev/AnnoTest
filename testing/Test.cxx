@@ -73,6 +73,13 @@ struct Parameterize {
   TupleType parameters[N];
 };
 
+export template <int N, typename... Args>
+  requires(N > 0 && (std::same_as<Args, std::meta::info> && ...))
+struct ParameterizeTemplate {
+  using TupleType = Tuple<Args...>;
+  TupleType parameters[N];
+};
+
 export template <int N>
 struct RequiresOS {
   OS os[N];
@@ -91,6 +98,10 @@ DisallowOS(Ts...) -> DisallowOS<sizeof...(Ts)>;
 
 template <typename... Args, typename... Rest>
 Parameterize(Tuple<Args...>, Rest...) -> Parameterize<1 + (int)sizeof...(Rest), Args...>;
+
+template <typename... Args, typename... Rest>
+ParameterizeTemplate(Tuple<Args...>, Rest...)
+    -> ParameterizeTemplate<1 + (int)sizeof...(Rest), Args...>;
 
 // Gets all required information from the testing class
 template <typename T>
