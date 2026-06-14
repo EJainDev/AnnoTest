@@ -1,4 +1,4 @@
-add_executable(TestingTestsExecutable Test.cpp)
+add_executable(TestingTestsExecutable test.cpp)
 target_link_libraries(TestingTestsExecutable PRIVATE annotest)
 
 annotest_discover_tests(TestingTestsExecutable)

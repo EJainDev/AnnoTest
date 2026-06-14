@@ -39,14 +39,14 @@ target_sources(
          BASE_DIRS
          "${CMAKE_CURRENT_SOURCE_DIR}/include"
          FILES
-         "${CMAKE_CURRENT_SOURCE_DIR}/include/Tuple.cxx"
-         "${CMAKE_CURRENT_SOURCE_DIR}/include/Exceptions.cxx"
-         "${CMAKE_CURRENT_SOURCE_DIR}/include/Asserts.cxx"
-         "${CMAKE_CURRENT_SOURCE_DIR}/include/Expects.cxx"
-         "${CMAKE_CURRENT_SOURCE_DIR}/include/DeathTest.cxx"
-         "${CMAKE_CURRENT_SOURCE_DIR}/include/Test.cxx"
-         "${CMAKE_CURRENT_SOURCE_DIR}/include/Posix.cxx"
-         "${CMAKE_CURRENT_SOURCE_DIR}/include/Utils.cxx")
+         "${CMAKE_CURRENT_SOURCE_DIR}/include/tuple.cxx"
+         "${CMAKE_CURRENT_SOURCE_DIR}/include/exceptions.cxx"
+         "${CMAKE_CURRENT_SOURCE_DIR}/include/asserts.cxx"
+         "${CMAKE_CURRENT_SOURCE_DIR}/include/expects.cxx"
+         "${CMAKE_CURRENT_SOURCE_DIR}/include/death_test.cxx"
+         "${CMAKE_CURRENT_SOURCE_DIR}/include/test.cxx"
+         "${CMAKE_CURRENT_SOURCE_DIR}/include/posix.cxx"
+         "${CMAKE_CURRENT_SOURCE_DIR}/include/utils.cxx")
 target_compile_features(annotest PUBLIC cxx_std_26)
 
 # Installation configuration
