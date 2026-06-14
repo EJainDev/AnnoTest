@@ -2,11 +2,9 @@ export module annotest:tuple;
 
 import std;
 
+import :utils;
+
 namespace annotest {
-template <typename T>
-consteval auto getNonstaticDataMembers() {
-  return std::meta::nonstatic_data_members_of(^^T, std::meta::access_context::current());
-}
 
 template <std::size_t I>
 struct member_name {

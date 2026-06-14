@@ -45,7 +45,8 @@ target_sources(
          "${CMAKE_CURRENT_SOURCE_DIR}/include/Expects.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/DeathTest.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/Test.cxx"
-         "${CMAKE_CURRENT_SOURCE_DIR}/include/Posix.cxx")
+         "${CMAKE_CURRENT_SOURCE_DIR}/include/Posix.cxx"
+         "${CMAKE_CURRENT_SOURCE_DIR}/include/Utils.cxx")
 target_compile_features(annotest PUBLIC cxx_std_26)
 
 # Installation configuration
