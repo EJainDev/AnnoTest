@@ -362,7 +362,7 @@ int test(int argc, char** argv, T suite = {}) {
              std::meta::extract<typename[:std::meta::substitute(^^Parameterize, template_args):]>(a)
                  .parameters) {
           if constexpr (before_each_func) {
-            if (!runBeforeEach([&suite, before_each_func]() { suite.[:*before_each_func:](); })) {
+            if (!runBeforeEach([&suite]() { suite.[:*before_each_func:](); })) {
               continue;
             }
           }
@@ -395,7 +395,7 @@ int test(int argc, char** argv, T suite = {}) {
           }
 
           if constexpr (after_each_func) {
-            runAfterEach([&suite, after_each_func]() { suite.[:*after_each_func:](); });
+            runAfterEach([&suite]() { suite.[:*after_each_func:](); });
           }
         }
       } else if constexpr (t == ^^ParameterizeTemplate) {
@@ -413,7 +413,7 @@ int test(int argc, char** argv, T suite = {}) {
                  typename[:std::meta::substitute(^^ParameterizeTemplate, template_args):]>(a)
                  .parameters) {
           if constexpr (before_each_func) {
-            if (!runBeforeEach([&suite, before_each_func]() { suite.[:*before_each_func:](); })) {
+            if (!runBeforeEach([&suite]() { suite.[:*before_each_func:](); })) {
               continue;
             }
           }
@@ -431,7 +431,7 @@ int test(int argc, char** argv, T suite = {}) {
           });
 
           if constexpr (after_each_func) {
-            runAfterEach([&suite, after_each_func]() { suite.[:*after_each_func:](); });
+            runAfterEach([&suite]() { suite.[:*after_each_func:](); });
           }
         }
       }
@@ -444,7 +444,7 @@ int test(int argc, char** argv, T suite = {}) {
     if constexpr (notHasRequiredParameter<test>()) {
       std::cout << "Running test: " << current_test_name << '\n';
       if constexpr (before_each_func) {
-        if (!runBeforeEach([&suite, before_each_func]() { suite.[:*before_each_func:](); })) {
+        if (!runBeforeEach([&suite]() { suite.[:*before_each_func:](); })) {
           continue;
         }
       }
@@ -471,7 +471,7 @@ int test(int argc, char** argv, T suite = {}) {
       }
 
       if constexpr (after_each_func) {
-        runAfterEach([&suite, after_each_func]() { suite.[:*after_each_func:](); });
+        runAfterEach([&suite]() { suite.[:*after_each_func:](); });
       }
     } else {
       if (!parameterized) {
