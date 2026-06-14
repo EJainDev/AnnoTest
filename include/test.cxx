@@ -246,12 +246,11 @@ int test(int argc, char** argv, T suite = {}) {
         std::cout << "  " << current_test_name << '\n';
       }
       return 0;
-    } else if (arg == "--suite-name") {
-      if (std::string(args[i + 1]) == std::define_static_string(std::meta::identifier_of(^^T))) {
-        auto test_name_pos = std::find(args.begin(), args.end(), "--test-name");
-        if (test_name_pos != args.end()) {
-          test_name = std::string(*(test_name_pos + 1));
-        }
+    } else if (arg == "--test-name") {
+      if (std::string(args[i + 1])
+              .starts_with(std::define_static_string(std::meta::identifier_of(^^T)))) {
+        test_name =
+            std::string(args[i + 1]).substr(std::string(std::meta::identifier_of(^^T)).size() + 1);
       }
     }
     ++i;

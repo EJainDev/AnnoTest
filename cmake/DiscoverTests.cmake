@@ -38,7 +38,7 @@ foreach(line IN LISTS line_list)
     # Append individual test registrations to the target file
     file(
       APPEND "${OUTPUT_FILE}"
-      "add_test(\"${FULL_TEST_NAME}\" \"${TEST_EXECUTABLE}\" --suite-name \"${CURRENT_SUITE}\" --test-name \"${clean_line}\")\n"
+      "add_test(\"${FULL_TEST_NAME}\" \"${TEST_EXECUTABLE}\" --test-name \"${FULL_TEST_NAME}\")\n"
     )
   endif()
 endforeach()
