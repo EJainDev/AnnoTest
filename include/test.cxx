@@ -479,6 +479,10 @@ int test(int argc, char** argv, T suite = {}) {
                      "'Paremterized' annotation.\n";
       }
     }
+
+    if (!test_name.empty() && std::string(current_test_name) == test_name) {
+      break;
+    }
   }
 
   if constexpr (after_all_func) {
