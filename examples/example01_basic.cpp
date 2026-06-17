@@ -10,9 +10,9 @@
  * example01_basic
  *   ./example01_basic
  */
-import annotest;
-import annotest.contracts;
+#include <annotest_contract.h>
 
+import annotest;
 import std;
 
 using namespace annotest;

@@ -16,8 +16,9 @@
  * 2. (BeforeEach(), test(), AfterEach()) × N tests
  * 3. AfterAll()
  */
+#include <annotest_contract.h>
+
 import annotest;
-import annotest.contracts;
 
 import std;
 
