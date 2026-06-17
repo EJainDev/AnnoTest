@@ -2,6 +2,7 @@ export module annotest:expects;
 
 import :exceptions;
 import :utils;
+import :contracts;
 
 import std;
 
@@ -105,6 +106,22 @@ void expectThrowsExact(auto func) {
 export void expectNull(auto ptr) {
   if (ptr != nullptr) {
     throw Abort("Expectation failed: expected nullptr, got " + format(ptr));
+  }
+}
+
+export template <typename Func>
+void expectContractViolation(Func f) {
+  f();
+  if (!annotest::contract_violation_occurred) {
+    throw Abort("Expectation failed: expected contract violation, but it was not detected");
+  }
+}
+
+export template <typename Func>
+void expectNoContractViolation(Func f) {
+  f();
+  if (annotest::contract_violation_occurred) {
+    throw Abort("Expectation failed: expected no contract violation, but one was detected");
   }
 }
 }  // namespace annotest

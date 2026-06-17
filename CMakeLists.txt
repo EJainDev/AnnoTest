@@ -41,15 +41,31 @@ target_sources(
          "${CMAKE_CURRENT_SOURCE_DIR}/include/death_test.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/test.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/posix.cxx"
-         "${CMAKE_CURRENT_SOURCE_DIR}/include/utils.cxx")
+         "${CMAKE_CURRENT_SOURCE_DIR}/include/utils.cxx"
+         "${CMAKE_CURRENT_SOURCE_DIR}/include/contracts.cxx")
+
 target_compile_features(annotest PUBLIC cxx_std_26)
+
+add_library(annotest_contract STATIC)
+target_sources(
+  annotest_contract
+  PUBLIC FILE_SET
+         modules
+         TYPE
+         CXX_MODULES
+         BASE_DIRS
+         "${CMAKE_CURRENT_SOURCE_DIR}/include"
+         FILES
+         "${CMAKE_CURRENT_SOURCE_DIR}/include/contract_handler.cxx")
+target_link_libraries(annotest_contract PUBLIC annotest)
+target_compile_features(annotest_contract PUBLIC cxx_std_26)
 
 # Installation configuration
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/DiscoverTestsRunner.cmake)
 
 install(
-  TARGETS annotest
+  TARGETS annotest annotest_contract
   EXPORT annotest_targets
   FILE_SET modules
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/annotest

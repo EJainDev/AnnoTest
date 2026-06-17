@@ -1,6 +1,7 @@
 export module annotest:asserts;
 
 import :exceptions;
+import :contracts;
 import :utils;
 
 import std;
@@ -97,6 +98,22 @@ void assertThrowsExact(auto func) {
 export void assertNull(auto ptr) {
   if (ptr != nullptr) {
     throw Error("Assertion failed: expected nullptr, got " + format(ptr));
+  }
+}
+
+export template <typename Func>
+void assertContractViolation(Func f) {
+  f();
+  if (!annotest::contract_violation_occurred) {
+    throw Error("Assertion failed: expected contract violation, but it was not detected");
+  }
+}
+
+export template <typename Func>
+void assertNoContractViolation(Func f) {
+  f();
+  if (annotest::contract_violation_occurred) {
+    throw Error("Assertion failed: expected no contract violation, but one was detected");
   }
 }
 }  // namespace annotest

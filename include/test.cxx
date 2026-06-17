@@ -1,6 +1,7 @@
 export module annotest;
 
 export import :tuple;
+export import :contracts;
 export import :exceptions;
 export import :asserts;
 export import :expects;
