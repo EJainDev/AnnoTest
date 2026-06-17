@@ -20,7 +20,7 @@ jobs:
                   version: 4.2.3
 
             - name: Checkout Project
-              uses: actions/checkout@v4.3.2
+              uses: actions/checkout@v6.0.3
 
             - name: Build Project
               uses: threeal/cmake-action@v2.1.0
