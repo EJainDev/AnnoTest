@@ -1,23 +1,21 @@
-export module cpputils.refl;
+export module annotest:utils;
 
 import std;
 
-namespace cpputils::refl {
-export template <typename T>
+namespace annotest {
+template <typename T>
 consteval auto getNonstaticDataMembers() {
   return std::meta::nonstatic_data_members_of(^^T, std::meta::access_context::current());
 }
 
-export template <typename T>
+template <typename T>
 consteval auto getMembers() {
   return std::meta::members_of(^^T, std::meta::access_context::current());
 }
 
-export consteval auto getAnnotations(std::meta::info member) {
-  return std::meta::annotations_of(member);
-}
+consteval auto getAnnotations(std::meta::info member) { return std::meta::annotations_of(member); }
 
-export template <typename E>
+template <typename E>
   requires std::is_enum_v<E>
 constexpr std::string enum_to_string(E value) {
   template for (constexpr auto e : std::define_static_array(std::meta::enumerators_of(^^E))) {
@@ -29,8 +27,8 @@ constexpr std::string enum_to_string(E value) {
   return "<invalid enum value>";
 }
 
-export template <typename T>
-std::string format(const T& value) {
+template <typename T>
+constexpr std::string format(const T& value) {
   if constexpr (std::is_class_v<T>) {
     std::string str;
     if constexpr (std::meta::has_identifier(^^T)) {
@@ -63,4 +61,5 @@ std::string format(const T& value) {
     }
   }
 }
-}  // namespace cpputils::refl
+
+}  // namespace annotest

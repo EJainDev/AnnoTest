@@ -1,2 +1,20 @@
-add_executable(TestingExample1 testing_example1.cpp)
-target_link_libraries(TestingExample1 PRIVATE cpputils_testing)
+add_executable(example1_basic example01_basic.cpp)
+target_link_libraries(example1_basic PRIVATE annotest)
+
+add_executable(example2_lifecycle example02_lifecycle.cpp)
+target_link_libraries(example2_lifecycle PRIVATE annotest)
+
+add_executable(example3_parameterized example03_parameterized.cpp)
+target_link_libraries(example3_parameterized PRIVATE annotest)
+
+add_executable(example4_os_annotations example04_os_annotations.cpp)
+target_link_libraries(example4_os_annotations PRIVATE annotest)
+
+add_executable(example5_death_tests example05_death_tests.cpp)
+target_link_libraries(example5_death_tests PRIVATE annotest)
+
+add_executable(example6_contracts example06_contracts.cpp)
+target_link_libraries(example6_contracts PRIVATE annotest)
+
+add_executable(example7_full_suite example07_full_suite.cpp)
+target_link_libraries(example7_full_suite PRIVATE annotest)

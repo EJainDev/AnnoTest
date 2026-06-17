@@ -1,19 +1,17 @@
-export module cpputils.testing;
+export module annotest;
 
 export import :tuple;
+export import :contracts;
 export import :exceptions;
 export import :asserts;
 export import :expects;
 export import :death_test;
 export import :posix;
-
-import cpputils.refl;
+export import :utils;
 
 import std;
 
-using namespace cpputils::refl;
-
-namespace cpputils::testing {
+namespace annotest {
 // Helper function to call a test with all the parameters in a tuple
 template <std::size_t N, typename F>
 constexpr auto with_indices(const F f) -> decltype(auto) {
@@ -249,12 +247,11 @@ int test(int argc, char** argv, T suite = {}) {
         std::cout << "  " << current_test_name << '\n';
       }
       return 0;
-    } else if (arg == "--suite-name") {
-      if (std::string(args[i + 1]) == std::define_static_string(std::meta::identifier_of(^^T))) {
-        auto test_name_pos = std::find(args.begin(), args.end(), "--test-name");
-        if (test_name_pos != args.end()) {
-          test_name = std::string(*(test_name_pos + 1));
-        }
+    } else if (arg == "--test-name") {
+      constexpr auto starts_with_idx = std::string(std::meta::identifier_of(^^T)).size() + 1;
+      if (std::string(args[i + 1])
+              .starts_with(std::define_static_string(std::meta::identifier_of(^^T)))) {
+        test_name = std::string(args[i + 1]).substr(starts_with_idx);
       }
     }
     ++i;
@@ -365,7 +362,7 @@ int test(int argc, char** argv, T suite = {}) {
              std::meta::extract<typename[:std::meta::substitute(^^Parameterize, template_args):]>(a)
                  .parameters) {
           if constexpr (before_each_func) {
-            if (!runBeforeEach([&suite, before_each_func]() { suite.[:*before_each_func:](); })) {
+            if (!runBeforeEach([&suite]() { suite.[:*before_each_func:](); })) {
               continue;
             }
           }
@@ -398,7 +395,7 @@ int test(int argc, char** argv, T suite = {}) {
           }
 
           if constexpr (after_each_func) {
-            runAfterEach([&suite, after_each_func]() { suite.[:*after_each_func:](); });
+            runAfterEach([&suite]() { suite.[:*after_each_func:](); });
           }
         }
       } else if constexpr (t == ^^ParameterizeTemplate) {
@@ -416,7 +413,7 @@ int test(int argc, char** argv, T suite = {}) {
                  typename[:std::meta::substitute(^^ParameterizeTemplate, template_args):]>(a)
                  .parameters) {
           if constexpr (before_each_func) {
-            if (!runBeforeEach([&suite, before_each_func]() { suite.[:*before_each_func:](); })) {
+            if (!runBeforeEach([&suite]() { suite.[:*before_each_func:](); })) {
               continue;
             }
           }
@@ -434,7 +431,7 @@ int test(int argc, char** argv, T suite = {}) {
           });
 
           if constexpr (after_each_func) {
-            runAfterEach([&suite, after_each_func]() { suite.[:*after_each_func:](); });
+            runAfterEach([&suite]() { suite.[:*after_each_func:](); });
           }
         }
       }
@@ -447,7 +444,7 @@ int test(int argc, char** argv, T suite = {}) {
     if constexpr (notHasRequiredParameter<test>()) {
       std::cout << "Running test: " << current_test_name << '\n';
       if constexpr (before_each_func) {
-        if (!runBeforeEach([&suite, before_each_func]() { suite.[:*before_each_func:](); })) {
+        if (!runBeforeEach([&suite]() { suite.[:*before_each_func:](); })) {
           continue;
         }
       }
@@ -474,7 +471,7 @@ int test(int argc, char** argv, T suite = {}) {
       }
 
       if constexpr (after_each_func) {
-        runAfterEach([&suite, after_each_func]() { suite.[:*after_each_func:](); });
+        runAfterEach([&suite]() { suite.[:*after_each_func:](); });
       }
     } else {
       if (!parameterized) {
@@ -482,6 +479,10 @@ int test(int argc, char** argv, T suite = {}) {
                   << " did not execute because it has required arguments that were not given via "
                      "'Paremterized' annotation.\n";
       }
+    }
+
+    if (!test_name.empty() && std::string(current_test_name) == test_name) {
+      break;
     }
   }
 
@@ -498,4 +499,4 @@ int test(int argc, char** argv, T suite = {}) {
 
   return status_code;
 }
-}  // namespace cpputils::testing
+}  // namespace annotest

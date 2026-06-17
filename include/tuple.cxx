@@ -1,12 +1,11 @@
-export module cpputils.testing:tuple;
-
-import cpputils.refl;
+export module annotest:tuple;
 
 import std;
 
-using namespace cpputils::refl;
+import :utils;
 
-namespace cpputils::testing {
+namespace annotest {
+
 template <std::size_t I>
 struct member_name {
   static constexpr auto value = []() {
@@ -50,4 +49,4 @@ template <typename... Ts>
 Tuple(Ts...) -> Tuple<Ts...>;
 
 export consteval auto tuple(auto... args) { return Tuple<decltype(args)...>{.s = {args...}}; }
-}  // namespace cpputils::testing
+}  // namespace annotest

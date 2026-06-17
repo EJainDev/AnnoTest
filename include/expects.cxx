@@ -1,14 +1,12 @@
-export module cpputils.testing:expects;
+export module annotest:expects;
 
 import :exceptions;
-
-import cpputils.refl;
+import :utils;
+import :contracts;
 
 import std;
 
-using namespace cpputils::refl;
-
-namespace cpputils::testing {
+namespace annotest {
 // Expect statements that can be called
 export void expectEqual(auto expected, auto actual) {
   if (expected != actual) {
@@ -110,4 +108,34 @@ export void expectNull(auto ptr) {
     throw Abort("Expectation failed: expected nullptr, got " + format(ptr));
   }
 }
-}  // namespace cpputils::testing
+
+export template <typename Func>
+void expectContractViolation(Func f) {
+  if constexpr (!std::is_same_v<decltype(f()), void>) {
+    auto result = f();
+    if (!annotest::contract_violation_occurred) {
+      throw Abort("Expectation failed: expected contract violation, but it was not detected");
+    }
+    return;
+  }
+  f();
+  if (!annotest::contract_violation_occurred) {
+    throw Abort("Expectation failed: expected contract violation, but it was not detected");
+  }
+}
+
+export template <typename Func>
+void expectNoContractViolation(Func f) {
+  if constexpr (!std::is_same_v<decltype(f()), void>) {
+    auto result = f();
+    if (annotest::contract_violation_occurred) {
+      throw Abort("Expectation failed: expected no contract violation, but one was detected");
+    }
+    return;
+  }
+  f();
+  if (annotest::contract_violation_occurred) {
+    throw Abort("Expectation failed: expected no contract violation, but one was detected");
+  }
+}
+}  // namespace annotest
