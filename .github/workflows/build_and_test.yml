@@ -11,6 +11,10 @@ jobs:
         container:
             image: gcc:16.1
         steps:
+            - name: Setup Python
+              uses: actions/setup-python@v6
+              with:
+                  python-version: "3.13"
             - name: Install CMake
               uses: ssrobins/install-cmake@v1
               with:
