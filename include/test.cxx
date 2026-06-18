@@ -71,13 +71,6 @@ struct Parameterize {
   TupleType parameters[N];
 };
 
-export template <int N, typename... Args>
-  requires(N > 0)
-struct ParameterizeTemplate {
-  using TupleType = Tuple<Args...>;
-  TupleType parameters[N];
-};
-
 export template <int N>
 struct RequiresOS {
   OS os[N];
@@ -96,10 +89,6 @@ DisallowOS(Ts...) -> DisallowOS<sizeof...(Ts)>;
 
 template <typename... Args, typename... Rest>
 Parameterize(Tuple<Args...>, Rest...) -> Parameterize<1 + (int)sizeof...(Rest), Args...>;
-
-template <typename... Args, typename... Rest>
-ParameterizeTemplate(Tuple<Args...>, Rest...)
-    -> ParameterizeTemplate<1 + (int)sizeof...(Rest), Args...>;
 
 // Gets all required information from the testing class
 template <typename T>
@@ -239,7 +228,8 @@ int test(int argc, char** argv, T suite = {}) {
   // Check mode
   std::vector<std::string> args(argv + 1, argv + argc);
   int i = 0;
-  for (const auto& arg : args) {
+  while (i < static_cast<int>(args.size())) {
+    const auto& arg = args[i];
     if (arg == "--list") {
       std::cout << std::meta::identifier_of(^^T) << ".\n";
       template for (constexpr auto test_info : tests) {
@@ -247,11 +237,17 @@ int test(int argc, char** argv, T suite = {}) {
         std::cout << "  " << current_test_name << '\n';
       }
       return 0;
-    } else if (arg == "--test-name") {
-      constexpr auto starts_with_idx = std::string(std::meta::identifier_of(^^T)).size() + 1;
-      if (std::string(args[i + 1])
-              .starts_with(std::define_static_string(std::meta::identifier_of(^^T)))) {
-        test_name = std::string(args[i + 1]).substr(starts_with_idx);
+    } else if (arg == "--test-name" && i + 1 < static_cast<int>(args.size())) {
+      std::string candidate = args[i + 1];
+      std::string full_name = std::string(std::meta::identifier_of(^^T)) + ".";
+      // Accept either the full qualified name "Suite.test_name" or just the test name "test_name"
+      if (candidate.starts_with(full_name)) {
+        test_name = candidate.substr(full_name.size());
+      } else {
+        constexpr auto starts_with_idx = std::string(std::meta::identifier_of(^^T)).size() + 1;
+        if (candidate.size() > static_cast<std::size_t>(starts_with_idx)) {
+          test_name = candidate.substr(starts_with_idx);
+        }
       }
     }
     ++i;
@@ -355,9 +351,9 @@ int test(int argc, char** argv, T suite = {}) {
         static constexpr auto param_members = std::define_static_array(
             getNonstaticDataMembers<
                 decltype(std::meta::extract<
-                             typename[:std::meta::substitute(^^Parameterize, template_args):]>(a)
-                             .parameters[0]
-                             .s)>());
+                         typename[:std::meta::substitute(^^Parameterize, template_args):]>(a)
+                         .parameters[0]
+                         .s)>());
 
         for (const auto param :
              std::meta::extract<typename[:std::meta::substitute(^^Parameterize, template_args):]>(a)
@@ -394,42 +390,6 @@ int test(int argc, char** argv, T suite = {}) {
             std::cout << " failed with unknown error\n";
             status_code = 1;
           }
-
-          if constexpr (after_each_func) {
-            runAfterEach([&suite]() { suite.[:*after_each_func:](); });
-          }
-        }
-      } else if constexpr (t == ^^ParameterizeTemplate) {
-        parameterized = true;
-
-        static constexpr auto template_args =
-            std::define_static_array(std::meta::template_arguments_of(std::meta::type_of(a)));
-        static constexpr auto num_sets = [:template_args[0]:];
-
-        std::cout << "Running parameterized test " << current_test_name << " with " << num_sets
-                  << " parameter sets\n";
-
-        for (const auto& param :
-             std::meta::extract<
-                 typename[:std::meta::substitute(^^ParameterizeTemplate, template_args):]>(a)
-                 .parameters) {
-          if constexpr (before_each_func) {
-            if (!runBeforeEach([&suite]() { suite.[:*before_each_func:](); })) {
-              continue;
-            }
-          }
-
-          std::cout << "\t- <";
-
-          with_indices<std::tuple_size_v<typename decltype(param)::TupleType>>([&](auto... Is) {
-            ((std::cout << std::to_string(param.s.template get<Is>())), ...);
-          });
-          std::cout << "> -- ";
-
-          runTest([&suite, test, param]() {
-            return with_indices<std::tuple_size_v<typename decltype(param)::TupleType>>(
-                [&](auto... Is) { return suite.[:test:](param.s.template get<Is>()...); });
-          });
 
           if constexpr (after_each_func) {
             runAfterEach([&suite]() { suite.[:*after_each_func:](); });
@@ -477,8 +437,8 @@ int test(int argc, char** argv, T suite = {}) {
     } else {
       if (!parameterized) {
         std::cout << "Warning: Test " << current_test_name
-                  << " did not execute because it has required arguments that were not given via "
-                     "'Parameterized' annotation.\n";
+                  << " did not execute because it has required arguments that were not given via '"
+                     "Parameterized' annotation.\n";
       }
     }
 
@@ -500,4 +460,5 @@ int test(int argc, char** argv, T suite = {}) {
 
   return status_code;
 }
+
 }  // namespace annotest

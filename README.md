@@ -39,7 +39,7 @@ Cons:
 
 This is a C++20 module library so all you have to do is write: `import annotest;` to get all the features. We recommend using `using namespace annotest` to avoid having to type it as a prefix for all annotations.
 
-Checkout the [basic example](examples/BasicExample.cpp) for more detail. Here is a quick brief of what everything does:
+Checkout the [basic example](examples/example01_basic.cpp) for more detail. Here is a quick brief of what everything does:
 
 - `[[=Test{}]]` annotation: Marks a function as a test
 - `[[=BeforeEach{}]]` annotation: Runs once before every test

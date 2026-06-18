@@ -13,7 +13,7 @@ Thank you for your interest in contributing to AnnoTest!
 ## Development Setup
 
 You'll need:
-- GCC 16+ (C++26 support required)
+- GCC 16.1+ (C++26 support required)
 - CMake 4.3+
 - Ninja build system
 
@@ -65,4 +65,3 @@ Before proposing new features:
 1. Check existing issues for similar requests
 2. Explain the use case clearly
 3. Consider compatibility with existing code
-4. Be prepared to implement the feature yourself

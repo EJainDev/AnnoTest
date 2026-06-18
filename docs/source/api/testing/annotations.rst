@@ -142,19 +142,6 @@ Utility Annotations
 
     See also :ref:`parameterized example <example_gallery>`.
 
-.. cpp:struct:: ParameterizeTemplate
-
-    Similar to :cpp:struct:`Parameterize`, but passes **typed** tuples to the test function. Use this when you want explicit type safety for complex parameter packs.
-
-    .. important:: Parameters must be **constexpr-compatible** types (e.g. ``int``, ``double``). Non-structural types like ``std::string`` are not supported because parameter values are stored in a compile-time array.
-
-    .. code-block:: cpp
-
-        [[= Test{}, = ParameterizeTemplate{tuple(10), tuple(20)} ]]
-        void multiples(int n) {
-            assertTrue(n % 10 == 0);
-        }
-
 .. cpp:struct:: RequiresOS
 
     Annotates a test case to run only on specific operating systems.
@@ -211,7 +198,7 @@ Functions
 
 .. cpp:function:: template <typename... Ts> constexpr auto tuple(Ts... args)
 
-    Creates a compile-time tuple for use with :cpp:struct:`Parameterize` or :cpp:struct:`ParameterizeTemplate`.
+    Creates a compile-time tuple for use with :cpp:struct:`Parameterize`.
 
     .. code-block:: cpp
 

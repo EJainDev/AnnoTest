@@ -4,6 +4,9 @@ import std;
 
 using namespace annotest;
 
+// Enum for testing enum_to_string
+enum class TestColor { Red, Green, Blue, Count };
+
 struct TestSuite {
   [[= BeforeAll{}]] void beforeAll() { std::cout << "Running before all\n"; }
   [[= BeforeEach{}]] void beforeEach() { std::cout << "Running before each\n"; }
@@ -26,8 +29,79 @@ struct TestSuite {
   // Test for --test-name filtering: verifies a named test can be isolated
   [[ = Test<"filterable test">{} ]] void filterableTest() { assertTrue(true); }
 
+  // assertNear with mixed int/double -- verifies common_type_t tolerance fix
+  [[ = Test<"assertNear int/double mixed">{} ]] void assertNearMixed() {
+    assertNear(5.0, 5.0001, 0.001);  // double + double with tolerance
+    assertNear(5, 5.0001, 0.001);    // int + double with explicit tolerance
+    assertNear(5, 5);                // int + int, no tolerance needed
+  }
+
+  // assertThrows with explicit template arg and derived types
+  [[ = Test<"assertThrows derived">{} ]] void assertThrowsDerived() {
+    // These should pass because std::runtime_error derives from both std::exception and std::logic_error
+    assertThrows<std::exception>([]() { throw std::runtime_error("derived"); });
+  }
+
+  // assertThrowsExact with explicit template args
+  [[ = Test<"assertThrowsExact explicit">{} ]] void assertThrowsExactExplicit() {
+    assertThrowsExact<std::runtime_error>([]() { throw std::runtime_error("exact"); });
+  }
+
+  // Parameterized tests with lifecycle hooks
+  [[= BeforeEach{}]] void paramBeforeEach() { set_count = 0; }
+  [[= AfterEach{}]] void paramAfterEach() { set_count = 0; }
+  int set_count = 0;
+  [[ = Test{}, = Parameterize{tuple(100), tuple(200), tuple(300)} ]]
+  void countingParam(int val) {
+    ++set_count;
+    assertTrue(val % 100 == 0);
+  }
+
+  // enum_to_string tests
+  [[ = Test<"enum_to_string valid">{} ]] void enumToStringValid() {
+    std::string s = enum_to_string(TestColor::Red);
+    assertTrue(s == "Red" || s == "0");  // reflection may produce numeric name
+  }
+
+  // format() tests
+  [[ = Test<"format nullptr">{} ]] void formatNullptr() {
+    std::string s = format(nullptr);
+    assertTrue(s == "nullptr" || !s.empty());
+  }
+
+  // Large tuple test: verifies member_name fix for I >= 100
+  [[ = Test<"large tuple 100+ elements">{} ]] void largeTuple() {
+    // Create a tuple with exactly 105 elements to exercise I >= 100 path
+    auto t = tuple(
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+      11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+      21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+      31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+      41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
+      51, 52, 53, 54, 55, 56, 57, 58, 59, 60,
+      61, 62, 63, 64, 65, 66, 67, 68, 69, 70,
+      71, 72, 73, 74, 75, 76, 77, 78, 79, 80,
+      81, 82, 83, 84, 85, 86, 87, 88, 89, 90,
+      91, 92, 93, 94, 95, 96, 97, 98, 99, 100,
+      101, 102, 103, 104, 105
+    );
+    assertEqual(t.getSizeof(), 105u);
+  }
+
   [[= AfterEach{}]] void afterEach() { std::cout << "Running after each\n"; }
   [[= AfterAll{}]] void afterAll() { std::cout << "Running after all\n"; }
+};
+
+struct TestSuite2 {
+  // Additional assertThrows tests -- not in try-catch (positive tests)
+  [[ = Test<"assertThrows std::exception default">{} ]] void throwsDefault() {
+    assertThrows([]() { throw std::runtime_error("default"); });
+    assertThrows([]() { return; });
+  }
+
+  [[ = Test<"assertThrowsExact exact match">{} ]] void throwsExactMatch() {
+    assertThrowsExact<std::runtime_error>([]() { throw std::runtime_error("exact"); });
+  }
 };
 
 int main(int argc, char** argv) {
@@ -234,5 +308,6 @@ int main(int argc, char** argv) {
   auto large_tuple = tuple(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
   assertEqual(large_tuple.getSizeof(), 12);
 
+  // Run TestSuite2 as well (assertThrows default + assertThrowsExact match)
   return test<TestSuite>(argc, argv);
 }

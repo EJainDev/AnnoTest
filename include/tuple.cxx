@@ -8,33 +8,22 @@ namespace annotest {
 
 template <std::size_t I>
 struct member_name {
-  // Helper to extract tens and ones digits
-  static constexpr char tens() {
-    if constexpr (I < 10) {
-      return '\0';  // No tens digit for single-digit indices
-    } else if constexpr (I < 100) {
-      return static_cast<char>('0' + (I / 10));
-    } else {
-      return '\0';  // Fallback for very large indices
-    }
-  }
-
-  static constexpr char ones() {
-    if constexpr (I < 100) {
-      return static_cast<char>('0' + (I % 10));
-    } else {
-      return '\0';
-    }
-  }
-
   static constexpr auto internal_value() {
     if constexpr (I < 10) {
       return std::array<char, 3>{'m', static_cast<char>('0' + I), '\0'};
     } else if constexpr (I < 100) {
-      return std::array<char, 4>{'m', tens(), ones(), '\0'};
+      return std::array<char, 4>{'m', static_cast<char>('0' + I / 10),
+                                 static_cast<char>('0' + I % 10), '\0'};
+    } else if constexpr (I < 1000) {
+      return std::array<char, 5>{'m', static_cast<char>('0' + I / 100),
+                                 static_cast<char>('0' + (I / 10) % 10),
+                                 static_cast<char>('0' + I % 10), '\0'};
     } else {
-      // Fallback: use single 'm' with a suffix (not ideal but avoids duplicates)
-      return std::array<char, 3>{'m', '0', '\0'};
+      return std::array<char, 7>{
+          'm', static_cast<char>('0' + I / 1000),
+          static_cast<char>('0' + (I / 100) % 10),
+          static_cast<char>('0' + (I / 10) % 10),
+          static_cast<char>('0' + I % 10), '\0'};
     }
   }
 
