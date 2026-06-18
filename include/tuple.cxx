@@ -8,13 +8,37 @@ namespace annotest {
 
 template <std::size_t I>
 struct member_name {
-  static constexpr auto value = []() {
+  // Helper to extract tens and ones digits
+  static constexpr char tens() {
+    if constexpr (I < 10) {
+      return '\0';  // No tens digit for single-digit indices
+    } else if constexpr (I < 100) {
+      return static_cast<char>('0' + (I / 10));
+    } else {
+      return '\0';  // Fallback for very large indices
+    }
+  }
+
+  static constexpr char ones() {
+    if constexpr (I < 100) {
+      return static_cast<char>('0' + (I % 10));
+    } else {
+      return '\0';
+    }
+  }
+
+  static constexpr auto internal_value() {
     if constexpr (I < 10) {
       return std::array<char, 3>{'m', static_cast<char>('0' + I), '\0'};
+    } else if constexpr (I < 100) {
+      return std::array<char, 4>{'m', tens(), ones(), '\0'};
     } else {
-      return std::array<char, 2>{'m', '\0'};  // Simplified for example
+      // Fallback: use single 'm' with a suffix (not ideal but avoids duplicates)
+      return std::array<char, 3>{'m', '0', '\0'};
     }
-  }();
+  }
+
+  static constexpr auto value = member_name<I>::internal_value();
 };
 
 template <typename... Ts, std::size_t... Is>
