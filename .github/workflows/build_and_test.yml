@@ -11,12 +11,16 @@ jobs:
         container:
             image: gcc:16.1
         steps:
-            - name: Setup Python
-              uses: actions/setup-python@v6
-              with:
-                  python-version: "3.13"
             - name: Install CMake
-              run: snap install cmake --classic
+              run: |
+                  apt update
+                  apt install -y wget tar ninja-build
+
+                  wget https://github.com/Kitware/CMake/releases/download/v4.3.3/cmake-4.3.3-linux-x86_64.tar.gz
+
+                  tar -xzf cmake-4.3.3-linux-x86_64.tar.gz -C /opt
+
+                  ln -s /opt/cmake-4.3.3-linux-x86_64/bin/* /usr/local/bin/
 
             - name: Checkout Project
               uses: actions/checkout@v6.0.3
