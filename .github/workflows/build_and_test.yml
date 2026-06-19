@@ -9,7 +9,7 @@ jobs:
     build-and-test:
         runs-on: ubuntu-24.04
         container:
-            image: gcc:16.1
+            image: gcc@sha256:47c649664b62db94d186b16936e203bb07ab1d10a0ef860cee198e594f636757
         steps:
             - name: Install CMake
               run: |
