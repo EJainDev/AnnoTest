@@ -21,11 +21,10 @@ if(BUILD_TESTS)
   enable_testing()
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -freflection")
-
 # Library
 
 add_library(annotest STATIC)
+target_compile_options(annotest PRIVATE -freflection)
 target_sources(
   annotest
   PUBLIC FILE_SET

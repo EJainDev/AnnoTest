@@ -101,6 +101,8 @@ consteval auto getTests() {
   std::vector<InternalTest> tests;
   std::optional<std::meta::info> after_each_func;
   std::optional<std::meta::info> after_all_func;
+  bool has_duplicate_each = false;
+  bool has_duplicate_all = false;
 
   template for (constexpr auto m : members) {
     if constexpr (std::meta::has_identifier(m)) {
@@ -123,12 +125,24 @@ consteval auto getTests() {
                                    : std::define_static_string(std::meta::identifier_of(m));
           tests.emplace_back(m, final_test_name, test_info.disabled);
         } else if constexpr (t == ^^BeforeEach) {
+          if (before_each_func.has_value()) {
+            has_duplicate_each = true;
+          }
           before_each_func = m;
         } else if constexpr (t == ^^AfterEach) {
+          if (after_each_func.has_value()) {
+            has_duplicate_each = true;
+          }
           after_each_func = m;
         } else if constexpr (t == ^^BeforeAll) {
+          if (before_all_func.has_value()) {
+            has_duplicate_all = true;
+          }
           before_all_func = m;
         } else if constexpr (t == ^^AfterAll) {
+          if (after_all_func.has_value()) {
+            has_duplicate_all = true;
+          }
           after_all_func = m;
         }
       }
@@ -136,7 +150,7 @@ consteval auto getTests() {
   }
 
   return std::tuple(before_all_func, before_each_func, std::define_static_array(tests),
-                    after_each_func, after_all_func);
+                    after_each_func, after_all_func, has_duplicate_each, has_duplicate_all);
 }
 
 template <std::meta::info func>
@@ -221,6 +235,8 @@ int test(int argc, char** argv, T suite = {}) {
   static constexpr auto tests = std::get<2>(result);
   static constexpr auto after_each_func = std::get<3>(result);
   static constexpr auto after_all_func = std::get<4>(result);
+  static constexpr auto has_duplicate_each = std::get<5>(result);
+  static constexpr auto has_duplicate_all = std::get<6>(result);
   static constexpr auto size = tests.size();
 
   std::string test_name;
@@ -251,6 +267,16 @@ int test(int argc, char** argv, T suite = {}) {
       }
     }
     ++i;
+  }
+
+  // Warn about duplicate lifecycle annotations
+  if (has_duplicate_each) {
+    std::cout << "[AnnoTest Warning] Duplicate BeforeEach/AfterEach annotation detected in '"
+              << std::meta::identifier_of(^^T) << "'. Only the last occurrence will be used.\n";
+  }
+  if (has_duplicate_all) {
+    std::cout << "[AnnoTest Warning] Duplicate BeforeAll/AfterAll annotation detected in '"
+              << std::meta::identifier_of(^^T) << "'. Only the last occurrence will be used.\n";
   }
 
   // The BeforeAll function is run once before any tests, and if it fails, the entire suite is
@@ -290,10 +316,12 @@ int test(int argc, char** argv, T suite = {}) {
     static constexpr auto annotations = std::define_static_array(getAnnotations(test));
 
     bool parameterized = false;
+    bool os_message_printed = false;
 
     template for (constexpr auto a : annotations) {
       constexpr auto t = std::meta::template_of(std::meta::type_of(a));
 
+      // OS checks (RequiresOS / DisallowOS)
       if constexpr (t == ^^RequiresOS) {
         static constexpr auto template_args =
             std::define_static_array(std::meta::template_arguments_of(std::meta::type_of(a)));
@@ -322,19 +350,19 @@ int test(int argc, char** argv, T suite = {}) {
           }
         }
       }
-    }
 
-    if (osRequirementFailed) {
-      std::cout << "Skipping test " << current_test_name << " because the current OS "
-                << enum_to_string(os) << " does not match the required OS of "
-                << enum_to_string(requiredOS) << '\n';
-    } else if (osDisallowed) {
-      std::cout << "Skipping test " << current_test_name << " because the current OS "
-                << enum_to_string(os) << " is disallowed.\n";
-    }
-
-    template for (constexpr auto a : annotations) {
-      constexpr auto t = std::meta::template_of(std::meta::type_of(a));
+      // Print OS skip message exactly once per test
+      if ((osRequirementFailed || osDisallowed) && !os_message_printed) {
+        os_message_printed = true;
+        if (osRequirementFailed) {
+          std::cout << "Skipping test " << current_test_name << " because the current OS "
+                    << enum_to_string(os) << " does not match the required OS of "
+                    << enum_to_string(requiredOS) << '\n';
+        } else if (osDisallowed) {
+          std::cout << "Skipping test " << current_test_name << " because the current OS "
+                    << enum_to_string(os) << " is disallowed.\n";
+        }
+      }
 
       // Parameterized tests are run in a loop for each set of parameters so they must use a
       // separate calling mechanism

@@ -14,7 +14,7 @@ Thank you for your interest in contributing to AnnoTest!
 
 You'll need:
 - GCC 16.1+ (C++26 support required)
-- CMake 4.3+
+- CMake 4.3+ (required for CXX_MODULES file set and `import std;` support)
 - Ninja build system
 
 ```bash

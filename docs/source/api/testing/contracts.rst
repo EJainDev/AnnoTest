@@ -7,7 +7,7 @@ Contract Handling
 
 C++26 contracts are runtime checks enforced at function entry (`pre`), function exit (`post`), or inline (`contract_assert`). AnnoTest provides contract assertion helpers and a hook for custom violation handling.
 
-.. note:: C++26 contracts are **compiler builtin** features — they are not part of the C++23 standard. GCC 16 implements the full contract runtime API.
+.. note:: C++26 contracts are **compiler builtin** features — they are part of the C++26 standard. GCC 16 implements the full contract runtime API.
 
 Contract Builtin Statements
 ---------------------------

@@ -8,6 +8,9 @@ namespace annotest {
 
 template <std::size_t I>
 struct member_name {
+  // NOTE: This template only handles indices up to 9999. For I >= 10000 the generated names
+  // will overflow the character array and produce undefined behavior. When using tuple() with
+  // more than 9999 elements, consider splitting into multiple smaller tuples.
   static constexpr auto internal_value() {
     if constexpr (I < 10) {
       return std::array<char, 3>{'m', static_cast<char>('0' + I), '\0'};

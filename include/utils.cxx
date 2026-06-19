@@ -52,7 +52,7 @@ constexpr std::string format(const T& value) {
       if (value == nullptr) {
         return "nullptr";
       } else {
-        return std::format("{}", reinterpret_cast<std::size_t>(value));
+        return std::format("{:#x}", reinterpret_cast<std::uintptr_t>(value));
       }
     } else if constexpr (std::is_same_v<T, std::nullptr_t>) {
       return "nullptr";
