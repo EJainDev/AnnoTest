@@ -306,9 +306,10 @@ int test(int argc, char** argv, T suite = {}) {
   // The BeforeAll function is run once before any tests, and if it fails, the entire suite is
   // aborted
   if constexpr (before_all_func) {
+    constexpr auto func = before_all_func.value();
     std::cout << "Running BeforeAll setup for suite " << std::meta::identifier_of(^^T) << '\n';
     try {
-      suite.[:*before_all_func:]();
+      suite.[:func:]();
     } catch (const std::exception& e) {
       std::cout << "BeforeAll setup failed with exception: " << e.what() << ", aborting test suite "
                 << std::meta::identifier_of(^^T) << '\n';
@@ -530,9 +531,10 @@ int test(int argc, char** argv, T suite = {}) {
   }
 
   if constexpr (after_all_func) {
+    constexpr auto func = after_all_func.value();
     std::cout << "Running AfterAll teardown for suite " << std::meta::identifier_of(^^T) << '\n';
     try {
-      suite.[:*after_all_func:]();
+      suite.[:func:]();
     } catch (const std::exception& e) {
       std::cout << "AfterAll teardown failed with exception: " << e.what() << '\n';
     } catch (...) {
