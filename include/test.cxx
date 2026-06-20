@@ -88,6 +88,8 @@ struct InternalTest {
   std::meta::info test;
   const char* name;
   bool disabled;
+  bool parameterized;
+  int num_parameterizations;
 };
 
 // Gets all required information from the testing class
@@ -114,8 +116,8 @@ consteval auto getTests() {
         if constexpr (t == ^^Test) {
           if (lifecycle_found) {
             throw std::logic_error(
-                std::format("Cannot have a Test annotation on a BeforeEach method. Method name: {}",
-                            std::meta::identifier_of(m)));
+                std::string("Cannot have a Test annotation on a BeforeEach method. Method name: ") +
+                std::define_static_string(std::meta::identifier_of(m)));
           }
 
           static constexpr auto template_args =
@@ -130,50 +132,68 @@ consteval auto getTests() {
           const char* final_test_name =
               !test_info.isEmpty() ? std::define_static_string(str_test_name)
                                    : std::define_static_string(std::meta::identifier_of(m));
-          tests.emplace_back(m, final_test_name, test_info.disabled);
           test_found = true;
+
+          bool parameterized = false;
+          int num_parameterizations = 0;
+
+          template for (constexpr auto a2 : annotations) {
+            constexpr auto t2 = std::meta::template_of(std::meta::type_of(a2));
+            if constexpr (t2 == ^^Parameterize) {
+              parameterized = true;
+              static constexpr auto template_args = std::define_static_array(
+                  std::meta::template_arguments_of(std::meta::type_of(a2)));
+              num_parameterizations = [:template_args[0]:];
+            }
+          }
+          tests.emplace_back(m, final_test_name, test_info.disabled, parameterized,
+                             num_parameterizations);
         } else if constexpr (t == ^^BeforeEach) {
           if (before_each_func) {
-            throw std::logic_error(std::format(
-                "Duplicate BeforeEach annotation detected. First one at {} and second one at {}.",
-                std::meta::identifier_of(*before_each_func), std::meta::identifier_of(m)));
+            throw std::logic_error(
+                std::string("Duplicate BeforeEach annotation detected. First one at ") +
+                std::define_static_string(std::meta::identifier_of(*before_each_func)) +
+                " and second one at " + std::define_static_string(std::meta::identifier_of(m)));
           } else if (test_found) {
             throw std::logic_error(
-                std::format("BeforeEach cannot be declared on a Test method. Method name: {}",
-                            std::meta::identifier_of(m)));
+                std::string("BeforeEach cannot be declared on a Test method. Method name: ") +
+                std::define_static_string(std::meta::identifier_of(m)));
           }
           before_each_func = m;
         } else if constexpr (t == ^^AfterEach) {
           if (after_each_func) {
-            throw std::logic_error(std::format(
-                "Duplicate AfterEach annotation detected. First one at {} and second one at {}.",
-                std::meta::identifier_of(*after_each_func), std::meta::identifier_of(m)));
+            throw std::logic_error(
+                std::string("Duplicate AfterEach annotation detected. First one at ") +
+                std::define_static_string(std::meta::identifier_of(*after_each_func)) +
+                " and second one at " + std::define_static_string(std::meta::identifier_of(m)));
           } else if (test_found) {
             throw std::logic_error(
-                std::format("AfterEach cannot be declared on a Test method. Method name: {}",
-                            std::meta::identifier_of(m)));
+                std::string("AfterEach cannot be declared on a Test method. Method name: ") +
+                std::define_static_string(std::meta::identifier_of(m)));
           }
           after_each_func = m;
         } else if constexpr (t == ^^BeforeAll) {
           if (before_all_func) {
-            throw std::logic_error(std::format(
-                "Duplicate BeforeAll annotation detected. First one at {} and second one at {}.",
-                std::meta::identifier_of(*before_all_func), std::meta::identifier_of(m)));
+            throw std::logic_error(
+                std::string("Duplicate BeforeAll annotation detected. First one at ") +
+                std::define_static_string(std::meta::identifier_of(*before_all_func)) +
+                " and second one at " + std::define_static_string(std::meta::identifier_of(m)));
           } else if (test_found) {
             throw std::logic_error(
-                std::format("BeforeAll cannot be declared on a Test method. Method name: {}",
-                            std::meta::identifier_of(m)));
+                std::string("BeforeAll cannot be declared on a Test method. Method name: ") +
+                std::define_static_string(std::meta::identifier_of(m)));
           }
           before_all_func = m;
         } else if constexpr (t == ^^AfterAll) {
           if (after_all_func) {
-            throw std::logic_error(std::format(
-                "Duplicate AfterAll annotation detected. First one at {} and second one at {}.",
-                std::meta::identifier_of(*after_all_func), std::meta::identifier_of(m)));
+            throw std::logic_error(
+                std::string("Duplicate AfterAll annotation detected. First one at ") +
+                std::define_static_string(std::meta::identifier_of(*after_all_func)) +
+                " and second one at " + std::define_static_string(std::meta::identifier_of(m)));
           } else if (test_found) {
             throw std::logic_error(
-                std::format("AfterAll cannot be declared on a Test method. Method name: {}",
-                            std::meta::identifier_of(m)));
+                std::string("AfterAll cannot be declared on a Test method. Method name: ") +
+                std::define_static_string(std::meta::identifier_of(m)));
           }
           after_all_func = m;
         }
@@ -256,7 +276,15 @@ int test(int argc, char** argv, T suite = {}) {
       std::cout << std::meta::identifier_of(^^T) << ".\n";
       template for (constexpr auto test_info : tests) {
         constexpr auto current_test_name = test_info.name;
-        std::cout << "  " << current_test_name << '\n';
+        constexpr auto parameterized = test_info.parameterized;
+        constexpr auto num_parameterizations = test_info.num_parameterizations;
+        if constexpr (!parameterized) {
+          std::cout << "  " << current_test_name << '\n';
+        } else {
+          for (int i = 0; i < num_parameterizations; ++i) {
+            std::cout << "  " << current_test_name << "." << i + 1 << '\n';
+          }
+        }
       }
       return 0;
     } else if (arg == "--test-name" && i + 1 < static_cast<int>(args.size())) {
@@ -359,9 +387,11 @@ int test(int argc, char** argv, T suite = {}) {
                     << enum_to_string(os) << " is disallowed.\n";
         }
       }
+    }
 
-      // Parameterized tests are run in a loop for each set of parameters so they must use a
-      // separate calling mechanism
+    template for (constexpr auto a : annotations) {
+      constexpr auto t = std::meta::template_of(std::meta::type_of(a));
+
       if constexpr (t == ^^Parameterize) {
         parameterized = true;
 
