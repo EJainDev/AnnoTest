@@ -41,3 +41,4 @@ The library provides a familiar, Python/Java-inspired API with compile-time test
    examples/index
    api/index
    genindex
+   tutorials/basic_testing

@@ -28,6 +28,8 @@ Assertions and expectations verify conditions during tests. They differ in how t
 **Use assertions** for conditions that, if false, mean the test result is invalid.
 **Use expectations** for conditions that, if false, mean subsequent test code is meaningless, but the test result is still valid (e.g., setup failures).
 
+.. _assertion:
+
 Assertions
 ----------
 
@@ -178,6 +180,8 @@ Assertions verify that a condition holds. If an assertion fails, an :cpp:class:`
     .. code-block:: cpp
 
         assertNoContractViolation([]() { safe_divide(10, 2); });  // OK
+
+.. _expectation:
 
 Expectations
 ------------

@@ -117,12 +117,14 @@ void expectContractViolation(Func f) {
     if (!annotest::contract_violation_occurred) {
       throw Abort("Expectation failed: expected contract violation, but it was not detected");
     }
+    annotest::contract_violation_occurred = false;
     return;
   }
   f();
   if (!annotest::contract_violation_occurred) {
     throw Abort("Expectation failed: expected contract violation, but it was not detected");
   }
+  annotest::contract_violation_occurred = false;
 }
 
 export template <typename Func>

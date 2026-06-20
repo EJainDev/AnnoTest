@@ -1,3 +1,5 @@
+.. _api_annotations:
+
 Testing Annotations and Functions
 =================================
 
@@ -62,7 +64,7 @@ Annotations
             [[= Test{.disabled = true}]] void skipped() {}
         };
 
-    .. important:: Tests must not use try-catch blocks around any ``assert`` or ``expect`` calls — use the assertion functions directly.
+    .. important:: Tests must not use try-catch blocks around any ``assert`` or ``expect`` calls unless they catch a specific exception class (no ``catch(...)``) — use the assertion functions directly.
 
     See also :ref:`basic example <example_gallery>`.
 

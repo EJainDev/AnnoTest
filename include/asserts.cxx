@@ -117,12 +117,14 @@ auto assertContractViolation(Func f) {
     if (!annotest::contract_violation_occurred) {
       throw Error("Assertion failed: expected contract violation, but it was not detected");
     }
+    annotest::contract_violation_occurred = false;
     return result;
   }
   f();
   if (!annotest::contract_violation_occurred) {
     throw Error("Assertion failed: expected contract violation, but it was not detected");
   }
+  annotest::contract_violation_occurred = false;
 }
 
 export template <typename Func>

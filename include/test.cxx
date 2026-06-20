@@ -379,13 +379,15 @@ int test(int argc, char** argv, T suite = {}) {
         static constexpr auto param_members = std::define_static_array(
             getNonstaticDataMembers<
                 decltype(std::meta::extract<
-                         typename[:std::meta::substitute(^^Parameterize, template_args):]>(a)
-                         .parameters[0]
-                         .s)>());
+                             typename[:std::meta::substitute(^^Parameterize, template_args):]>(a)
+                             .parameters[0]
+                             .s)>());
 
         for (const auto param :
              std::meta::extract<typename[:std::meta::substitute(^^Parameterize, template_args):]>(a)
                  .parameters) {
+          contract_violation_occurred = false;
+
           if constexpr (before_each_func) {
             if (!runBeforeEach([&suite]() { suite.[:*before_each_func:](); })) {
               continue;
@@ -404,6 +406,10 @@ int test(int argc, char** argv, T suite = {}) {
             auto end = std::chrono::system_clock::now();
 
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+
+            if (contract_violation_occurred) {
+              throw Error("Contract violation occurred during test execution");
+            }
 
             std::cout << " passed in " << duration.count() / 1'000'000.0 << " ms\n";
           } catch (const Error& e) {
@@ -444,6 +450,10 @@ int test(int argc, char** argv, T suite = {}) {
         auto end = std::chrono::system_clock::now();
 
         auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+
+        if (contract_violation_occurred) {
+          throw Error("Contract violation occurred during test execution");
+        }
 
         std::cout << "Passed in " << duration.count() / 1'000'000.0 << " ms\n";
       } catch (const Error& e) {

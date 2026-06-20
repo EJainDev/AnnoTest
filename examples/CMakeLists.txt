@@ -18,3 +18,6 @@ target_link_libraries(example6_contracts PRIVATE annotest)
 
 add_executable(example7_full_suite example07_full_suite.cpp)
 target_link_libraries(example7_full_suite PRIVATE annotest)
+
+add_subdirectory(basic_testing)
+add_subdirectory(parameterizing_tests)
