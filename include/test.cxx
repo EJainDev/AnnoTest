@@ -58,12 +58,6 @@ struct BeforeAll {};
 export template <typename T = int>
 struct AfterAll {};
 
-struct InternalTest {
-  std::meta::info test;
-  const char* name;
-  bool disabled;
-};
-
 export template <int N, typename... TupleArgs>
   requires(N > 0)
 struct Parameterize {
@@ -90,6 +84,12 @@ DisallowOS(Ts...) -> DisallowOS<sizeof...(Ts)>;
 template <typename... Args, typename... Rest>
 Parameterize(Tuple<Args...>, Rest...) -> Parameterize<1 + (int)sizeof...(Rest), Args...>;
 
+struct InternalTest {
+  std::meta::info test;
+  const char* name;
+  bool disabled;
+};
+
 // Gets all required information from the testing class
 template <typename T>
 consteval auto getTests() {
@@ -98,11 +98,9 @@ consteval auto getTests() {
 
   std::optional<std::meta::info> before_all_func;
   std::optional<std::meta::info> before_each_func;
-  std::vector<InternalTest> tests;
   std::optional<std::meta::info> after_each_func;
   std::optional<std::meta::info> after_all_func;
-  bool has_duplicate_each = false;
-  bool has_duplicate_all = false;
+  std::vector<InternalTest> tests;
 
   template for (constexpr auto m : members) {
     if constexpr (std::meta::has_identifier(m)) {
@@ -125,23 +123,32 @@ consteval auto getTests() {
                                    : std::define_static_string(std::meta::identifier_of(m));
           tests.emplace_back(m, final_test_name, test_info.disabled);
         } else if constexpr (t == ^^BeforeEach) {
-          if (before_each_func.has_value()) {
-            has_duplicate_each = true;
+          if (before_each_func) {
+            throw std::logic_error(
+                "Duplicate BeforeEach annotation detected. Only one BeforeEach function is allowed "
+                "per test suite.");
           }
           before_each_func = m;
         } else if constexpr (t == ^^AfterEach) {
-          if (after_each_func.has_value()) {
-            has_duplicate_each = true;
+          if (after_each_func) {
+            throw std::logic_error(
+                "Duplicate AfterEach annotation detected. Only one AfterEach function is allowed "
+                "per test suite.");
           }
           after_each_func = m;
         } else if constexpr (t == ^^BeforeAll) {
-          if (before_all_func.has_value()) {
-            has_duplicate_all = true;
+          if (before_all_func) {
+            throw std::logic_error(
+                "Duplicate BeforeAll annotation detected. Only one BeforeAll function is allowed "
+                "per "
+                "test suite.");
           }
           before_all_func = m;
         } else if constexpr (t == ^^AfterAll) {
-          if (after_all_func.has_value()) {
-            has_duplicate_all = true;
+          if (after_all_func) {
+            throw std::logic_error(
+                "Duplicate AfterAll annotation detected. Only one AfterAll function is allowed "
+                "per test suite.");
           }
           after_all_func = m;
         }
@@ -150,7 +157,7 @@ consteval auto getTests() {
   }
 
   return std::tuple(before_all_func, before_each_func, std::define_static_array(tests),
-                    after_each_func, after_all_func, has_duplicate_each, has_duplicate_all);
+                    after_each_func, after_all_func);
 }
 
 template <std::meta::info func>
@@ -211,8 +218,6 @@ int test(int argc, char** argv, T suite = {}) {
   static constexpr auto tests = std::get<2>(result);
   static constexpr auto after_each_func = std::get<3>(result);
   static constexpr auto after_all_func = std::get<4>(result);
-  static constexpr auto has_duplicate_each = std::get<5>(result);
-  static constexpr auto has_duplicate_all = std::get<6>(result);
   static constexpr auto size = tests.size();
 
   std::string test_name;
@@ -243,16 +248,6 @@ int test(int argc, char** argv, T suite = {}) {
       }
     }
     ++i;
-  }
-
-  // Warn about duplicate lifecycle annotations
-  if (has_duplicate_each) {
-    std::cout << "[AnnoTest Warning] Duplicate BeforeEach/AfterEach annotation detected in '"
-              << std::meta::identifier_of(^^T) << "'. Only the last occurrence will be used.\n";
-  }
-  if (has_duplicate_all) {
-    std::cout << "[AnnoTest Warning] Duplicate BeforeAll/AfterAll annotation detected in '"
-              << std::meta::identifier_of(^^T) << "'. Only the last occurrence will be used.\n";
   }
 
   // The BeforeAll function is run once before any tests, and if it fails, the entire suite is
