@@ -178,30 +178,6 @@ bool runBeforeEach(const auto& func) {
   return true;
 }
 
-bool runTest(const auto& func) {
-  try {
-    auto start = std::chrono::system_clock::now();
-    func();
-    auto end = std::chrono::system_clock::now();
-
-    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-    std::cout << "Passed in " << duration.count() / 1'000'000.0 << " ms\n";
-  } catch (const Error& e) {
-    std::cout << "Failed with error: " << e.message() << '\n';
-    return false;
-  } catch (const Abort& e) {
-    std::cout << "Aborted with message: " << e.message() << '\n';
-    return false;
-  } catch (const std::exception& e) {
-    std::cout << "Failed with (uncaught) exception message: " << e.what() << '\n';
-    return false;
-  } catch (...) {
-    std::cout << "Failed with unknown error\n";
-    return false;
-  }
-  return true;
-}
-
 void runAfterEach(const auto& func) {
   try {
     func();
