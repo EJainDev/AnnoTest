@@ -65,6 +65,9 @@ struct Parameterize {
   TupleType parameters[N];
 };
 
+export template <typename... Args>
+struct ParameterizeTemplate {};
+
 export template <int N>
 struct RequiresOS {
   OS os[N];
@@ -86,6 +89,7 @@ Parameterize(Tuple<Args...>, Rest...) -> Parameterize<1 + (int)sizeof...(Rest), 
 
 struct InternalTest {
   std::meta::info test;
+  std::meta::info raw_test;
   const char* name;
   bool disabled;
   bool parameterized;
@@ -95,7 +99,8 @@ struct InternalTest {
 // Gets all required information from the testing class
 template <typename T>
 consteval auto getTests() {
-  static constexpr auto members = std::define_static_array(getMembers<T>());
+  static constexpr auto members = std::define_static_array(
+      std::meta::members_of(^^T, std::meta::access_context::unprivileged()));
   static constexpr auto size = members.size();
 
   std::optional<std::meta::info> before_all_func;
@@ -108,8 +113,15 @@ consteval auto getTests() {
     bool test_found = false;
     bool lifecycle_found = false;
 
-    if constexpr (std::meta::has_identifier(m)) {
-      static constexpr auto annotations = std::define_static_array(getAnnotations(m));
+    if constexpr (std::meta::has_identifier(m) &&
+                  (std::meta::is_function(m) || std::meta::is_template(m))) {
+      static constexpr auto member =
+          (std::meta::is_function(m)
+               ? m
+               : std::meta::substitute(m,
+                                       std::define_static_array(std::vector<std::meta::info>{})));
+      static constexpr auto annotations =
+          std::define_static_array(std::meta::annotations_of(member));
       template for (constexpr auto a : annotations) {
         constexpr auto t = std::meta::template_of(std::meta::type_of(a));
 
@@ -146,7 +158,7 @@ consteval auto getTests() {
               num_parameterizations = [:template_args[0]:];
             }
           }
-          tests.emplace_back(m, final_test_name, test_info.disabled, parameterized,
+          tests.emplace_back(member, m, final_test_name, test_info.disabled, parameterized,
                              num_parameterizations);
         } else if constexpr (t == ^^BeforeEach) {
           if (before_each_func) {
@@ -240,6 +252,22 @@ void runAfterEach(const auto& func) {
   }
 }
 
+consteval auto createBatch(const auto& v, const auto start, const auto args_per_batch) {
+  std::vector<std::meta::info> batch;
+  for (std::size_t j = 0; j < args_per_batch; ++j) {
+    batch.push_back(v[start + j]);
+  }
+  return std::define_static_array(batch);
+}
+
+consteval auto createArgBatchesIterable(const auto args_per_batch, const auto num_batches) {
+  std::vector<int> iterable;
+  for (std::size_t i = 0; i < num_batches; ++i) {
+    iterable.push_back(i * args_per_batch);
+  }
+  return std::define_static_array(iterable);
+}
+
 export template <typename T>
   requires std::is_class_v<T>
 int test(int argc, char** argv, T suite = {}) {
@@ -324,6 +352,7 @@ int test(int argc, char** argv, T suite = {}) {
   template for (constexpr auto test_info : tests) {
     contract_violation_occurred = false;
     constexpr auto test = test_info.test;
+    constexpr auto raw_test = test_info.raw_test;
     constexpr auto current_test_name = test_info.name;
     constexpr auto disabled = test_info.disabled;
     constexpr auto parameterized = test_info.parameterized;
@@ -336,8 +365,9 @@ int test(int argc, char** argv, T suite = {}) {
       if (!test_name.empty() &&
           std::string(current_test_name) != test_name.substr(0, test_name.find_last_of('.'))) {
         continue;
+      } else if (!test_name.empty()) {
+        parameterize_target_idx = std::stoi(test_name.substr(test_name.find_last_of('.') + 1)) - 1;
       }
-      parameterize_target_idx = std::stoi(test_name.substr(test_name.find_last_of('.') + 1)) - 1;
     }
 
     if constexpr (disabled) {
@@ -348,7 +378,7 @@ int test(int argc, char** argv, T suite = {}) {
     bool osRequirementFailed = false;
     bool osDisallowed = false;
     OS requiredOS = OS::Unknown;
-    static constexpr auto annotations = std::define_static_array(getAnnotations(test));
+    static constexpr auto annotations = std::define_static_array(std::meta::annotations_of(test));
 
     bool os_message_printed = false;
 
@@ -472,6 +502,70 @@ int test(int argc, char** argv, T suite = {}) {
 
           if (parameterize_target_idx != -1) {
             break;
+          }
+        }
+      } else if constexpr (t == ^^ParameterizeTemplate) {
+        constexpr auto parameterize_args =
+            std::define_static_array(std::meta::template_arguments_of(std::meta::type_of(a)));
+        constexpr auto total_args = parameterize_args.size();
+        constexpr auto template_parameters =
+            std::define_static_array(std::meta::template_arguments_of(test));
+        constexpr auto args_per_batch = template_parameters.size();
+        constexpr auto num_sets = total_args / args_per_batch;
+        static constexpr auto arg_batches_iterable =
+            createArgBatchesIterable(args_per_batch, num_sets);
+
+        template for (constexpr auto batch_iter : arg_batches_iterable) {
+          contract_violation_occurred = false;
+
+          static constexpr auto batch = createBatch(parameterize_args, batch_iter, args_per_batch);
+
+          if constexpr (before_each_func) {
+            if (!runBeforeEach([&suite]() { suite.[:*before_each_func:](); })) {
+              continue;
+            }
+          }
+
+          std::print("\t <");
+          int idx = 0;
+          static constexpr auto max_idx = batch.size() - 1;
+          template for (constexpr auto param : batch) {
+            std::print("{}", std::meta::display_string_of(param));
+            if (idx < max_idx) {
+              std::print(", ");
+            }
+            ++idx;
+          }
+          std::print("> -- ");
+
+          try {
+            auto start = std::chrono::system_clock::now();
+            constexpr auto expanded_test = std::meta::substitute(raw_test, batch);
+            suite.[:expanded_test:]();
+            auto end = std::chrono::system_clock::now();
+
+            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+
+            if (contract_violation_occurred) {
+              throw Error("Contract violation occurred during test execution");
+            }
+
+            std::cout << " passed in " << duration.count() / 1'000'000.0 << " ms\n";
+          } catch (const Error& e) {
+            std::cout << " failed with error: " << e.message() << '\n';
+            status_code = 1;
+          } catch (const Abort& e) {
+            std::cout << " aborted with message: " << e.message() << '\n';
+          } catch (const std::exception& e) {
+            std::cout << " failed with (uncaught) exception message: " << e.what() << '\n';
+            status_code = 1;
+          } catch (...) {
+            std::cout << " failed with unknown error\n";
+            status_code = 1;
+          }
+
+          if constexpr (after_each_func) {
+            runAfterEach([&suite]() { suite.[:*after_each_func:](); });
           }
         }
       }
