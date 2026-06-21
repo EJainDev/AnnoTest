@@ -74,11 +74,16 @@ struct ParameterizeMatrix {
 };
 
 export template <typename... Types>
-struct ParameterizePair {
+struct Pair {
   template <typename Values>
-  struct Init {
+  struct InitI {
     Values params;
   };
+
+  template <typename... Values>
+  static constexpr auto Init(Values... values) {
+    return InitI<Tuple<Values...>>{.params = Tuple{values...}};
+  }
 };
 
 export template <typename... Pairs>
