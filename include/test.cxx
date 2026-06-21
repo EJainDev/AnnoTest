@@ -582,11 +582,18 @@ int test(int argc, char** argv, T suite = {}) {
         std::println("Running parameterized template test \"{}\" with {} parameter sets:",
                      current_test_name, num_sets);
 
+        int parameterize_idx = 0;
         std::chrono::nanoseconds total_duration(0);
         int passed = 0;
 
         template for (constexpr auto batch_iter : arg_batches_iterable) {
           contract_violation_occurred = false;
+
+          if (parameterize_target_idx != -1 && parameterize_idx != parameterize_target_idx) {
+            ++parameterize_idx;
+            continue;
+          }
+          ++parameterize_idx;
 
           static constexpr auto batch = createBatch(parameterize_args, batch_iter, args_per_batch);
 
@@ -647,6 +654,10 @@ int test(int argc, char** argv, T suite = {}) {
             }
             runAfterEach([&suite]() { suite.[:*after_each_func:](); });
           }
+
+          if (parameterize_target_idx != -1) {
+            break;
+          }
         }
 
         std::println("Finished in {:.3f} ms with {}/{} tests passed",
@@ -668,8 +679,15 @@ int test(int argc, char** argv, T suite = {}) {
 
         std::chrono::nanoseconds total_duration(0);
         int passed = 0;
+        int parameterize_idx = 0;
 
         template for (constexpr auto pair : member_pairs) {
+          if (parameterize_target_idx != -1 && parameterize_idx != parameterize_target_idx) {
+            ++parameterize_idx;
+            continue;
+          }
+          ++parameterize_idx;
+
           if constexpr (before_each_func) {
             if (verbosity > 1) {
               std::println("\tRunning setup function {}",
@@ -748,6 +766,10 @@ int test(int argc, char** argv, T suite = {}) {
                            std::meta::identifier_of(*after_each_func));
             }
             runAfterEach([&suite]() { suite.[:*after_each_func:](); });
+          }
+
+          if (parameterize_target_idx != -1) {
+            break;
           }
         }
 
