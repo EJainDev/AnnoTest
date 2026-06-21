@@ -65,6 +65,9 @@ struct Parameterize {
   TupleType parameters[N];
 };
 
+template <typename... Args, typename... Rest>
+Parameterize(Tuple<Args...>, Rest...) -> Parameterize<1 + (int)sizeof...(Rest), Args...>;
+
 export template <typename... Args>
 struct ParameterizeTemplate {};
 
@@ -96,20 +99,16 @@ struct RequiresOS {
   OS os[N];
 };
 
+template <typename... Ts>
+RequiresOS(Ts...) -> RequiresOS<sizeof...(Ts)>;
+
 export template <int N>
 struct DisallowOS {
   OS os[N];
 };
 
 template <typename... Ts>
-RequiresOS(Ts...) -> RequiresOS<sizeof...(Ts)>;
-
-template <typename... Ts>
 DisallowOS(Ts...) -> DisallowOS<sizeof...(Ts)>;
-
-template <typename... Args, typename... Rest>
-Parameterize(Tuple<Args...>, Rest...) -> Parameterize<1 + (int)sizeof...(Rest), Args...>;
-
 struct InternalTest {
   std::meta::info test;
   std::meta::info raw_test;
@@ -145,6 +144,8 @@ consteval auto getTests() {
                                        std::define_static_array(std::vector<std::meta::info>{})));
       static constexpr auto annotations =
           std::define_static_array(std::meta::annotations_of(member));
+      InternalTest current_test;
+
       template for (constexpr auto a : annotations) {
         constexpr auto t = std::meta::template_of(std::meta::type_of(a));
 
@@ -169,39 +170,12 @@ consteval auto getTests() {
                                    : std::define_static_string(std::meta::identifier_of(m));
           test_found = true;
 
-          bool parameterized = false;
-          int num_parameterizations = 0;
-
-          template for (constexpr auto a2 : annotations) {
-            constexpr auto t2 = std::meta::template_of(std::meta::type_of(a2));
-            if constexpr (t2 == ^^Parameterize) {
-              parameterized = true;
-              static constexpr auto template_args = std::define_static_array(
-                  std::meta::template_arguments_of(std::meta::type_of(a2)));
-              num_parameterizations = [:template_args[0]:];
-            } else if constexpr (t2 == ^^ParameterizeTemplate) {
-              parameterized = true;
-
-              constexpr auto parameterize_args = std::define_static_array(
-                  std::meta::template_arguments_of(std::meta::type_of(a2)));
-              constexpr auto total_args = parameterize_args.size();
-              constexpr auto template_parameters =
-                  std::define_static_array(std::meta::template_arguments_of(member));
-              constexpr auto args_per_batch = template_parameters.size();
-              num_parameterizations = total_args / args_per_batch;
-            } else if constexpr (t2 == ^^ParameterizeMatrix) {
-              constexpr auto parameterize_matrix = std::meta::extract<
-                  typename[:std::meta::substitute(
-                                ^^ParameterizeMatrix,
-                                std::define_static_array(std::meta::template_arguments_of(
-                                    std::meta::type_of(a2)))):]>(a2);
-              parameterized = true;
-
-              num_parameterizations = parameterize_matrix.sets.getSizeof();
-            }
-          }
-          tests.emplace_back(member, m, final_test_name, test_info.disabled, parameterized,
-                             num_parameterizations);
+          current_test = InternalTest{.test = member,
+                                      .raw_test = m,
+                                      .name = final_test_name,
+                                      .disabled = test_info.disabled,
+                                      .parameterized = false,
+                                      .num_parameterizations = 0};
         } else if constexpr (t == ^^BeforeEach) {
           if (before_each_func) {
             throw std::logic_error(
@@ -250,7 +224,35 @@ consteval auto getTests() {
                 std::define_static_string(std::meta::identifier_of(m)));
           }
           after_all_func = m;
+        } else if constexpr (t == ^^Parameterize) {
+          current_test.parameterized = true;
+          static constexpr auto template_args =
+              std::define_static_array(std::meta::template_arguments_of(std::meta::type_of(a)));
+          current_test.num_parameterizations = [:template_args[0]:];
+        } else if constexpr (t == ^^ParameterizeTemplate) {
+          current_test.parameterized = true;
+
+          constexpr auto parameterize_args =
+              std::define_static_array(std::meta::template_arguments_of(std::meta::type_of(a)));
+          constexpr auto total_args = parameterize_args.size();
+          constexpr auto template_parameters =
+              std::define_static_array(std::meta::template_arguments_of(member));
+          constexpr auto args_per_batch = template_parameters.size();
+          current_test.num_parameterizations = total_args / args_per_batch;
+        } else if constexpr (t == ^^ParameterizeMatrix) {
+          constexpr auto parameterize_matrix = std::meta::extract<
+              typename[:std::meta::substitute(
+                            ^^ParameterizeMatrix,
+                            std::define_static_array(
+                                std::meta::template_arguments_of(std::meta::type_of(a)))):]>(a);
+          current_test.parameterized = true;
+
+          current_test.num_parameterizations = parameterize_matrix.sets.getSizeof();
         }
+      }
+
+      if (test_found) {
+        tests.emplace_back(current_test);
       }
     }
   }
