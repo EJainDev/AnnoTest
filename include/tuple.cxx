@@ -37,8 +37,8 @@ struct member_name {
 
 template <typename... Ts, std::size_t... Is>
 consteval auto make_specs(std::index_sequence<Is...>) {
-  // Explicitly typing the vector prevents CTAD failure on empty packs
-  return std::vector<std::meta::info>{
+  // Explicitly typing the array prevents CTAD failure on empty packs
+  return std::array<std::meta::info, sizeof...(Ts)>{
       std::meta::data_member_spec(^^Ts, {
                                             .name = member_name<Is>::value.data()})...};
 }
@@ -58,7 +58,7 @@ struct Tuple {
 
   static constexpr auto nsdms = std::define_static_array(getNonstaticDataMembers<storage>());
   static constexpr auto types_refl =
-      std::define_static_array(std::vector<std::meta::info>{(^^Ts)...});
+      std::define_static_array(std::array<std::meta::info, sizeof...(Ts)>{(^^Ts)...});
 
   storage s;
 
@@ -82,6 +82,8 @@ export constexpr auto tuple(auto... args) { return Tuple<decltype(args)...>{.s =
 template <typename... TupleTypes>
 consteval auto getAllTypes() {
   std::vector<std::meta::info> all_types;
+  all_types.reserve((TupleTypes::types_refl.size() + ...));
+
   (all_types.insert(all_types.end(), TupleTypes::types_refl.begin(), TupleTypes::types_refl.end()),
    ...);
   return std::define_static_array(all_types);
