@@ -14,9 +14,14 @@ struct AssertionTestSuite {
             tuple(std::numeric_limits<int>::max(), std::numeric_limits<int>::max()),
             tuple(std::numeric_limits<int>::min(), std::numeric_limits<int>::min())),
         Pair<double, double>::InitM(
-            tuple(3.14, 3.14), tuple(0.0, 0.0), tuple(-1.0, -1.0), tuple(1.0, 1.0),
+            tuple(3.14431764703641736497123649871264, 3.14431764703641736497123649871264),
+            tuple(0.0, 0.0), tuple(-1.0, -1.0), tuple(1.0, 1.0),
             tuple(std::numeric_limits<double>::max(), std::numeric_limits<double>::max()),
-            tuple(std::numeric_limits<double>::min(), std::numeric_limits<double>::min())))
+            tuple(std::numeric_limits<double>::min(), std::numeric_limits<double>::min())),
+        Pair<int, unsigned int>::InitM(
+            tuple(0, 0u), tuple(1, 1u), tuple(53, 53u),
+            tuple(std::numeric_limits<int>::max(),
+                  static_cast<unsigned int>(std::numeric_limits<int>::max()))))
   ]] void AssertEqual(A a, B b) {
     assertEqual(a, b);
   }
