@@ -300,16 +300,6 @@ consteval auto createArgBatchesIterable(const auto args_per_batch, const auto nu
   return std::define_static_array(iterable);
 }
 
-template <std::ranges::input_range R>
-consteval auto range_to_string(R&& range) {
-  std::string s;
-  for (const auto& val : range) {
-    s += std::meta::display_string_of(val);
-  }
-
-  return s;
-}
-
 export template <typename T>
   requires std::is_class_v<T>
 int test(int argc, char** argv, T suite = {}) {
