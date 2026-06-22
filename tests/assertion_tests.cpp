@@ -7,24 +7,21 @@ template <typename T>
 using lim = std::numeric_limits<T>;
 
 struct AssertionTestSuite {
-  [[= ParameterizeTemplate<int, double, int, int>]]
-
-      template <typename A = int, typename B = int>
-      [[
-        = Test{},
-        = dualParameterize(
-            Pair<int, int>::InitM(tuple(3, 3), tuple(0, 0), tuple(-1, -1), tuple(1, 1),
-                                  tuple(lim<int>::max(), lim<int>::max()),
-                                  tuple(lim<int>::min(), lim<int>::min())),
-            Pair<double, double>::InitM(tuple(3.14431764703641736497123649871264,
-                                              3.14431764703641736497123649871264),
-                                        tuple(0.0, 0.0), tuple(-1.0, -1.0), tuple(1.0, 1.0),
-                                        tuple(lim<double>::max(), lim<double>::max()),
-                                        tuple(lim<double>::min(), lim<double>::min())),
-            Pair<int, unsigned int>::InitM(tuple(0, 0u), tuple(1, 1u), tuple(53, 53u),
-                                           tuple(lim<int>::max(),
-                                                 static_cast<unsigned int>(lim<int>::max()))))
-      ]] void AssertEqual(A a, B b) {
+  template <typename A = int, typename B = int>
+  [[
+    = Test{}, = dualParameterize(
+                  Pair<int, int>::InitM(tuple(3, 3), tuple(0, 0), tuple(-1, -1), tuple(1, 1),
+                                        tuple(lim<int>::max(), lim<int>::max()),
+                                        tuple(lim<int>::min(), lim<int>::min())),
+                  Pair<double, double>::InitM(tuple(3.14431764703641736497123649871264,
+                                                    3.14431764703641736497123649871264),
+                                              tuple(0.0, 0.0), tuple(-1.0, -1.0), tuple(1.0, 1.0),
+                                              tuple(lim<double>::max(), lim<double>::max()),
+                                              tuple(lim<double>::min(), lim<double>::min())),
+                  Pair<int, unsigned int>::InitM(tuple(0, 0u), tuple(1, 1u), tuple(53, 53u),
+                                                 tuple(lim<int>::max(),
+                                                       static_cast<unsigned int>(lim<int>::max()))))
+  ]] void AssertEqual(A a, B b) {
     assertEqual(a, b);
   }
 
