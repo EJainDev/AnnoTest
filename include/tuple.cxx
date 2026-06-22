@@ -4,13 +4,28 @@ import std;
 
 import :utils;
 
-namespace annotest {
+using std::size_t;
 
-template <std::size_t I>
+namespace annotest {
+template <template <typename...> class Template, typename T>
+struct is_instantiation_of : std::false_type {};
+
+template <template <typename...> class Template, typename... Args>
+struct is_instantiation_of<Template, Template<Args...>> : std::true_type {};
+
+template <template <typename...> class Template, typename T>
+struct is_instantiation_of<Template, const T> : is_instantiation_of<Template, T> {};
+
+template <template <typename...> class Template, typename T>
+struct is_instantiation_of<Template, T&> : is_instantiation_of<Template, T> {};
+
+template <template <typename...> class Template, typename T>
+struct is_instantiation_of<Template, T&&> : is_instantiation_of<Template, T> {};
+
+template <size_t I>
 struct member_name {
   // NOTE: This template only handles indices up to 9999. For I >= 10000 the generated names
-  // will overflow the character array and produce undefined behavior. When using tuple() with
-  // more than 9999 elements, consider splitting into multiple smaller tuples. This should never be
+  // will overflow the character array and produce undefined behavior. This should never be
   // the case. Might want to consider why you're creating a test with 9999+ parameters...
   static constexpr auto internal_value() {
     if constexpr (I < 10) {
@@ -44,7 +59,7 @@ consteval auto make_specs(std::index_sequence<Is...>) {
 }
 
 export template <typename... Ts>
-struct Tuple {
+struct tuple {
   struct storage;
 
   consteval {
@@ -56,13 +71,16 @@ struct Tuple {
     std::meta::define_aggregate(storage_meta, specs);
   }
 
-  static constexpr auto nsdms = std::define_static_array(getNonstaticDataMembers<storage>());
+  static constexpr auto nsdms = std::define_static_array(
+      std::meta::nonstatic_data_members_of(^^storage, std::meta::access_context::current()));
   static constexpr auto types_refl =
       std::define_static_array(std::array<std::meta::info, sizeof...(Ts)>{(^^Ts)...});
 
   storage s;
 
-  static consteval auto getSizeof() -> std::size_t { return sizeof...(Ts); }
+  constexpr tuple(Ts... ts) : s{std::forward<Ts>(ts)...} {}
+
+  static consteval auto size() -> std::size_t { return sizeof...(Ts); }
 
   template <std::size_t index>
   constexpr const auto& get() const {
@@ -74,40 +92,32 @@ struct Tuple {
   }
 };
 
-template <typename... Ts>
-Tuple(Ts...) -> Tuple<Ts...>;
+template <typename T>
+concept tuple_t = is_instantiation_of<tuple, T>::value;
 
-export constexpr auto tuple(auto... args) { return Tuple<decltype(args)...>{.s = {args...}}; }
-
-template <typename... TupleTypes>
-consteval auto getAllTypes() {
+template <tuple_t... Tuples>
+consteval auto get_all_types() {
   std::vector<std::meta::info> all_types;
-  all_types.reserve((TupleTypes::types_refl.size() + ...));
+  all_types.reserve((Tuples::types_refl.size() + ...));
 
-  (all_types.insert(all_types.end(), TupleTypes::types_refl.begin(), TupleTypes::types_refl.end()),
-   ...);
+  (all_types.insert(all_types.end(), Tuples::types_refl.begin(), Tuples::types_refl.end()), ...);
   return std::define_static_array(all_types);
 }
 
-template <typename Tuple>
-constexpr std::size_t tuple_size_v() {
-  return Tuple::getSizeof();
-}
+template <tuple_t... Tuples>
+constexpr std::size_t tuple_cat_size_v = (std::remove_reference_t<Tuples>::size() + ...);
 
-template <class... Tuples>
-constexpr std::size_t tuple_cat_size_v = (tuple_size_v<std::remove_reference_t<Tuples>>() + ...);
-
-template <std::size_t I, class Tuple>
-constexpr decltype(auto) get_tuple_element(Tuple&& t) {
+template <std::size_t I, tuple_t tuple>
+constexpr decltype(auto) get_tuple_element(tuple&& t) {
   return t.template get<I>();
 }
 
 // -----------------------------
 // Map global index -> (tuple index, local index)
 // -----------------------------
-template <std::size_t I, class First, class... Rest>
+template <std::size_t I, tuple_t First, tuple_t... Rest>
 constexpr decltype(auto) tuple_cat_get(First&& first, Rest&&... rest) {
-  constexpr std::size_t first_size = tuple_size_v<std::remove_reference_t<First>>();
+  constexpr std::size_t first_size = std::remove_reference_t<First>::size();
 
   if constexpr (I < first_size) {
     return std::forward<First>(first).template get<I>();
@@ -117,20 +127,20 @@ constexpr decltype(auto) tuple_cat_get(First&& first, Rest&&... rest) {
 }
 
 // Base case: single tuple
-template <std::size_t I, class Last>
+template <std::size_t I, tuple_t Last>
 constexpr decltype(auto) tuple_cat_get(Last&& last) {
   return last.template get<I>();
 }
 
-template <class... Tuples, std::size_t... I>
+template <tuple_t... Tuples, std::size_t... I>
 constexpr auto tuple_cat_impl(std::index_sequence<I...>, Tuples&&... tuples) {
-  static constexpr auto all_types = getAllTypes<std::remove_reference_t<Tuples>...>();
-  using Result = typename[:std::meta::substitute(^^Tuple, all_types):];
+  static constexpr auto all_types = get_all_types<std::remove_reference_t<Tuples>...>();
+  using Result = typename[:std::meta::substitute(^^tuple, all_types):];
 
-  return Result{typename Result::storage{tuple_cat_get<I>(std::forward<Tuples>(tuples)...)...}};
+  return Result{tuple_cat_get<I>(std::forward<Tuples>(tuples)...)...};
 }
 
-export template <class... Tuples>
+export template <tuple_t... Tuples>
 constexpr auto tuple_cat(Tuples&&... tuples) {
   constexpr std::size_t N = tuple_cat_size_v<Tuples...>;
   return tuple_cat_impl(std::make_index_sequence<N>{}, std::forward<Tuples>(tuples)...);

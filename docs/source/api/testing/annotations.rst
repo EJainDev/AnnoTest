@@ -204,8 +204,8 @@ Functions
 
     .. code-block:: cpp
 
-        auto t = tuple(5, 10);    // Tuple<int, int>
-        auto u = tuple(3.14);     // Tuple<double>
+        auto t = tuple(5, 10);    // tuple<int, int>
+        auto u = tuple(3.14);     // tuple<double>
 
     See also :ref:`parameterized example <example_gallery>`.
 

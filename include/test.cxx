@@ -61,19 +61,19 @@ struct AfterAll {};
 export template <int N, typename... TupleArgs>
   requires(N > 0)
 struct Parameterize {
-  using TupleType = Tuple<TupleArgs...>;
+  using TupleType = tuple<TupleArgs...>;
   TupleType parameters[N];
 };
 
 template <typename... Args, typename... Rest>
-Parameterize(Tuple<Args...>, Rest...) -> Parameterize<1 + (int)sizeof...(Rest), Args...>;
+Parameterize(tuple<Args...>, Rest...) -> Parameterize<1 + (int)sizeof...(Rest), Args...>;
 
 export template <typename... Args>
 struct ParameterizeTemplate {};
 
 template <typename... Pairs>
 struct ParameterizeMatrix {
-  Tuple<Pairs...> sets;
+  tuple<Pairs...> sets;
 };
 
 export template <typename... Types>
@@ -85,7 +85,7 @@ struct Pair {
 
   template <typename... ValueTuples>
   static constexpr auto InitM(ValueTuples... values) {
-    return Tuple{InitI<ValueTuples>{.params = values}...};
+    return tuple{InitI<ValueTuples>{.params = values}...};
   }
 };
 
@@ -247,7 +247,7 @@ consteval auto getTests() {
                                 std::meta::template_arguments_of(std::meta::type_of(a)))):]>(a);
           current_test.parameterized = true;
 
-          current_test.num_parameterizations = parameterize_matrix.sets.getSizeof();
+          current_test.num_parameterizations = parameterize_matrix.sets.size();
         }
       }
 
@@ -531,7 +531,7 @@ int test(int argc, char** argv, T suite = {}) {
 
           try {
             auto start = std::chrono::steady_clock::now();
-            with_indices<param.getSizeof()>(
+            with_indices<param.size()>(
                 [&](auto... Is) { return suite.[:test:](param.s.[:param_members[Is]:]...); });
             auto end = std::chrono::steady_clock::now();
 
@@ -667,7 +667,7 @@ int test(int argc, char** argv, T suite = {}) {
                                                                    std::meta::template_arguments_of(
                                                                        std::meta::type_of(a)))):]>(
                 a);
-        constexpr auto num_sets = parameterize_matrix.sets.getSizeof();
+        constexpr auto num_sets = parameterize_matrix.sets.size();
 
         std::println("Running parameterized template and parameter test \"{}\" with {} sets:",
                      current_test_name, num_sets);
@@ -730,7 +730,7 @@ int test(int argc, char** argv, T suite = {}) {
             std::print(") -- ");
 
             auto start = std::chrono::system_clock::now();
-            with_indices<physical_pair.params.getSizeof()>([&](auto... Is) {
+            with_indices<physical_pair.params.size()>([&](auto... Is) {
               return suite.[:expanded_test:](physical_pair.params.s.[:param_members[Is]:]...);
             });
 
