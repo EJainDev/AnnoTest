@@ -1,4 +1,9 @@
-add_executable(AnnoTest_Tests test.cpp)
-target_link_libraries(AnnoTest_Tests PRIVATE annotest)
+add_executable(AssertionTests assertion_tests.cpp)
+target_link_libraries(AssertionTests PRIVATE annotest)
 
-annotest_discover_tests(AnnoTest_Tests)
+annotest_discover_tests(AssertionTests)
+
+add_executable(TupleTests tuple_tests.cpp)
+target_link_libraries(TupleTests PRIVATE annotest)
+
+annotest_discover_tests(TupleTests)
