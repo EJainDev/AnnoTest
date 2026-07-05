@@ -7,26 +7,12 @@ import :utils;
 using std::size_t;
 
 namespace annotest {
-template <template <typename...> class Template, typename T>
-struct is_instantiation_of : std::false_type {};
-
-template <template <typename...> class Template, typename... Args>
-struct is_instantiation_of<Template, Template<Args...>> : std::true_type {};
-
-template <template <typename...> class Template, typename T>
-struct is_instantiation_of<Template, const T> : is_instantiation_of<Template, T> {};
-
-template <template <typename...> class Template, typename T>
-struct is_instantiation_of<Template, T&> : is_instantiation_of<Template, T> {};
-
-template <template <typename...> class Template, typename T>
-struct is_instantiation_of<Template, T&&> : is_instantiation_of<Template, T> {};
-
 template <size_t I>
 struct member_name {
-  // NOTE: This template only handles indices up to 9999. For I >= 10000 the generated names
-  // will overflow the character array and produce undefined behavior. This should never be
-  // the case. Might want to consider why you're creating a test with 9999+ parameters...
+  // NOTE: This template only handles indices up to 9999. For I >= 10000 the
+  // generated names will overflow the character array and produce undefined
+  // behavior. This should never be the case. Might want to consider why you're
+  // creating a test with 9999+ parameters...
   static constexpr auto internal_value() {
     if constexpr (I < 10) {
       return std::array<char, 3>{'m', static_cast<char>('0' + I), '\0'};
@@ -78,6 +64,7 @@ struct tuple {
 
   storage s;
 
+  constexpr tuple() = default;
   constexpr tuple(Ts... ts) : s{std::forward<Ts>(ts)...} {}
 
   static consteval auto size() -> std::size_t { return sizeof...(Ts); }
@@ -90,6 +77,18 @@ struct tuple {
   constexpr auto& get() {
     return s.[:nsdms[index]:];
   }
+
+  template <std::meta::info member>
+  constexpr const auto& get() const {
+    return s.[:member:];
+  }
+  template <std::meta::info member>
+  constexpr auto& get() {
+    return s.[:member:];
+  }
+
+  consteval auto begin() { return nsdms.begin(); }
+  consteval auto end() { return nsdms.end(); }
 };
 
 template <typename T>
@@ -104,45 +103,39 @@ consteval auto get_all_types() {
   return std::define_static_array(all_types);
 }
 
-template <tuple_t... Tuples>
-constexpr std::size_t tuple_cat_size_v = (std::remove_reference_t<Tuples>::size() + ...);
+template <tuple_t Result, tuple_t Current, std::size_t Offset>
+constexpr void tuple_insert(Result& result, const Current& current) {
+  static constexpr auto idx_seq = std::make_index_sequence<Current::size()>{};
 
-template <std::size_t I, tuple_t tuple>
-constexpr decltype(auto) get_tuple_element(tuple&& t) {
-  return t.template get<I>();
-}
-
-// -----------------------------
-// Map global index -> (tuple index, local index)
-// -----------------------------
-template <std::size_t I, tuple_t First, tuple_t... Rest>
-constexpr decltype(auto) tuple_cat_get(First&& first, Rest&&... rest) {
-  constexpr std::size_t first_size = std::remove_reference_t<First>::size();
-
-  if constexpr (I < first_size) {
-    return std::forward<First>(first).template get<I>();
-  } else {
-    return tuple_cat_get<I - first_size>(std::forward<Rest>(rest)...);
+  template for (constexpr auto i : idx_seq) {
+    result.template get<Offset + i>() = current.template get<i>();
   }
 }
 
-// Base case: single tuple
-template <std::size_t I, tuple_t Last>
-constexpr decltype(auto) tuple_cat_get(Last&& last) {
-  return last.template get<I>();
+template <std::size_t N>
+consteval auto compute_prefix_sums(const std::array<std::size_t, N>& sizes) {
+  std::array<std::size_t, N> prefix_sums{};
+  prefix_sums[0] = 0;
+  for (std::size_t i = 1; i < N; ++i) {
+    prefix_sums[i] = sizes[i] + prefix_sums[i - 1];
+  }
+  return prefix_sums;
 }
 
-template <tuple_t... Tuples, std::size_t... I>
-constexpr auto tuple_cat_impl(std::index_sequence<I...>, Tuples&&... tuples) {
-  static constexpr auto all_types = get_all_types<std::remove_reference_t<Tuples>...>();
-  using Result = typename[:std::meta::substitute(^^tuple, all_types):];
+template <tuple_t... Tuples>
+constexpr auto tuple_cat(Tuples... tuples) {
+  using Result = typename[:std::meta::substitute(^^tuple, get_all_types<Tuples...>()):];
+  Result result;
 
-  return Result{tuple_cat_get<I>(std::forward<Tuples>(tuples)...)...};
-}
+  constexpr auto pre_sizes = std::array<std::size_t, sizeof...(Tuples)>{Tuples::size()...};
+  constexpr auto sizes = compute_prefix_sums(pre_sizes);
 
-export template <tuple_t... Tuples>
-constexpr auto tuple_cat(Tuples&&... tuples) {
-  constexpr std::size_t N = tuple_cat_size_v<Tuples...>;
-  return tuple_cat_impl(std::make_index_sequence<N>{}, std::forward<Tuples>(tuples)...);
+  static constexpr auto idx_seq = std::make_index_sequence<sizeof...(Tuples)>{};
+
+  template for (constexpr auto i : idx_seq) {
+    tuple_insert<Result, decltype(tuples...[i]), sizes[i]>(result, tuples...[i]);
+  }
+
+  return result;
 }
 }  // namespace annotest
