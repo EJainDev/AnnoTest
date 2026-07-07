@@ -3,6 +3,21 @@ export module annotest:utils;
 import std;
 
 namespace annotest {
+template <template <typename...> class Template, typename T>
+struct is_instantiation_of : std::false_type {};
+
+template <template <typename...> class Template, typename... Args>
+struct is_instantiation_of<Template, Template<Args...>> : std::true_type {};
+
+template <template <typename...> class Template, typename T>
+struct is_instantiation_of<Template, const T> : is_instantiation_of<Template, T> {};
+
+template <template <typename...> class Template, typename T>
+struct is_instantiation_of<Template, T&> : is_instantiation_of<Template, T> {};
+
+template <template <typename...> class Template, typename T>
+struct is_instantiation_of<Template, T&&> : is_instantiation_of<Template, T> {};
+
 template <typename T>
 consteval auto getNonstaticDataMembers() {
   return std::meta::nonstatic_data_members_of(^^T, std::meta::access_context::current());

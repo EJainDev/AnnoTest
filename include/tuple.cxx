@@ -65,6 +65,15 @@ struct tuple {
   storage s;
 
   constexpr tuple() = default;
+
+  constexpr tuple(const tuple&) = default;
+  constexpr tuple& operator=(const tuple&) = default;
+
+  constexpr tuple(tuple&&) = default;
+  constexpr tuple& operator=(tuple&&) = default;
+
+  constexpr ~tuple() = default;
+
   constexpr tuple(Ts... ts) : s{std::forward<Ts>(ts)...} {}
 
   static consteval auto size() -> std::size_t { return sizeof...(Ts); }
@@ -93,6 +102,26 @@ struct tuple {
 
 template <typename T>
 concept tuple_t = is_instantiation_of<tuple, T>::value;
+
+export template <std::size_t I, typename... Ts>
+constexpr decltype(auto) get(tuple<Ts...>& t) noexcept {
+  return t.template get<I>();
+}
+
+export template <std::size_t I, typename... Ts>
+constexpr decltype(auto) get(const tuple<Ts...>& t) noexcept {
+  return t.template get<I>();
+}
+
+template <std::size_t I, typename... Ts>
+constexpr decltype(auto) get(tuple<Ts...>&& t) noexcept {
+  return std::move(t).template get<I>();
+}
+
+template <std::size_t I, typename... Ts>
+constexpr decltype(auto) get(const tuple<Ts...>&& t) noexcept {
+  return std::move(t).template get<I>();
+}
 
 template <tuple_t... Tuples>
 consteval auto get_all_types() {
@@ -139,3 +168,14 @@ constexpr auto tuple_cat(Tuples... tuples) {
   return result;
 }
 }  // namespace annotest
+
+namespace std {
+template <typename... Ts>
+struct tuple_size<::annotest::tuple<Ts...>>
+    : integral_constant<std::size_t, ::annotest::tuple<Ts...>::size()> {};
+
+template <std::size_t I, typename... Ts>
+struct tuple_element<I, ::annotest::tuple<Ts...>> {
+  using type = decltype(::annotest::tuple<Ts...>::template get<I>());
+};
+}  // namespace std
