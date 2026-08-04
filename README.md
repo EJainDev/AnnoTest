@@ -124,17 +124,17 @@ Mark test functions with `[[=Test{}]]` — no macros, no string-based test names
 | **Test** | `[Test]` | Marks a function as a test case |
 | **Named test** | `[Test<"custom name">]` | Overrides the display name |
 | **Disabled** | `[Test{.disabled = true}]` | Skips the test without deleting it |
-| **BeforeEach** | `[BeforeEach]` | Runs before every test in the suite |
-| **AfterEach** | `[AfterEach]` | Runs after every test in the suite |
-| **BeforeAll** | `[BeforeAll]` | Runs once before the entire suite |
-| **AfterAll** | `[AfterAll]` | Runs once after the entire suite |
-| **Parameterize** | `[Parameterize{tuple(1,2), tuple(3,4)}]` | Runs with each parameter set |
+| **before_each** | `[before_each]` | Runs before every test in the suite |
+| **after_each** | `[after_each]` | Runs after every test in the suite |
+| **before_all** | `[before_all]` | Runs once before the entire suite |
+| **after_all** | `[after_all]` | Runs once after the entire suite |
+| **parameterize** | `[parameterize{tuple(1,2), tuple(3,4)}]` | Runs with each parameter set |
 | **RequiresOS** | `[RequiresOS{OS::Linux}]` | Skips test on other platforms |
 | **DisallowOS** | `[DisallowOS{OS::Windows}]` | Skips test on listed platforms |
 
 ### Assertions (fail-fast)
 
-Throw `Error` and stop the current test immediately:
+Throw `assertion_error` and stop the current test immediately:
 
 ```cpp
 assertEqual(5, 2 + 3);
@@ -159,7 +159,7 @@ expectThrows<std::bad_alloc>([] { /* may throw */ });
 Run the same logic with different inputs:
 
 ```cpp
-[Parameterize{tuple(1, 2), tuple(10, 20), tuple(100, 200)}]
+[parameterize{tuple(1, 2), tuple(10, 20), tuple(100, 200)}]
 void sums_match(int a, int b) {
     assertEqual(a + b, add(a, b));
 }
@@ -250,7 +250,7 @@ AnnoTest is under active development. Current implementation supports:
 
 - ✅ Annotation-based test definitions
 - ✅ Assertions and expectations (fail-fast and continue-on-failure)
-- ✅ Lifecycle hooks (BeforeEach, AfterEach, BeforeAll, AfterAll)
+- ✅ Lifecycle hooks (before_each, after_each, before_all, after_all)
 - ✅ Parameterized tests
 - ✅ Death tests (Unix/macOS)
 - ✅ Contract violation assertions
@@ -276,8 +276,8 @@ Planned:
 annotest              — umbrella module: import annotest;
 ├── annotest:tuple    — compile-time tuples for parameterized tests
 ├── annotest:utils    — reflection helpers (format, enum_to_string)
-├── annotest:exceptions — Error / Abort exception classes
-├── annotest:asserts  — assert* helpers (throw Error)
+├── annotest:exceptions — assertion_error / Abort exception classes
+├── annotest:asserts  — assert* helpers (throw assertion_error)
 ├── annotest:expects  — expect* helpers (throw Abort)
 ├── annotest:death_test — assertDeath / expectDeath (fork-based)
 ├── annotest:posix    — fork / waitpid wrappers

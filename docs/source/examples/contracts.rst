@@ -62,7 +62,7 @@ Section 4 — **expectContractViolation**
      assertEqual(1, 1);
    }
 
-Same as ``assertContractViolation`` but uses :cpp:class:`Abort` instead of :cpp:class:`Error`.
+Same as ``assertContractViolation`` but uses :cpp:class:`Abort` instead of :cpp:class:`assertion_error`.
 
 Section 5 — **expectNoContractViolation**
 

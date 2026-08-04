@@ -6,4 +6,5 @@ export module CLI11;
 
 export namespace CLI {
 using App = ::CLI::App;
-}
+using ParseError = ::CLI::ParseError;
+}  // namespace CLI

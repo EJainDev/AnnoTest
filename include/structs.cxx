@@ -2,6 +2,7 @@
 export module annotest:structs;
 
 import :tuple;
+import :utils;
 
 import std;
 
@@ -116,7 +117,7 @@ struct parameterize_pair {
 template <typename T>
 concept parameterize_pair_t = is_instantiation_of<parameterize_pair, T>::value;
 
-template <parameterize_pair_t... Pairs>
+export template <parameterize_pair_t... Pairs>
 struct parameterize_dual {
   static constexpr std::size_t N = sizeof...(Pairs);
 
@@ -158,113 +159,28 @@ struct internal_test {
   std::meta::info test;
   std::meta::info raw_test;
 
-  std::meta::info requires_os_annotation;
-  std::meta::info disallows_os_annotation;
+  bool has_requires_os = false;
+  std::meta::info requires_os_annotation = ^^int;
+  bool has_disallows_os = false;
+  std::meta::info disallows_os_annotation = ^^int;
 
-  std::meta::info parameterize_annotation;
+  std::meta::info parameterize_annotation = ^^int;
   parameterization_types parameterization_type = parameterization_types::None;
 
   const char* name;
 
-  bool disabled;
-  int num_parameterizations;
-  bool parameterized;
+  bool disabled = false;
+  int num_parameterizations = 0;
+  bool parameterized = false;
 };
 
 struct suite_test {
   std::meta::info suite;
 
   bool has_before_each = false;
-  std::meta::info before_each;
+  std::meta::info before_each = ^^int;
 
   bool has_after_each = false;
-  std::meta::info after_each;
-
-  std::meta::info requires_os_annotation;
-  std::meta::info disallows_os_annotation;
-
-  std::meta::info parameterize_annotation;
-
-  const char* name;
-
-  bool disabled;
-  int num_parameterizations;
-  bool parameterized;
-
-  std::vector<internal_test> children;
+  std::meta::info after_each = ^^int;
 };
-
-template <typename T>
-concept suite_test_t = std::is_same_v<suite_test, T>;
-
-struct namespace_test {
-  bool has_before_each = false;
-  std::meta::info before_each;
-
-  bool has_after_each = false;
-  std::meta::info after_each;
-
-  std::vector<suite_test> children;
-};
-
-template <typename T>
-concept namespace_test_t = std::is_same_v<namespace_test, T>;
-
-template <internal_test Test>
-consteval std::string list_tests(int depth = 0) pre(depth > 0) {
-  std::string result = std::format("{:\t<{}}{}", depth, Test.name);
-
-  if constexpr (Test.num_parameterizations > 0) {
-    ++depth;
-    for (auto i = 0; i < Test.num_parameterizations; ++i) {
-      result += std::format("\n{:\t<{}}{}.{}", depth, Test.name, i + 1);
-    }
-  } else {
-    result += '\n';
-  }
-  return std::define_static_string(result);
-}
-
-template <auto Container>
-  requires(namespace_test_t<decltype(Container)> || suite_test_t<decltype(Container)>)
-consteval std::string list_tests(int depth = 0) {
-  std::string result = std::format("{:\t<{}}{}\n", depth, std::meta::identifier_of(Container));
-
-  ++depth;
-
-  template for (constexpr auto member : Container.children) {
-    result += list_tests(Container.children.template get<member>(), depth);
-  }
-
-  return std::define_static_string(result);
-};
-
-template <std::meta::info Container>
-consteval std::meta::info test_container() {
-  if constexpr (std::meta::is_namespace(Container)) {
-    return ^^namespace_test;
-  }
-  if constexpr (std::meta::is_class_type(Container)) {
-    return ^^suite_test;
-  }
-  throw std::logic_error(std::format("Container must be a namespace or class. Found: {}",
-                                     std::meta::identifier_of(Container)));
-}
-
-template <std::meta::info Container>
-using test_container_t = typename[:test_container<Container>():];
-
-template <std::meta::info Container>
-consteval std::meta::info test_child() {
-  if constexpr (std::meta::is_namespace(Container)) {
-    return ^^suite_test;
-  }
-  if constexpr (std::meta::is_class_type(Container)) {
-    return ^^internal_test;
-  }
-  static_assert(false, "Container must be a namespace or class");
-}
-
-template <std::meta::info Container>
-using test_child_t = typename[:test_child<Container>():];
 }  // namespace annotest

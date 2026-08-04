@@ -19,7 +19,7 @@ Testing Framework
 
         [[= Test{.disabled = true}]] void skipped() {}
 
-        [[= Test{}, = Parameterize{tuple(5), tuple(50)} ]] void parameterized(int val) {
+        [[= Test{}, = parameterize{tuple(5), tuple(50)} ]] void parameterized(int val) {
             assertTrue(val == 5 || val == 50);
         }
     };
@@ -58,7 +58,7 @@ All test suite structs use **public members** by design:
     struct AddTest {
         int counter = 0;  // public — you can read and write directly
 
-        [[= BeforeEach{}]] void reset() { counter = 0; }
+        [[= before_each{}]] void reset() { counter = 0; }
 
         [[= Test{}]] void one() {
             ++counter;  // direct access, no getters/setters
@@ -69,7 +69,7 @@ All test suite structs use **public members** by design:
 **Why?** AnnoTest discovers test members through C++26 reflection (`std::meta::members_of`), which only sees **non-private** members. By using plain structs with public data members, you get:
 
 1. **Zero boilerplate** — no getters, no setters, no friend declarations
-2. **Direct state sharing** between ``BeforeEach``, ``AfterEach``, and test methods
+2. **Direct state sharing** between ``before_each``, ``after_each``, and test methods
 3. **Reflection compatibility** — the library can see all your members without intrusive changes
 4. **No inheritance needed** — composition through struct members is sufficient for test fixtures
 
@@ -107,7 +107,7 @@ Put your test fixtures **inside** the struct, not in ``main()`` or globals:
         int x = 10;
         int y = 20;
 
-        [[= BeforeEach{}]] void reset() { x = 0; y = 0; }
+        [[= before_each{}]] void reset() { x = 0; y = 0; }
 
         [[= Test{}]] void sum() { assertEqual(30, x + y); }
     };
@@ -119,7 +119,7 @@ Put your test fixtures **inside** the struct, not in ``main()`` or globals:
     int y = 20;
 
     struct AddTest {
-        [[= BeforeEach{}]] void reset() { x = 0; y = 0; }  // hidden globals
+        [[= before_each{}]] void reset() { x = 0; y = 0; }  // hidden globals
     };
 
 No private members
@@ -140,7 +140,7 @@ All struct members should have default values. The library value-initializes you
         std::vector<int> data{};
         std::string name = "test";
 
-        [[= BeforeEach{}]] void reset() { counter = 0; data.clear(); }
+        [[= before_each{}]] void reset() { counter = 0; data.clear(); }
     };
 
     // Bad — no defaults, library can't construct
@@ -148,7 +148,7 @@ All struct members should have default values. The library value-initializes you
         int counter;  // uninitialized — undefined behavior
         std::string name;  // empty, but no explicit default
 
-        [[= BeforeEach{}]] void reset() { counter = 0; }
+        [[= before_each{}]] void reset() { counter = 0; }
     };
 
 No constructors
@@ -163,13 +163,13 @@ The library creates your struct with ``T{}`` (value-initialization). Do not defi
         BadTest() { /* setup */ }
     };
 
-Use ``BeforeEach`` for setup logic instead:
+Use ``before_each`` for setup logic instead:
 
 .. code-block:: cpp
 
     // Good
     struct GoodTest {
-        [[= BeforeEach{}]] void setup() { /* setup logic */ }
+        [[= before_each{}]] void setup() { /* setup logic */ }
     };
 
 CTest integration
@@ -177,9 +177,9 @@ CTest integration
 
 When running tests via CTest, **each test is executed in a separate process**. This means:
 
-* ``BeforeAll`` runs once *per test*, not once per test suite
-* ``AfterAll`` runs once *per test*, not once after all tests
-* ``BeforeEach`` and ``AfterEach`` behave the same as when running standalone
+* ``before_all`` runs once *per test*, not once per test suite
+* ``after_all`` runs once *per test*, not once after all tests
+* ``before_each`` and ``after_each`` behave the same as when running standalone
 
 This is a CTest characteristic, not an AnnoTest limitation. To use suite-level lifecycle hooks with guaranteed single execution, run the test executable directly rather than through CTest.
 
@@ -194,8 +194,8 @@ More Examples
 See the complete example gallery in :ref:`Getting Started <testing_example>`:
 
 * :doc:`/examples/basic` — basic tests, named tests, disabled tests
-* :doc:`/examples/lifecycle` — BeforeAll, BeforeEach, AfterEach, AfterAll hooks
-* :doc:`/examples/parameterized` — Parameterize with tuple
+* :doc:`/examples/lifecycle` — before_all, before_each, after_each, after_all hooks
+* :doc:`/examples/parameterized` — parameterize with tuple
 * :doc:`/examples/os_annotations` — RequiresOS and DisallowOS for platform-specific tests
 * :doc:`/examples/death_tests` — assertDeath and expectDeath for crash-testing
 * :doc:`/examples/contracts` — C++26 contract testing with assertContractViolation

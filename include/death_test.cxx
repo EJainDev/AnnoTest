@@ -49,7 +49,7 @@ export void assertDeath(auto func) {
 #if defined(__unix__) || defined(__APPLE__)
   auto result = runDeathTest(std::move(func));
   if (!result.died) {
-    throw Error("Assertion failed: expected process death, child " + result.detail);
+    throw assertion_error("Assertion failed: expected process death, child " + result.detail);
   }
 #else
 #warning "assertDeath not implemented for Windows"

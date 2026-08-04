@@ -18,7 +18,7 @@ Assertions and expectations verify conditions during tests. They differ in how t
      - Continues?
    * - **Assert**
      - ``assert*``
-     - Throws :cpp:class:`Error`
+     - Throws :cpp:class:`assertion_error`
      - Marks test **failed**, continues suite
    * - **Expect**
      - ``expect*``
@@ -31,7 +31,7 @@ Assertions and expectations verify conditions during tests. They differ in how t
 Assertions
 ----------
 
-Assertions verify that a condition holds. If an assertion fails, an :cpp:class:`Error` exception is thrown, the test case is marked as failed, and the library continues with the next test.
+Assertions verify that a condition holds. If an assertion fails, an :cpp:class:`assertion_error` exception is thrown, the test case is marked as failed, and the library continues with the next test.
 
 .. cpp:function:: void assertEqual(auto expected, auto actual)
 
@@ -128,7 +128,7 @@ Assertions verify that a condition holds. If an assertion fails, an :cpp:class:`
     .. code-block:: cpp
 
         // Catches any std::exception-derived exception
-        assertThrows([]() { throw std::runtime_error("error"); });
+        assertThrows([]() { throw std::runtime_error("assertion_error"); });
         assertThrows([]() { throw std::invalid_argument("bad"); });
 
         // For type-specific checking, use an explicit type
@@ -142,7 +142,7 @@ Assertions verify that a condition holds. If an assertion fails, an :cpp:class:`
 
         assertThrowsExact<std::runtime_error>([]() { throw std::runtime_error("exact"); });
         // The following would FAIL (different type, even if derived):
-        // assertThrowsExact<std::exception>([]() { throw std::runtime_error("error"); });
+        // assertThrowsExact<std::exception>([]() { throw std::runtime_error("assertion_error"); });
 
 .. cpp:function:: void assertNull(auto ptr)
 
@@ -182,7 +182,7 @@ Assertions verify that a condition holds. If an assertion fails, an :cpp:class:`
 Expectations
 ------------
 
-Expectations verify conditions that are **not** critical failures — if an expectation fails, the test is aborted and the library skips the remaining lines in that test case. An :cpp:class:`Abort` exception is thrown instead of :cpp:class:`Error`.
+Expectations verify conditions that are **not** critical failures — if an expectation fails, the test is aborted and the library skips the remaining lines in that test case. An :cpp:class:`Abort` exception is thrown instead of :cpp:class:`assertion_error`.
 
 .. cpp:function:: void expectEqual(auto expected, auto actual)
 

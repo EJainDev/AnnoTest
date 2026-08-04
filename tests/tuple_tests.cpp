@@ -5,14 +5,14 @@ import std;
 using namespace annotest;
 
 struct TupleTests {
-  [[= Test{}]] void CreateTuple() {
+  [[= test{}]] void CreateTuple() {
     auto t = tuple(42, 3.14, "hello");
     expectEqual(t.template get<0>(), 42);
     expectEqual(t.template get<1>(), 3.14);
     expectEqual(t.template get<2>(), "hello");
   }
 
-  [[= Test{}]] void TupleCat() {
+  [[= test{}]] void TupleCat() {
     auto t1 = tuple(1, 2);
     auto t2 = tuple(3.14, "world");
     auto t3 = tuple_cat(t1, t2);

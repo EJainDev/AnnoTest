@@ -39,7 +39,7 @@ struct DeathTestBasic {
 };
 
 /**
- * Section: expectDeath — same model, uses Abort instead of Error.
+ * Section: expectDeath — same model, uses Abort instead of assertion_error.
  */
 struct ExpectDeathDemo {
 #if defined(__unix__) || defined(__APPLE__)

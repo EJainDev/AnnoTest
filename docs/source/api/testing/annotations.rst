@@ -66,20 +66,20 @@ Annotations
 
     See also :ref:`basic example <example_gallery>`.
 
-.. cpp:struct:: BeforeEach
+.. cpp:struct:: before_each
 
     Annotates a function to be executed before **each** test in a test suite.
 
     .. note:: If this function throws an exception, the test is aborted.
 
-    .. important:: Only one function per suite may be annotated with ``BeforeEach``. If multiple are found, only the last one is used.
+    .. important:: Only one function per suite may be annotated with ``before_each``. If multiple are found, only the last one is used.
 
     .. code-block:: cpp
 
         struct FixtureTests {
             int counter = 0;
 
-            [[= BeforeEach{}]] void reset() { counter = 0; }
+            [[= before_each{}]] void reset() { counter = 0; }
 
             [[= Test{}]] void one() { ++counter; assertTrue(counter == 1); }
             [[= Test{}]] void two() { ++counter; ++counter; assertTrue(counter == 2); }
@@ -87,17 +87,17 @@ Annotations
 
     See also :ref:`lifecycle example <example_gallery>`.
 
-.. cpp:struct:: AfterEach
+.. cpp:struct:: after_each
 
     Annotates a function to be executed after **each** test in a test suite.
 
     .. note:: If this function throws an exception, only a warning is printed.
 
-    .. important:: Only one function per suite may be annotated with ``AfterEach``.
+    .. important:: Only one function per suite may be annotated with ``after_each``.
 
     See also :ref:`lifecycle example <example_gallery>`.
 
-.. cpp:struct:: BeforeAll
+.. cpp:struct:: before_all
 
     Annotates a function to be executed **once** before all tests in a test suite.
 
@@ -107,7 +107,7 @@ Annotations
 
     See also :ref:`lifecycle example <example_gallery>`.
 
-.. cpp:struct:: AfterAll
+.. cpp:struct:: after_all
 
     Annotates a function to be executed **once** after all tests in a test suite.
 
@@ -118,7 +118,7 @@ Annotations
 Utility Annotations
 ^^^^^^^^^^^^^^^^^^^
 
-.. cpp:struct:: Parameterize
+.. cpp:struct:: parameterize
 
     Annotates a test case to run with different sets of parameters. Each parameter set is executed as a sub-test.
 
@@ -126,7 +126,7 @@ Utility Annotations
 
     .. code-block:: cpp
 
-        [[= Test{}, = Parameterize{tuple(5), tuple(50)} ]]
+        [[= Test{}, = parameterize{tuple(5), tuple(50)} ]]
         void parameterized(int val) {
             assertTrue(val == 5 || val == 50);
         }
@@ -135,7 +135,7 @@ Utility Annotations
 
     .. code-block:: cpp
 
-        [[= Test{}, = Parameterize{tuple(2, 3), tuple(10, 20)} ]]
+        [[= Test{}, = parameterize{tuple(2, 3), tuple(10, 20)} ]]
         void add(int a, int b) {
             assertEqual(a + b, a + b);  // parameters injected in order
         }
@@ -200,7 +200,7 @@ Functions
 
 .. cpp:function:: template <typename... Ts> constexpr auto tuple(Ts... args)
 
-    Creates a compile-time tuple for use with :cpp:struct:`Parameterize`.
+    Creates a compile-time tuple for use with :cpp:struct:`parameterize`.
 
     .. code-block:: cpp
 

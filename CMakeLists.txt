@@ -10,6 +10,8 @@ project(
   VERSION 1.0.0.0
   LANGUAGES CXX)
 
+find_package(SerialXML REQUIRED)
+
 option(BUILD_TESTS "Enable building of tests" OFF)
 option(BUILD_EXAMPLES "Enable building of examples" ON)
 
@@ -45,10 +47,12 @@ target_sources(
          "${CMAKE_CURRENT_SOURCE_DIR}/include/test.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/posix.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/utils.cxx"
-         "${CMAKE_CURRENT_SOURCE_DIR}/include/contracts.cxx")
+         "${CMAKE_CURRENT_SOURCE_DIR}/include/contracts.cxx"
+         "${CMAKE_CURRENT_SOURCE_DIR}/include/logger.cxx")
 target_include_directories(
   annotest PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
                   $<INSTALL_INTERFACE:include>)
+target_link_libraries(annotest PUBLIC serial_xml::serial_xml)
 target_compile_features(annotest PUBLIC cxx_std_26)
 
 # Installation configuration

@@ -2,19 +2,19 @@
  * @example example02_lifecycle.cpp
  *
  * This example demonstrates the test lifecycle annotations:
- * - @cpp:struct[BeforeAll] — runs once before all tests
- * - @cpp:struct[BeforeEach] — runs before each individual test
- * - @cpp:struct[AfterEach] — runs after each individual test
- * - @cpp:struct[AfterAll] — runs once after all tests complete
+ * - @cpp:struct[before_all] — runs once before all tests
+ * - @cpp:struct[before_each] — runs before each individual test
+ * - @cpp:struct[after_each] — runs after each individual test
+ * - @cpp:struct[after_all] — runs once after all tests complete
  *
  * These are useful for:
- * - Setting up shared state (BeforeAll / AfterAll)
- * - Resetting per-test fixtures (BeforeEach / AfterEach)
+ * - Setting up shared state (before_all / after_all)
+ * - Resetting per-test fixtures (before_each / after_each)
  *
  * The execution order is:
- * 1. BeforeAll()
- * 2. (BeforeEach(), test(), AfterEach()) × N tests
- * 3. AfterAll()
+ * 1. before_all()
+ * 2. (before_each(), test(), after_each()) × N tests
+ * 3. after_all()
  */
 #include <annotest_contract.h>
 
@@ -26,42 +26,42 @@ using namespace annotest;
 
 /**
  * A counter shared across the entire test suite.
- * Demonstrates that BeforeAll/AfterAll run only once.
+ * Demonstrates that before_all/after_all run only once.
  */
 int call_count = 0;
 
 struct LifecycleTests {
   /**
-   * BeforeAll: called once, before the first test.
+   * before_all: called once, before the first test.
    * If this throws, the entire suite is aborted.
    */
-  [[= BeforeAll{}]] void setUp() {
+  [[= before_all{}]] void setUp() {
     call_count = 0;
-    std::cout << "[BeforeAll] Setup shared resources\n";
+    std::cout << "[before_all] Setup shared resources\n";
   }
 
   /**
-   * BeforeEach: called before every test.
+   * before_each: called before every test.
    * Resets the counter for each test.
    */
-  [[= BeforeEach{}]] void resetCounters() { call_count = 0; }
+  [[= before_each{}]] void resetCounters() { call_count = 0; }
 
   /**
-   * AfterEach: called after every test.
+   * after_each: called after every test.
    * If this throws, only a warning is printed (suite continues).
    */
-  [[= AfterEach{}]] void reportCounts() {
-    std::cout << "[AfterEach] counter = " << call_count << "\n";
+  [[= after_each{}]] void reportCounts() {
+    std::cout << "[after_each] counter = " << call_count << "\n";
   }
 
   /**
-   * AfterAll: called once, after the last test.
+   * after_all: called once, after the last test.
    * If this throws, only a warning is printed.
    */
-  [[= AfterAll{}]] void tearDown() { std::cout << "[AfterAll] Cleaning up shared resources\n"; }
+  [[= after_all{}]] void tearDown() { std::cout << "[after_all] Cleaning up shared resources\n"; }
 
   /**
-   * Demonstrates BeforeEach runs before this test.
+   * Demonstrates before_each runs before this test.
    */
   [[= Test{}]] void test_one() {
     ++call_count;
@@ -69,7 +69,7 @@ struct LifecycleTests {
   }
 
   /**
-   * Demonstrates BeforeEach runs before every test, including this one.
+   * Demonstrates before_each runs before every test, including this one.
    */
   [[= Test{}]] void test_two() {
     ++call_count;
@@ -78,7 +78,7 @@ struct LifecycleTests {
   }
 
   /**
-   * Demonstrates AfterEach runs after this test.
+   * Demonstrates after_each runs after this test.
    */
   [[= Test{}]] void test_three() {
     ++call_count;

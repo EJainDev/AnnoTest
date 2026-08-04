@@ -7,9 +7,9 @@
  * 1. @cpp:struct[Test] — basic test cases with named and anonymous tests
  * 2. @cpp:struct[Test<Name>] — custom test display names
  * 3. @cpp:struct[Test{.disabled}] — skipped tests
- * 4. @cpp:struct[BeforeEach] / @cpp:struct[AfterEach] — per-test lifecycle hooks
- * 5. @cpp:struct[BeforeAll] / @cpp:struct[AfterAll] — suite-level lifecycle hooks
- * 6. @cpp:struct[Parameterize] — parameterized tests with @cpp:func[tuple]
+ * 4. @cpp:struct[before_each] / @cpp:struct[after_each] — per-test lifecycle hooks
+ * 5. @cpp:struct[before_all] / @cpp:struct[after_all] — suite-level lifecycle hooks
+ * 6. @cpp:struct[parameterize] — parameterized tests with @cpp:func[tuple]
  * 7. @cpp:enum-class[OS] — @cpp:struct[RequiresOS] and @cpp:struct[DisallowOS]
  * 8. @cpp:func[assertEqual], @cpp:func[assertNotEqual], etc. — all assert functions
  * 9. @cpp:func[expectEqual], @cpp:func[expectNotEqual], etc. — all expect functions
@@ -64,26 +64,26 @@ struct FullSuite {
   int total_pushes = 0;
   std::vector<Stack> all_stacks;
 
-  [[= BeforeAll{}]] void before_all() {
+  [[= before_all{}]] void before_all() {
     total_pushes = 0;
-    std::cout << "[BeforeAll] Initializing test fixture\n";
+    std::cout << "[before_all] Initializing test fixture\n";
   }
 
-  [[= AfterAll{}]] void after_all() {
-    std::cout << "[AfterAll] Total pushes across all tests: " << total_pushes << "\n";
+  [[= after_all{}]] void after_all() {
+    std::cout << "[after_all] Total pushes across all tests: " << total_pushes << "\n";
   }
 
   // ─── Per-test lifecycle ──────────────────────────────────────────────
   Stack fixture;
 
-  [[= BeforeEach{}]] void setup() {
+  [[= before_each{}]] void setup() {
     fixture = Stack{};
     fixture.push(1);
     fixture.push(2);
     fixture.push(3);
   }
 
-  [[= AfterEach{}]] void teardown() { all_stacks.push_back(std::move(fixture)); }
+  [[= after_each{}]] void teardown() { all_stacks.push_back(std::move(fixture)); }
 
   // ─── Basic tests ─────────────────────────────────────────────────────
   [[= Test<"stack is not empty after push">{}]] void basic_not_empty() {
@@ -118,7 +118,7 @@ struct FullSuite {
     assertGreater(10, 1);
     assertGreaterEqual(10, 10);
 
-    // Container
+    // Suite
     std::vector<int> nums{1, 2, 3, 4, 5};
     assertContains(nums, 3);
 
@@ -128,7 +128,7 @@ struct FullSuite {
 
   // ─── Expect functions ────────────────────────────────────────────────
   [[= Test<"all expect functions">{}]] void all_expects() {
-    // These use Abort instead of Error — test continues on failure
+    // These use Abort instead of assertion_error — test continues on failure
     expectEqual(3, 3);
     expectNotEqual(3, 4);
     expectTrue(true);
@@ -161,7 +161,7 @@ struct FullSuite {
   // ─── Parameterized tests ─────────────────────────────────────────────
   [[
     = Test<"parameterized push/pop">{},
-    = Parameterize{tuple(1, 1), tuple(100, 100), tuple(-50, -50)}
+    = parameterize{tuple(1, 1), tuple(100, 100), tuple(-50, -50)}
   ]] void push_pop(int push_val, int expect_pop) {
     Stack s;
     s.push(push_val);
@@ -170,7 +170,7 @@ struct FullSuite {
   }
 
   [[ = Test<"parameterized size">{},
-     = Parameterize{tuple(0), tuple(1), tuple(10)} ]] void push_n(int n) {
+     = parameterize{tuple(0), tuple(1), tuple(10)} ]] void push_n(int n) {
     Stack s;
     for (int i = 0; i < n; ++i) {
       s.push(i);

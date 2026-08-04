@@ -36,16 +36,16 @@ Section 2 — **Suite-level lifecycle hooks**
    int total_pushes = 0;
    std::vector<Stack> all_stacks;
 
-   [[= BeforeAll{}]] void before_all() {
+   [[= before_all{}]] void before_all() {
      total_pushes = 0;
-     std::cout << "[BeforeAll] Initializing test fixture\n";
+     std::cout << "[before_all] Initializing test fixture\n";
    }
 
-   [[= AfterAll{}]] void after_all() {
-     std::cout << "[AfterAll] Total pushes across all tests: " << total_pushes << "\n";
+   [[= after_all{}]] void after_all() {
+     std::cout << "[after_all] Total pushes across all tests: " << total_pushes << "\n";
    }
 
-Shared state declared as struct members. ``BeforeAll``/``AfterAll`` run once for the entire suite.
+Shared state declared as struct members. ``before_all``/``after_all`` run once for the entire suite.
 
 Section 3 — **Per-test lifecycle hooks**
 
@@ -53,18 +53,18 @@ Section 3 — **Per-test lifecycle hooks**
 
    Stack fixture;
 
-   [[= BeforeEach{}]] void setup() {
+   [[= before_each{}]] void setup() {
      fixture = Stack{};
      fixture.push(1);
      fixture.push(2);
      fixture.push(3);
    }
 
-   [[= AfterEach{}]] void teardown() {
+   [[= after_each{}]] void teardown() {
      all_stacks.push_back(std::move(fixture));
    }
 
-BeforeEach resets a Stack fixture with 3 elements. AfterEach saves it for later inspection.
+before_each resets a Stack fixture with 3 elements. after_each saves it for later inspection.
 
 Section 4 — **Basic tests with named and disabled cases**
 
@@ -152,7 +152,7 @@ Section 8 — **Parameterized tests**
 
 .. code-block:: cpp
 
-   [[= Test{"parameterized push/pop"}, = Parameterize{
+   [[= Test{"parameterized push/pop"}, = parameterize{
         tuple(1, 1), tuple(100, 100), tuple(-50, -50)
    }]]
    void push_pop(int push_val, int expect_pop) {
@@ -199,7 +199,7 @@ Section 10 — **Death tests**
      expectDeath([]() { std::abort(); });
    }
 
-Unix/macOS only. assertDeath uses Error; expectDeath uses Abort.
+Unix/macOS only. assertDeath uses assertion_error; expectDeath uses Abort.
 
 Section 11 — **Contract testing**
 

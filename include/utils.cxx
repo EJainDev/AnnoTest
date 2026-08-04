@@ -18,14 +18,54 @@ struct is_instantiation_of<Template, T&> : is_instantiation_of<Template, T> {};
 template <template <typename...> class Template, typename T>
 struct is_instantiation_of<Template, T&&> : is_instantiation_of<Template, T> {};
 
-template <typename T>
-consteval auto getNonstaticDataMembers() {
-  return std::meta::nonstatic_data_members_of(^^T, std::meta::access_context::current());
-}
+template <std::integral T>
+constexpr std::string to_string(T value) {
+  if (value == 0) {
+    return "0";
+  }
 
-template <typename T>
-consteval auto getMembers() {
-  return std::meta::members_of(^^T, std::meta::access_context::current());
+  // Handle INT_MIN safely to prevent undefined behavior overflow
+  using UnsignedT = std::make_unsigned_t<T>;
+  UnsignedT abs_value = 0;
+  bool is_negative = false;
+
+  if constexpr (std::is_signed_v<T>) {
+    if (value < 0) {
+      is_negative = true;
+      // Cast to unsigned before negating avoids overflow on INT_MIN
+      abs_value = static_cast<UnsignedT>(0) - static_cast<UnsignedT>(value);
+    } else {
+      abs_value = static_cast<UnsignedT>(value);
+    }
+  } else {
+    abs_value = value;
+  }
+
+  // Calculate required buffer size
+  std::size_t size = 0;
+  UnsignedT temp = abs_value;
+  while (temp > 0) {
+    size++;
+    temp /= 10;
+  }
+  if (is_negative) {
+    size++;
+  }
+
+  // Populate the string from right to left
+  std::string result(size, '\0');
+  std::size_t index = size - 1;
+
+  while (abs_value > 0) {
+    result[index--] = static_cast<char>('0' + (abs_value % 10));
+    abs_value /= 10;
+  }
+
+  if (is_negative) {
+    result[0] = '-';
+  }
+
+  return std::define_static_string(result);
 }
 
 consteval auto getAnnotations(std::meta::info member) { return std::meta::annotations_of(member); }
@@ -40,41 +80,6 @@ constexpr std::string enum_to_string(E value) {
   }
 
   return "<invalid enum value>";
-}
-
-export template <typename T>
-constexpr std::string format(const T& value) {
-  if constexpr (std::is_class_v<T>) {
-    std::string str;
-    if constexpr (std::meta::has_identifier(^^T)) {
-      str = std::string(std::meta::identifier_of(^^T)) + " { ";
-    } else {
-      str = "object { ";
-    }
-    static constexpr auto data_members = std::define_static_array(getNonstaticDataMembers<T>());
-    template for (constexpr auto m : data_members) {
-      str += std::string(std::meta::identifier_of(m)) + ": " + format(value.[:m:]) + ", ";
-    }
-    str += "}";
-    return str;
-  } else if constexpr (std::is_enum_v<T>) {
-    return enum_to_string(value);
-  } else if constexpr (std::is_same_v<T, std::source_location>) {
-    return std::format("file {} {}:{} in function {}", value.file_name(), value.line(),
-                       value.column(), value.function_name());
-  } else {
-    if constexpr (std::is_pointer_v<T>) {
-      if (value == nullptr) {
-        return "nullptr";
-      } else {
-        return std::format("{:#x}", reinterpret_cast<std::uintptr_t>(value));
-      }
-    } else if constexpr (std::is_same_v<T, std::nullptr_t>) {
-      return "nullptr";
-    } else {
-      return std::format("{}", value);
-    }
-  }
 }
 
 }  // namespace annotest

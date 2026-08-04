@@ -176,6 +176,6 @@ struct tuple_size<::annotest::tuple<Ts...>>
 
 template <std::size_t I, typename... Ts>
 struct tuple_element<I, ::annotest::tuple<Ts...>> {
-  using type = decltype(::annotest::tuple<Ts...>::template get<I>());
+  using type = Ts...[I];
 };
 }  // namespace std

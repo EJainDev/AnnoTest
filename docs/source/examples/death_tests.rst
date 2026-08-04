@@ -41,7 +41,7 @@ Section 3 — **expectDeath**
      expectDeath([]() { throw std::runtime_error("oops"); });
    }
 
-Behaves the same as ``assertDeath``, but throws :cpp:class:`Abort` instead of :cpp:class:`Error` on failure (aborts current test, continues suite).
+Behaves the same as ``assertDeath``, but throws :cpp:class:`Abort` instead of :cpp:class:`assertion_error` on failure (aborts current test, continues suite).
 
 Section 4 — **Surviving process — failure case**
 
