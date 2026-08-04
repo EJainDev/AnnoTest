@@ -151,7 +151,6 @@ consteval bool not_has_required_parameter() {
 bool run_before_each(const auto& func) {
   try {
     func();
-  } catch (const error& e) {
   } catch (const std::exception& e) {
     std::println("before_each function failed with exception: {}", e.what());
     return false;
@@ -186,8 +185,9 @@ int run_parameterized_test(auto s, int parameterize_target_idx) pre(parameterize
     static constexpr auto args_tuple = parameterize_struct.parameters.template get<i>();
     static constexpr auto [... args] = args_tuple;
 
+    static constexpr auto test_name = Test.name;
     active_test_instance = active_test{
-        .name = std::format("{}.{}({})", std::meta::identifier_of(Suite), Test.name, args_tuple)};
+        .name = std::format("{}.{}({})", std::meta::identifier_of(Suite), test_name, args_tuple)};
 
     if (parameterize_target_idx > 1) {
       if (i != parameterize_target_idx) {
@@ -211,9 +211,6 @@ int run_parameterized_test(auto s, int parameterize_target_idx) pre(parameterize
         throw assertion_error("Contract violation occurred during test execution");
       }
     } catch (const assertion_error& e) {
-      active_test_instance.catch_exception(e);
-      status_code = 1;
-    } catch (const error& e) {
       active_test_instance.catch_exception(e);
       status_code = 1;
     } catch (const std::exception& e) {

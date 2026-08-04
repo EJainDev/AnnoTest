@@ -30,21 +30,4 @@ class assertion_error {
   std::string message_;
   std::stacktrace stacktrace_ = std::stacktrace::current();
 };
-
-// Intended to be used by the user to add a stacktrace to an exception and throw it. It is a
-// container for an exception, not an exception itself. Although user code may already have a
-// stacktrace, the library cannot identify that, so this wrapper must be used.
-template <typename E>
-class error {
- public:
-  error(const E& error, const std::stacktrace& stacktrace)
-      : error_(error), stacktrace_(stacktrace) {}
-
-  const E& exception() const { return error_; }
-  const std::stacktrace& stacktrace() const { return stacktrace_; }
-
- private:
-  E error_;
-  std::stacktrace stacktrace_;
-};
 }  // namespace annotest

@@ -1,9 +1,9 @@
-module annotest:asserts;
+export module annotest:asserts;
 
 import :exceptions;
 import :contracts;
 import :utils;
-import :logger;
+// import :logger;
 
 import std;
 
@@ -86,8 +86,8 @@ void assertThrows(auto func) {
   }
 }
 
-template <typename E>
-void assertThrowsExact(auto f, auto&&... args)
+template <typename E, typename... Args>
+void assertThrowsExact(auto f, Args&&... args)
   requires(std::is_invocable_v<decltype(f), decltype(args)...>)
 {
   try {

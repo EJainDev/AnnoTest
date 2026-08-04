@@ -1,5 +1,3 @@
-module;
-#include <chrono>
 export module annotest:logger;
 
 import std;
@@ -42,13 +40,6 @@ struct active_test {
     failed = true;
   }
 
-  template <typename E>
-  void catch_exception(const error<E>& e) {
-    end();
-    uncaught_error = e.exception();
-    failure_trace = e.stacktrace();
-    failed = true;
-  }
   void catch_exception() {
     end();
     failed = true;
@@ -201,30 +192,31 @@ class logger {
   void consume() { tests.emplace_back(std::move(active_test_instance)); }
 
   std::string write() {
-    std::string result;
-    if (log_format == log_formats::txt) {
-      for (const auto& test : tests) {
-        result += std::format("{}\n", test);
-      }
-    } else if (log_format == log_formats::json) {
-      result += std::format("{{\n  \"tests\": [\n");
-      for (std::size_t i = 0; i < tests.size(); ++i) {
-        result += std::format("    {}", tests[i]);
-        if (i < tests.size() - 1) {
-          result += ",\n";
-        } else {
-          result += "\n";
-        }
-      }
-      result += "  ]\n}";
-    } else if (log_format == log_formats::xml) {
-      result += std::format("<tests>\n");
-      for (const auto& test : tests) {
-        result += std::format("  {}\n", test);
-      }
-      result += "</tests>";
-    }
-    return result;
+    // std::string result;
+    // if (log_format == log_formats::txt) {
+    //   for (const auto& test : tests) {
+    //     result += std::format("{}\n", test);
+    //   }
+    // } else if (log_format == log_formats::json) {
+    //   result += std::format("{{\n  \"tests\": [\n");
+    //   for (std::size_t i = 0; i < tests.size(); ++i) {
+    //     result += std::format("    {}", tests[i]);
+    //     if (i < tests.size() - 1) {
+    //       result += ",\n";
+    //     } else {
+    //       result += "\n";
+    //     }
+    //   }
+    //   result += "  ]\n}";
+    // } else if (log_format == log_formats::xml) {
+    //   result += std::format("<tests>\n");
+    //   for (const auto& test : tests) {
+    //     result += std::format("  {}\n", test);
+    //   }
+    //   result += "</tests>";
+    // }
+    // return result;
+    return "";
   }
 
  private:
@@ -232,28 +224,6 @@ class logger {
 };
 
 enum class failure_types { assertion, expectation, uncaught_exception, unknown };
-
-template <>
-struct std::formatter<failure_types> : std::formatter<std::string> {
-  constexpr auto format(const failure_types& type, auto& ctx) const {
-    std::string type_str;
-    switch (type) {
-      case failure_types::assertion:
-        type_str = "assertion";
-        break;
-      case failure_types::expectation:
-        type_str = "expectation";
-        break;
-      case failure_types::uncaught_exception:
-        type_str = "uncaught_exception";
-        break;
-      case failure_types::unknown:
-        type_str = "unknown";
-        break;
-    }
-    return std::formatter<std::string>::format(type_str, ctx);
-  }
-};
 
 struct failure_xml_log {
   [[= xml::attribute]] failure_types type;
@@ -281,6 +251,30 @@ struct[[= xml::name{"testsuite"}]] xml_log {
   [[= xml::attribute]] std::size_t disabled;
   [[= xml::attribute]] std::chrono::milliseconds time;
 
-  [[= xml::unpack{"testcase"}]] std::vector<test_xml_log> testcases;
-}
+  [[= xml::iter{"testcase", "testcases"}]] std::vector<test_xml_log> testcases;
+};
 }  // namespace annotest
+
+namespace std {
+template <>
+struct formatter<annotest::failure_types> : formatter<std::string> {
+  constexpr auto format(const annotest::failure_types& type, auto& ctx) const {
+    std::string type_str;
+    switch (type) {
+      case annotest::failure_types::assertion:
+        type_str = "assertion";
+        break;
+      case annotest::failure_types::expectation:
+        type_str = "expectation";
+        break;
+      case annotest::failure_types::uncaught_exception:
+        type_str = "uncaught_exception";
+        break;
+      case annotest::failure_types::unknown:
+        type_str = "unknown";
+        break;
+    }
+    return formatter<std::string>::format(type_str, ctx);
+  }
+};
+}  // namespace std
