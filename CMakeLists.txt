@@ -44,7 +44,6 @@ target_sources(
          FILES
          "${CMAKE_CURRENT_SOURCE_DIR}/include/CLI11.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/structs.cxx"
-         "${CMAKE_CURRENT_SOURCE_DIR}/include/tuple.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/exceptions.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/asserts.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/expects.cxx"

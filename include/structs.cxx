@@ -1,10 +1,14 @@
 
 export module annotest:structs;
 
-import :tuple;
 import :utils;
 
 import std;
+
+import structural_tuple;
+
+template <typename... Ts>
+using tuple = structural_tuple::tuple<Ts...>;
 
 namespace annotest {
 export enum class OS {
@@ -59,7 +63,7 @@ struct parameters {
 
     template for (constexpr auto i : std::make_index_sequence<sizeof...(Us)>{}) {
       result.params.template get<i>() =
-          parameters{tuple_cat(params, tuple{other.params.template get<i>()})};
+          parameters{structural_tuple::tuple_cat(params, tuple{other.params.template get<i>()})};
     }
 
     return result;
@@ -78,8 +82,8 @@ struct parameterize {
   constexpr parameterize(tuple<Params...> args) : parameters{args} {}
   constexpr parameterize(Params... args) : parameters{tuple{args...}} {}
 
-  template <tuple_t... Us>
-  constexpr parameterize(Us... args) : parameters{tuple_cat(args...)} {}
+  template <structural_tuple::tuple_t... Us>
+  constexpr parameterize(Us... args) : parameters{structural_tuple::tuple_cat(args...)} {}
 };
 
 export template <typename... Ts>
@@ -103,9 +107,12 @@ export template <template_params_t... Args>
 struct parameterize_template {
   static constexpr std::size_t N = sizeof...(Args);
 
-  template <tuple_t... Ts>
+  template <structural_tuple::tuple_t... Ts>
   consteval static auto of() {
-    return typename[:std::meta::substitute(^^parameterize_template, get_all_types<Ts...>()):]{};
+    static constexpr auto TupleT = ^^structural_tuple::tuple_cat_t<Ts...>;
+    return typename[:std::meta::substitute(
+                         ^^parameterize_template,
+                         std::meta::template_arguments_of(std::meta::dealias(TupleT))):]{};
   }
 };
 
@@ -126,8 +133,8 @@ struct parameterize_dual {
   constexpr parameterize_dual(tuple<Pairs...> args) : sets{args} {}
   constexpr parameterize_dual(Pairs... args) : sets{tuple{args...}} {}
 
-  template <tuple_t... Ts>
-  constexpr parameterize_dual(Ts... args) : sets{tuple_cat(args...)} {}
+  template <structural_tuple::tuple_t... Ts>
+  constexpr parameterize_dual(Ts... args) : sets{structural_tuple::tuple_cat(args...)} {}
 };
 
 export template <int N>

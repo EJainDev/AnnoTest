@@ -1,6 +1,5 @@
 export module annotest;
 
-export import :tuple;
 export import :contracts;
 export import :exceptions;
 export import :asserts;
@@ -11,9 +10,13 @@ export import :utils;
 export import :structs;
 export import :logger;
 
-import CLI11;
-
 import std;
+
+import CLI11;
+import structural_tuple;
+
+template <typename... Ts>
+using tuple = structural_tuple::tuple<Ts...>;
 
 namespace annotest {
 // Helper function to call a test with all the parameters in a tuple
