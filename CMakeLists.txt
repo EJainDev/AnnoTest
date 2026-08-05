@@ -56,7 +56,7 @@ target_sources(
 target_include_directories(
   annotest PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
                   $<INSTALL_INTERFACE:include>)
-target_link_libraries(annotest PUBLIC serial_xml::serial_xml)
+target_link_libraries(annotest PUBLIC serial_xml::serial_xml stdc++exp)
 target_compile_features(annotest PUBLIC cxx_std_26)
 
 # Installation configuration
