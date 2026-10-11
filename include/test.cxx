@@ -28,6 +28,15 @@ consteval auto get_tests() {
 
   suite_test result;
   result.suite = Suite;
+  result.name = std::define_static_string(std::meta::identifier_of(Suite));
+  template for (constexpr auto a : std::define_static_array(std::meta::annotations_of(Suite))) {
+    if constexpr (std::meta::has_template_arguments(std::meta::type_of(a)) &&
+                  std::meta::template_of(std::meta::type_of(a)) == ^^suite) {
+      constexpr auto info = std::meta::extract<typename[:std::meta::type_of(a):]>(a);
+      result.disabled = info.disabled;
+      if (!info.is_empty()) result.name = std::define_static_string(std::string_view(info.name));
+    }
+  }
 
   std::vector<internal_test> children;
   children.reserve(members.size());
@@ -65,7 +74,7 @@ consteval auto get_tests() {
           }
 
           auto test_info = std::meta::extract<typename[:std::meta::type_of(a):]>(a);
-          current_test.disabled = test_info.disabled;
+          current_test.disabled = result.disabled || test_info.disabled;
 
           current_test.name = !test_info.is_empty()
                                   ? std::define_static_string(std::string_view(test_info.name))
@@ -347,6 +356,7 @@ export template <typename T>
 int run_tests(int argc, char** argv) {
   static constexpr auto discovery = get_tests<^^T>();
   static constexpr auto Suite = discovery.suite;
+  static constexpr auto suite_name = Suite.name;
   static constexpr auto Children = discovery.tests;
   static constexpr auto plan = []() consteval {
     std::array<discovered_test, Children.size()> entries{};
@@ -360,20 +370,18 @@ int run_tests(int argc, char** argv) {
   auto options = parse_options(argc, argv);
   if (options.should_exit) return options.exit_code;
   if (options.list_tests) {
-    list_tests(std::meta::identifier_of(^^T), plan);
+    list_tests(suite_name, plan);
     return 0;
   }
   auto remaining_names = options.test_names;
   static constexpr auto source_location = std::meta::source_location_of(^^T);
-  auto start = begin_suite(std::meta::identifier_of(^^T), source_location.file_name(),
-                           !options.test_names.empty());
+  auto start = begin_suite(suite_name, source_location.file_name(), !options.test_names.empty());
   typename[:Suite.suite:] s;
   test_callback before = nullptr;
   test_callback after = nullptr;
   if constexpr (Suite.has_before_each) before = invoke_test_method<Suite.before_each, T>;
   if constexpr (Suite.has_after_each) after = invoke_test_method<Suite.after_each, T>;
-  return execute_suite(&s, std::meta::identifier_of(^^T), plan, options, remaining_names, start,
-                       before, after);
+  return execute_suite(&s, suite_name, plan, options, remaining_names, start, before, after);
 }
 
 }  // namespace annotest

@@ -82,7 +82,8 @@ target_sources(
          "${CMAKE_CURRENT_SOURCE_DIR}/include/utils.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/contracts.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/logger.cxx")
-target_sources(annotest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/runner.cxx")
+target_sources(annotest
+               PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/runner.cxx")
 target_include_directories(
   annotest PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
                   $<INSTALL_INTERFACE:include>)

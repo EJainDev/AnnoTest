@@ -59,21 +59,40 @@ struct parameters {
 
   template <typename... Us>
   constexpr tuple<parameters<Ts..., Us>...> cross(const parameters<Us...>& other) const {
-    return [&]<std::size_t... Is>(std::index_sequence<Is...>) {
-      return [&]<std::size_t... Js>(std::index_sequence<Js...>) {
-        auto append = [&]<std::size_t J>() {
-          return parameters<Ts..., Us... [J]> {
-            params.template get<Is>()..., other.params.template get<J>()
+    if constexpr (sizeof...(Us) == 0) {
+      return tuple<>{};
+    } else {
+      return [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+        return [&]<std::size_t... Js>(std::index_sequence<Js...>) {
+          auto append = [&]<std::size_t J>() {
+            return parameters<Ts..., Us... [J]> {
+              params.template get<Is>()..., other.params.template get<J>()
+            };
           };
-        };
-        return tuple{append.template operator()<Js>()...};
-      }(std::make_index_sequence<sizeof...(Us)>{});
-    }(std::make_index_sequence<sizeof...(Ts)>{});
+          return tuple{append.template operator()<Js>()...};
+        }(std::make_index_sequence<sizeof...(Us)>{});
+      }(std::make_index_sequence<sizeof...(Ts)>{});
+    }
   }
 };
 
 template <typename T>
 concept parameters_t = is_instantiation_of<parameters, T>::value;
+
+// Construct concatenated values directly. StructuralTuple's tuple_cat first
+// default-constructs its elements, which parameters and parameterize_pair cannot do.
+template <structural_tuple::tuple_t T>
+constexpr auto as_std_tuple(const T& values) {
+  return [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+    return std::tuple{values.template get<Is>()...};
+  }(std::make_index_sequence<T::size()>{});
+}
+
+template <structural_tuple::tuple_t... Ts>
+constexpr auto concatenate_tuples(const Ts&... values) {
+  return std::apply([](auto... elements) { return tuple{elements...}; },
+                    std::tuple_cat(as_std_tuple(values)...));
+}
 
 export template <parameters_t... Params>
 struct parameterize {
@@ -85,7 +104,7 @@ struct parameterize {
   constexpr parameterize(Params... args) : parameters{tuple{args...}} {}
 
   template <structural_tuple::tuple_t... Us>
-  constexpr parameterize(Us... args) : parameters{structural_tuple::tuple_cat(args...)} {}
+  constexpr parameterize(Us... args) : parameters{concatenate_tuples(args...)} {}
 };
 
 export template <typename... Ts>
@@ -111,10 +130,9 @@ struct parameterize_template {
 
   template <structural_tuple::tuple_t... Ts>
   consteval static auto of() {
-    static constexpr auto TupleT = ^^structural_tuple::tuple_cat_t<Ts...>;
-    return typename[:std::meta::substitute(
-                         ^^parameterize_template,
-                         std::meta::template_arguments_of(std::meta::dealias(TupleT))):]{};
+    using combined = structural_tuple::tuple_cat_t<Ts...>;
+    return typename[:std::meta::substitute(^^annotest::parameterize_template,
+                                           combined::types_refl):]{};
   }
 };
 
@@ -136,7 +154,7 @@ struct parameterize_dual {
   constexpr parameterize_dual(Pairs... args) : sets{tuple{args...}} {}
 
   template <structural_tuple::tuple_t... Ts>
-  constexpr parameterize_dual(Ts... args) : sets{structural_tuple::tuple_cat(args...)} {}
+  constexpr parameterize_dual(Ts... args) : sets{concatenate_tuples(args...)} {}
 };
 
 export template <int N>
@@ -185,6 +203,8 @@ struct internal_test {
 
 struct suite_test {
   std::meta::info suite;
+  const char* name = nullptr;
+  bool disabled = false;
 
   bool has_before_each = false;
   std::meta::info before_each = ^^int;
