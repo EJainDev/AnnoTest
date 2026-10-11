@@ -69,16 +69,6 @@ struct ParameterizationTests {
     assert_true(n > 0);
   }
 
-  template <typename T = int>
-  [[ = test{}, = parameterize_template<>{} ]] void empty_types() {
-    assert_true(false);
-  }
-
-  template <typename T = int>
-  [[ = test{}, = parameterize_dual{} ]] void empty_dual(T) {
-    assert_true(false);
-  }
-
   int invocation = 0;
   [[= before_each{}]] void setup() { std::println("setup {}", ++invocation); }
   [[= after_each{}]] void cleanup() { std::println("cleanup {}", invocation); }
@@ -107,8 +97,6 @@ struct ParameterizationTests {
   [[ = test{}, = parameterize{parameters(), parameters()} ]] void no_arguments() {
     std::println("empty arguments");
   }
-
-  [[ = test{}, = parameterize{} ]] void empty() { assert_true(false); }
 
   template <typename T = int>
   [[ = test{}, = parameterize_template<template_params<int>, template_params<double>>{} ]] void

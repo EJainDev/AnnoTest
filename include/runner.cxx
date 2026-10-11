@@ -471,10 +471,8 @@ int execute_suite(void* context, std::string_view suite_name,
       } else if (test.body) {
         if (execute_test(context, test_name, test.body, before, after) == 1) status_code = 1;
       } else {
-        std::println(
-            "Warning: test `{}` did not execute because it has required arguments that were not "
-            "given via a parameterization annotation.",
-            test_name);
+        std::println(std::cerr, "Error: test `{}` has no runnable callback", full_name);
+        status_code = 1;
       }
     }
   }

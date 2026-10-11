@@ -134,7 +134,10 @@ the assertion, and the runner still executes `later_test`.
 Use `[[= test<"custom name">{}]]` to name a method, or
 `[[= test{.disabled = true}]]` to disable it. A suite can likewise use
 `struct [[= suite<"custom suite">{}]] MyTests` or `suite{.disabled = true}`.
-Test and hook methods must be public.
+Test and hook methods must be public. Inaccessible or deleted annotated methods,
+hooks with required arguments, tests missing parameterization, empty parameter
+sets, duplicate display names, and names with tabs or line breaks are rejected
+at compile time. Private unannotated helpers and fixture data are allowed.
 
 `before_each` and `after_each` run around each executed test, including each
 parameterized instance. One suite object is created per `run_tests` call, so member
@@ -302,8 +305,13 @@ assertions, parameterization, contracts and CTest discovery. CI also runs it wit
 non-default include and library directories.
 
 The discovery helper runs the built executable with `--list` and registers each case
-in CTest. Use simple names containing letters, digits, underscores, hyphens, or spaces;
-names with CMake-special characters are not handled robustly by this helper.
+in CTest. Discovery failures are build errors: a failed or timed-out `--list`, malformed or
+empty output, and duplicate case names cannot produce a successful manifest.
+CTest reports missing executables and manifests with a build instruction. Quotes,
+semicolons, dollar signs, brackets, and surrounding spaces in names are preserved.
+Set `annotest_discover_tests(my_tests DISCOVERY_TIMEOUT 60)` to change the default
+30-second listing timeout. Multi-config generators require `ctest -C Debug` or
+`-C Release` and keep each configuration's discovery separate.
 
 ## Documentation and contributing
 

@@ -53,7 +53,6 @@ struct[[= suite{}]] AnnotationTests {
      = parameterize{parameters(1), parameters(2)} ]] void required_values(int) {
     assert_true(false);
   }
-  [[= test{}]] void required_argument(int) { assert_true(false); }
   [[ = UnrelatedTemplateAnnotation{}, = test{} ]] void unrelated_before_test() {
     std::println("unrelated before");
   }
@@ -65,7 +64,7 @@ struct[[= suite{}]] AnnotationTests {
   [[= requires_os{current_os}]] void os_without_test() { assert_true(false); }
 
  private:
-  [[= test{}]] void inaccessible() { assert_true(false); }
+  void inaccessible() { assert_true(false); }
 };
 
 struct UnrelatedAnnotation {};

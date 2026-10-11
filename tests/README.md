@@ -41,7 +41,8 @@ that both success and failure behavior match expectations.
 | `utility_tests.cpp` | Enum formatting, invalid values, and the shipped CMake discovery helper |
 | `integration/test_cli.py` | Long/short/grouped/attached/repeated CLI options, filtering, unknown names, malformed arguments, help/list, and terminator |
 | `integration/test_reporting.py` | XML totals, timings, timestamp, source file, failure types, escaping, stdout/stderr including C stdio and large writes, capture isolation, report overwrites, file errors, and repeated-run reset |
-| `compile_fail/*.cpp`, `expect_compile_failure.cmake` | Rejection of duplicate lifecycle hooks and test/lifecycle combinations in both annotation orders; `assertion_error` remains inaccessible to importers |
+| `compile_fail/*.cpp`, `expect_compile_failure.cmake` | Rejection of duplicate lifecycle hooks, incompatible annotations, inaccessible/deleted methods, missing arguments, empty parameterizations, duplicate names, and line breaks; `assertion_error` remains inaccessible to importers |
+| `discovery_fixture.cpp`, `integration/test_discovery.py` | Failed/empty/malformed listings, timeouts, stale manifest removal, missing builds, invalid targets/options, special names and executable paths, CRLF, and separate multi-config manifests |
 
 CTest compile-failure cases are serialized because each invokes the build
 system. They require a diagnostic from the annotation validator, not merely a

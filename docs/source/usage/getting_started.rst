@@ -29,7 +29,10 @@ public methods with ``test``, and forward the command line to ``run_tests``:
 
 ``run_tests`` constructs one suite instance per call. Public static and const
 methods are supported too. Test methods with required arguments need a
-parameterization annotation. Named tests use ``test<"custom name">{}``; suites
+parameterization annotation. Inaccessible or deleted annotated methods, missing
+arguments, empty parameterizations, duplicate names, and names with tabs or line
+breaks are compile-time errors. Private unannotated helpers remain allowed.
+Named tests use ``test<"custom name">{}``; suites
 can use ``suite<"custom suite">{}`` and can be disabled.
 
 .. _design_decisions:
@@ -79,6 +82,19 @@ write failures return 1; successful runs return 0.
 registers each case with CTest. Each selected case runs in its own process, with
 its own suite instance and per-test hooks. Running the executable directly
 runs the suite in a single process.
+
+Discovery fails the build if listing fails, times out, is malformed, contains
+no cases, or repeats a fully qualified name. CTest fails visibly if the executable
+or discovery manifest is missing, with an instruction to build the target.
+Quotes, semicolons, brackets, dollar signs, and surrounding spaces in names are
+preserved. ``DISCOVERY_TIMEOUT`` accepts a positive integer in seconds:
+
+.. code-block:: cmake
+
+    annotest_discover_tests(my_tests DISCOVERY_TIMEOUT 60)
+
+The default timeout is 30 seconds. Multi-config generators use separate manifests;
+select a configuration with ``ctest -C Debug`` or ``ctest -C Release``.
 
 Reports and platform behavior
 -----------------------------

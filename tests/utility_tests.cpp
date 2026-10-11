@@ -6,6 +6,9 @@ enum class Colour { red = -1, blue = 3, green = 10 };
 enum Plain { first, second };
 
 struct UtilityTests {
+  [[= test<"quoted \"name\"; $ [=[ ]=] and trailing.">{}]] void special_name() {
+    assert_true(true);
+  }
   [[= test<"named enum">{}]] void named() {
     assert_equal(std::string{"Linux"}, enum_to_string(OS::Linux));
   }

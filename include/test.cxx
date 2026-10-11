@@ -21,11 +21,20 @@ struct suite_discovery {
   std::span<const internal_test> tests;
 };
 
+template <std::meta::info func>
+consteval bool not_has_required_parameter() {
+  for (auto arg : std::meta::parameters_of(func)) {
+    if (!std::meta::has_default_argument(arg)) return false;
+  }
+
+  return true;
+}
+
 // Gets all required information from the testing class
 template <std::meta::info Suite>
 consteval auto get_tests() {
   static constexpr auto members = std::define_static_array(
-      std::meta::members_of(Suite, std::meta::access_context::unprivileged()));
+      std::meta::members_of(Suite, std::meta::access_context::unchecked()));
 
   suite_test result;
   result.suite = Suite;
@@ -39,6 +48,9 @@ consteval auto get_tests() {
     }
   }
 
+  if (std::string_view(result.name).find_first_of("\r\n\t") != std::string_view::npos) {
+    throw std::logic_error("Suite names must not contain tabs or line breaks");
+  }
   std::vector<internal_test> children;
   children.reserve(members.size());
 
@@ -128,22 +140,44 @@ consteval auto get_tests() {
         }
       }
 
+      if (test_found || lifecycle_found) {
+        if (!std::meta::is_public(m)) {
+          throw std::logic_error(
+              std::format("Annotated test and lifecycle methods must be public: {}",
+                          std::meta::identifier_of(m)));
+        }
+        if (std::meta::is_deleted(member)) {
+          throw std::logic_error(std::format("Annotated methods must not be deleted: {}",
+                                             std::meta::identifier_of(m)));
+        }
+        if (lifecycle_found && !not_has_required_parameter<member>()) {
+          throw std::logic_error(std::format("Lifecycle hooks must not have required arguments: {}",
+                                             std::meta::identifier_of(m)));
+        }
+      }
       if (test_found) {
+        if (!current_test.parameterized && !not_has_required_parameter<member>()) {
+          throw std::logic_error(std::format(
+              "Test has required arguments without parameterization: {}", current_test.name));
+        }
+        if (current_test.parameterized && current_test.num_parameterizations == 0) {
+          throw std::logic_error(std::format(
+              "Test parameterization must contain at least one case: {}", current_test.name));
+        }
+        if (std::string_view(current_test.name).find_first_of("\r\n\t") != std::string_view::npos) {
+          throw std::logic_error("Test names must not contain tabs or line breaks");
+        }
+        for (const auto& existing : children) {
+          if (std::string_view(existing.name) == current_test.name) {
+            throw std::logic_error(std::format("Duplicate test name: {}", current_test.name));
+          }
+        }
         children.emplace_back(current_test);
       }
     }
   }
 
   return suite_discovery{result, std::define_static_array(children)};
-}
-
-template <std::meta::info func>
-consteval bool not_has_required_parameter() {
-  for (auto arg : std::meta::parameters_of(func)) {
-    if (!std::meta::has_default_argument(arg)) return false;
-  }
-
-  return true;
 }
 
 using test_callback = void (*)(void*);

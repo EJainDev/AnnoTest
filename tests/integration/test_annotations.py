@@ -33,11 +33,6 @@ class AnnotationTests(RunnerTest):
                 self.assertEqual(root.attrib["skipped"], str(count))
                 self.assertEqual(root.findall("testcase"), [])
 
-    def test_missing_required_arguments(self):
-        result, root = self.report("AnnotationTests", ["AnnotationTests.required_argument"])
-        self.assertIn("required arguments", result.stdout)
-        self.assertEqual(root.attrib["tests"], "0")
-
     def test_empty_suite(self):
         self.assertEqual(self.listed_names("AnnotationTests", "empty"), ("EmptySuite", []))
         _, root = self.report("AnnotationTests", scenario="empty")

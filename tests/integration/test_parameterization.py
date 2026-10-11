@@ -36,10 +36,7 @@ class ParameterizationTests(RunnerTest):
                     if message:
                         self.assertIn(message, selected.findtext("system-out", ""))
 
-    def test_empty_and_disabled_parameterizations(self):
-        for name in ("empty", "empty_types", "empty_dual"):
-            _, root = self.report("ParameterizationTests", [f"ParameterizationTests.{name}"])
-            self.assertEqual(root.attrib["tests"], "0")
+    def test_disabled_parameterizations(self):
         _, root = self.report("ParameterizationTests", ["ParameterizationTests.disabled"])
         self.assertEqual(root.attrib["skipped"], "2")
         _, root = self.report("ParameterizationTests", ["ParameterizationTests.disabled.2"])
@@ -78,5 +75,5 @@ class ParameterizationTests(RunnerTest):
         self.assertIn("types.2", names)
         self.assertIn("named values.2", names)
         self.assertIn("disabled.2", names)
-        self.assertIn("empty", names)
+        self.assertNotIn("empty", names)
         self.assertNotIn("values", names)

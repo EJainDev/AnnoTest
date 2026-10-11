@@ -11,7 +11,7 @@ target_compile_options(ContractTests PRIVATE -fcontracts -fcontract-evaluation-s
 
 add_executable(InternalTests internal_tests.cpp)
 target_link_libraries(InternalTests PRIVATE annotest)
-set(integration_categories checks behavior generic parameterization annotations lifecycle contracts cli reporting internals)
+set(integration_categories checks behavior generic parameterization annotations lifecycle contracts cli reporting internals discovery)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_executable(FaultTests fault_tests.cpp)
   target_link_libraries(FaultTests PRIVATE annotest)
@@ -45,6 +45,10 @@ foreach(category IN LISTS integration_categories)
       COMMAND ${Python3_EXECUTABLE} "${script}"
         --binary-dir $<TARGET_FILE_DIR:AssertionTests> --category ${category} --test-id ${test_id})
     set_tests_properties(integration.${test_id} PROPERTIES TIMEOUT 120 LABELS ${category})
+    if(category STREQUAL "discovery")
+      set_tests_properties(integration.${test_id} PROPERTIES ENVIRONMENT
+        "ANNOTEST_CMAKE=${CMAKE_COMMAND};ANNOTEST_COMPILER=${CMAKE_CXX_COMPILER}")
+    endif()
   endforeach()
 endforeach()
 
@@ -92,3 +96,26 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 add_test(NAME platform.native_backend COMMAND PlatformTests "--utf8=café")
 set_tests_properties(platform.native_backend PROPERTIES TIMEOUT 30)
+
+add_executable(DiscoveryFixture discovery_fixture.cpp)
+set_target_properties(DiscoveryFixture PROPERTIES CXX_STANDARD 20 CXX_MODULE_STD OFF CXX_SCAN_FOR_MODULES OFF)
+
+# Require our annotation diagnostic, rather than any compiler failure.
+function(expect_invalid_annotation name expected)
+  add_executable(Invalid_${name} EXCLUDE_FROM_ALL compile_fail/${name}.cpp)
+  target_link_libraries(Invalid_${name} PRIVATE annotest)
+  add_test(NAME compile_fail.${name}
+    COMMAND ${CMAKE_COMMAND} -DBUILD_DIR=${CMAKE_BINARY_DIR} -DTARGET=Invalid_${name}
+      "-DEXPECTED=${expected}" -P ${CMAKE_CURRENT_SOURCE_DIR}/expect_compile_failure.cmake)
+  set_tests_properties(compile_fail.${name} PROPERTIES RUN_SERIAL TRUE TIMEOUT 100)
+endfunction()
+expect_invalid_annotation(required_arguments "Test has required arguments without parameterization")
+expect_invalid_annotation(private_test "Annotated test and lifecycle methods must be public")
+expect_invalid_annotation(protected_hook "Annotated test and lifecycle methods must be public")
+expect_invalid_annotation(hook_arguments "Lifecycle hooks must not have required arguments")
+expect_invalid_annotation(deleted_test "Annotated methods must not be deleted")
+expect_invalid_annotation(empty_parameters "Test parameterization must contain at least one case")
+expect_invalid_annotation(empty_template_parameters "Test parameterization must contain at least one case")
+expect_invalid_annotation(empty_dual_parameters "Test parameterization must contain at least one case")
+expect_invalid_annotation(duplicate_names "Duplicate test name")
+expect_invalid_annotation(newline_name "Test names must not contain tabs or line breaks")
