@@ -34,7 +34,7 @@ jobs:
                   cxx-compiler: g++
                   options: |
                       BUILD_TESTS=ON
-                      BUILD_EXAMPLES=OFF
+                      BUILD_EXAMPLES=ON
                       CMAKE_BUILD_TYPE=Release
 
             - name: Test Project

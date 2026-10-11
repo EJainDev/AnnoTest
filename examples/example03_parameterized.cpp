@@ -1,52 +1,33 @@
-/**
- * @example example03_parameterized.cpp
- *
- * This example demonstrates AnnoTest's parameterized testing:
- * - @cpp:struct[parameterize] — struct-based parameter injection
- * - @cpp:func[tuple] — compile-time tuple builder
- *
- * See :doc:`/api/testing/annotations` for full documentation.
- */
-#include <annotest_contract.h>
-
+// parameters(...) describes one argument set, including the expected result.
 import annotest;
-
 import std;
 
 using namespace annotest;
 
-/**
- * Section: parameterize with single parameters.
- * Each tuple() call is one complete parameter set.
- */
-struct ParameterizeBasic {
-  [[ = Test{}, = parameterize{tuple(2, 3), tuple(5, 7), tuple(-1, -3)} ]] void addition(int a,
-                                                                                        int b) {
-    assert_equal(a + b, a + b);
-    assert_true(a != 0 && b != 0);
+constexpr int add(int a, int b) { return a + b; }
+
+// Append each value in the second set to the argument tuple in the first set.
+constexpr auto products = parameters(2).cross(parameters(3, 5));
+
+struct ParameterizedTests {
+  [[
+    = test{}, = parameterize{parameters(2, 3, 5), parameters(5, 7, 12), parameters(-1, -3, -4)}
+  ]] void addition(int a, int b, int expected) {
+    assert_equal(expected, add(a, b));
   }
 
-  [[ = Test{},
-     = parameterize{tuple(1.0), tuple(2.5), tuple(0.001)} ]] void floating_point(double x) {
-    assert_near(x, x);
-    assert_true(x >= 0.0);
+  [[
+    = test{}, = parameterize{parameters(1.0, 1.0), parameters(2.5, 6.25), parameters(0.5, 0.25)}
+  ]] void square(double input, double expected) {
+    assert_near(expected, input * input, 0.0001);
   }
-};
 
-/**
- * Section: Parameterized tests with lifecycle hooks.
- * before_each/after_each fire around each parameter set.
- */
-struct ParameterizeWithHooks {
-  int set_count = 0;
-
-  [[= before_each{}]] void reset() { set_count = 0; }
-
-  [[ = Test{}, = parameterize{tuple(100), tuple(200), tuple(300)} ]] void counting(int val) {
-    ++set_count;
-    assert_equal(val, val);
-    assert_true(val % 100 == 0);
+  [[ = test{}, = parameterize(products) ]] void multiplication(int a, int b) {
+    int repeated_sum = 0;
+    for (int i = 0; i < b; ++i) repeated_sum += a;
+    assert_equal(repeated_sum, a * b);
   }
 };
 
-int main(int argc, char** argv) { return test<ParameterizeBasic>(argc, argv); }
+// --test-name ParameterizedTests.addition.2 selects only the second argument set.
+int main(int argc, char** argv) { return run_tests<ParameterizedTests>(argc, argv); }

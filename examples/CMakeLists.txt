@@ -18,3 +18,24 @@ target_link_libraries(example6_contracts PRIVATE annotest)
 
 add_executable(example7_full_suite example07_full_suite.cpp)
 target_link_libraries(example7_full_suite PRIVATE annotest)
+
+add_executable(example8_typed example08_typed.cpp)
+target_link_libraries(example8_typed PRIVATE annotest)
+
+add_executable(example9_dual_parameters example09_dual_parameters.cpp)
+target_link_libraries(example9_dual_parameters PRIVATE annotest)
+
+add_executable(example10_reporting example10_reporting.cpp)
+target_link_libraries(example10_reporting PRIVATE annotest)
+
+target_compile_options(example6_contracts PRIVATE
+  -fcontracts -fcontract-evaluation-semantic=observe)
+
+if(BUILD_TESTS)
+  foreach(example IN ITEMS example1_basic example2_lifecycle example3_parameterized
+      example4_os_annotations example5_death_tests example6_contracts
+      example7_full_suite example8_typed example9_dual_parameters example10_reporting)
+    add_test(NAME examples.${example} COMMAND $<TARGET_FILE:${example}>)
+    set_tests_properties(examples.${example} PROPERTIES TIMEOUT 30 LABELS examples)
+  endforeach()
+endif()

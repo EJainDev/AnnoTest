@@ -62,6 +62,7 @@ endif()
 # Library
 
 add_library(annotest STATIC)
+add_library(annotest::annotest ALIAS annotest)
 target_compile_options(annotest PUBLIC -freflection)
 target_sources(
   annotest
@@ -127,6 +128,9 @@ install(
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/DiscoverTests.cmake
               ${CMAKE_CURRENT_SOURCE_DIR}/cmake/DiscoverTestsRunner.cmake
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/AnnoTest")
+
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/include/annotest_contract.h"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/AnnoTestConfig.cmake"
               "${CMAKE_CURRENT_BINARY_DIR}/AnnoTestConfigVersion.cmake"

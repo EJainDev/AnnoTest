@@ -2,312 +2,242 @@
 
 [![Build and Test](https://github.com/EJainDev/AnnoTest/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/EJainDev/AnnoTest/actions/workflows/build_and_test.yml)
 [![Documentation](https://readthedocs.org/projects/annotest/badge/?version=stable)](https://annotest.readthedocs.io/)
-![C++26](https://img.shields.io/badge/C%2B%2B-26-blue)
-![CMake 4.3+](https://img.shields.io/badge/CMake-4.3%2B-orange)
-![License](https://img.shields.io/badge/license-MIT-lightgray)
+[![License: MIT](https://img.shields.io/badge/license-MIT-lightgray)](LICENSE)
 
-> Annotation-based unit testing for C++26 — write tests with `[[=Test{}]]`, not macros or `TEST_F` boilerplate.
-
-AnnoTest is a header-free, macro-free testing framework for C++26. It leverages the C++26 reflection API (`std::meta::*`) and module system to let you mark test functions with compile-time annotations. No test macros, no string-based names, no `main()` boilerplate.
+AnnoTest is a C++26 unit testing library built with reflection, annotations, and modules.
+Mark public methods in a suite with `[[= test{}]]`, then explicitly run the suite:
 
 ```cpp
-import std;
-import annotest;
-
-using namespace annotest;
-
-[Test]
-void adds_two_numbers() {
-    assert_equal(5, 2 + 3);
-}
-```
-
-That's the entire test — a function with an annotation. AnnoTest discovers, runs, and reports it automatically.
-
----
-
-## Quick Start
-
-Build and run:
-
-```bash
-cmake -B build -DCMAKE_CXX_COMPILER=g++-16 -DBUILD_TESTS=ON
-cmake --build build
-ctest --test-dir build
-```
-
-Then write your first test:
-
-```cpp
-// test.cpp
 import annotest;
 using namespace annotest;
 
-[Test<"my first test">]
-void basic_assertion() {
-    assert_equal(42, 6 * 7);
-    assert_true(42 > 0);
-    assert_near(3.1415, M_PI, 0.001);
-}
+struct ArithmeticTests {
+    [[= test{}]] void addition() { assert_equal(4, 2 + 2); }
+};
 
-// Optionally pass argc/argv to support --list and --test-name flags
 int main(int argc, char** argv) {
-    return test<MySuite>(argc, argv);
+    return run_tests<ArithmeticTests>(argc, argv);
 }
 ```
 
-See the [full documentation](https://annotest.readthedocs.io/) for API reference, examples, and advanced usage.
+The runner discovers annotated methods at compile time. It supports named and disabled
+suites/tests, per-test hooks, value and template parameterization, fatal assertions,
+nonfatal expectations, exception checks, process death checks, and XML reports.
 
----
+The API is under development. This README describes the current source branch;
+published documentation and older release tags may describe an earlier API.
 
-## Installation
+## Requirements
 
-### CMake FetchContent (recommended)
+The verified development environment is **Linux, GCC 16.2, CMake 4.4.3, and Ninja**.
+CI uses a pinned GCC container and CMake 4.3.3. A compiler with C++26 reflection,
+annotations, standard-library modules, and contracts is required.
+
+- CMake minimum: 4.3.3. The experimental `import std` setting is version-sensitive.
+- C++ standard: 26, with `-freflection` propagated by the library target.
+- Python 3 is required only when `BUILD_TESTS=ON`.
+- StructuralTuple and SerialXML are found as installed packages or fetched at pinned
+  commits during configuration. Fetching requires Git and network access.
+- Linux is the verified platform. macOS and Windows support has not been established;
+  output capture uses POSIX APIs and death tests use `fork`/`waitpid`.
+
+The [development container](.devcontainer/devcontainer.json) provides GCC 16.2 and CMake.
+Use Ninja for the commands below.
+
+## Build and run
+
+From the repository root, with the supported toolchain available:
+
+```sh
+cmake -S . -B build -G Ninja \
+  -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON
+cmake --build build --parallel 2
+ctest --test-dir build --output-on-failure
+```
+
+Use your GCC compiler path if `g++` selects another version. Examples are built by
+default; self-tests are opt-in. To build only the library, set `BUILD_TESTS=OFF` and
+`BUILD_EXAMPLES=OFF`.
+
+```sh
+./build/examples/example1_basic
+./build/examples/example3_parameterized --list
+./build/examples/example3_parameterized --test-name ParameterizedTests.addition.2
+./build/examples/example10_reporting --xml-output report.xml
+```
+
+A normal run returns `0` when its executed tests pass and `1` on test failures.
+Invalid CLI arguments, unknown test names, and report write failures also return `1`.
+Self-test fixtures include deliberate failures checked by independent Python tests;
+use CTest to run the self-test suite.
+
+## Examples
+
+Each example has a runnable `main`. With both build options enabled, CTest runs all ten
+examples in addition to the library's self-tests.
+
+| Source | Executable | Demonstrates |
+| --- | --- | --- |
+| [Basic tests](examples/example01_basic.cpp) | `example1_basic` | Checks, names, exception assertions |
+| [Lifecycle](examples/example02_lifecycle.cpp) | `example2_lifecycle` | Fixture reset and cleanup around every instance |
+| [Value parameters](examples/example03_parameterized.cpp) | `example3_parameterized` | Argument sets, expected results, value cross products |
+| [OS annotations](examples/example04_os_annotations.cpp) | `example4_os_annotations` | Required and disallowed platforms |
+| [Death tests](examples/example05_death_tests.cpp) | `example5_death_tests` | Child exit, exceptions, process isolation |
+| [Contracts](examples/example06_contracts.cpp) | `example6_contracts` | Pre/post/inline checks under observe semantics |
+| [Stack fixture](examples/example07_full_suite.cpp) | `example7_full_suite` | A named suite, hooks, skips and parameterization |
+| [Typed tests](examples/example08_typed.cpp) | `example8_typed` | Template argument sets and type cross products |
+| [Type and value parameters](examples/example09_dual_parameters.cpp) | `example9_dual_parameters` | Coupled template and function arguments |
+| [Reporting and failures](examples/example10_reporting.cpp) | `example10_reporting` | Captured output, XML, fatal/nonfatal behavior |
+
+The reporting example passes normally. To deliberately produce failures:
+
+```sh
+ANNOTEST_DEMONSTRATE_FAILURE=1 ./build/examples/example10_reporting --xml-output failures.xml
+```
+
+This command returns `1`. The report contains two expectation failures and one assertion
+failure in `failure_behavior`. The body continues after the expectations, unwinds at
+the assertion, and the runner still executes `later_test`.
+
+## Writing tests
+
+Use `[[= test<"custom name">{}]]` to name a method, or
+`[[= test{.disabled = true}]]` to disable it. A suite can likewise use
+`struct [[= suite<"custom suite">{}]] MyTests` or `suite{.disabled = true}`.
+Test and hook methods must be public.
+
+`before_each` and `after_each` run around each executed test, including each
+parameterized instance. One suite object is created per `run_tests` call, so member
+state persists unless setup resets it. Cleanup still runs after setup or body exceptions.
+There are no `before_all` or `after_all` annotations.
+
+```cpp
+struct FixtureTests {
+    int value = 0;
+    [[= before_each{}]] void setup() { value = 10; }
+    [[= after_each{}]] void cleanup() { value = 0; }
+    [[= test{}]] void increment() { assert_equal(11, ++value); }
+};
+```
+
+A failed `assert_*` records a failure and unwinds the current body. A failed `expect_*`
+records a failure and continues at the next statement. Both make the run return `1`;
+later tests still execute. Uncaught exceptions and unexpected contract violations
+also fail the test. Disabled or OS-filtered tests do not run their hooks.
+
+| Purpose | Assertion | Expectation |
+| --- | --- | --- |
+| Equality | `assert_equal(expected, actual)` | `expect_equal(expected, actual)` |
+| Inequality | `assert_not_equal(expected, actual)` | `expect_not_equal(expected, actual)` |
+| Boolean | `assert_true`, `assert_false` | `expect_true`, `expect_false` |
+| Numeric tolerance | `assert_near(expected, actual, tolerance)` | `expect_near(expected, actual, tolerance)` |
+| Ordering | `assert_less`, `assert_less_equal`, `assert_greater`, `assert_greater_equal` | Corresponding `expect_*` functions |
+| Containment | `assert_contains(container, value)` | `expect_contains(container, value)` |
+| Null pointer | `assert_null(pointer)` | `expect_null(pointer)` |
+| Exception | `assert_throws<E>(callable)`, `assert_throws_exact<E>(callable)` | `expect_throws<E>`, `expect_throws_exact<E>` |
+| Contract | `assert_contract_violation`, `assert_no_contract_violation` | Corresponding `expect_*` functions |
+| Process death | `assertDeath(callable)` | `expectDeath(callable)` |
+
+Death helpers retain their camel-case names. A thrown exception in the child counts as
+death; normal return or exit status zero does not.
+
+For contract checks, include `<annotest_contract.h>` in exactly one translation unit
+per executable and enable `-fcontracts -fcontract-evaluation-semantic=observe` on the
+code containing contracts. Observe semantics continue after a violation: the body
+must remain safe even with invalid input. See the contract example for safe cases.
+
+## CLI and reports
+
+| Option | Behavior |
+| --- | --- |
+| `-h`, `--help` | Print usage and exit |
+| `-l`, `--list` | List the suite and test names |
+| `-t`, `--test-name NAME...` | Run fully qualified names; repeatable |
+| `--xml-output FILE` | Write a suite XML report, overwriting the file |
+
+Fully qualified names are `Suite.Test`. Parameterized instances append a one-based
+index, such as `ParameterizedTests.addition.2`. Selecting the base method name runs
+all its instances. Quote names containing spaces.
+
+Reports include timings, failures, skip totals, and captured stdout/stderr. Test output
+is captured even without an XML file; use `--xml-output` to inspect it. Skipped tests
+currently contribute to totals without individual `<testcase>` elements. The runner
+uses shared state and process-wide output capture; use separate processes for concurrent
+runs rather than invoking runners concurrently or recursively.
+
+## CMake integration
+
+This consumer project assumes a checkout of this source revision at `../AnnoTest`,
+and the first test source above saved as `test.cpp`:
 
 ```cmake
-FetchContent_Declare(
-    annotest
-    GIT_REPOSITORY https://github.com/EJainDev/AnnoTest.git
-    GIT_TAG v1.0.0.0
-)
-FetchContent_MakeAvailable(annotest)
+cmake_minimum_required(VERSION 4.3.3)
+set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(CMAKE_VERSION VERSION_LESS 4.4)
+  set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
+else()
+  set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "f35a9ac6-8463-4d38-8eec-5d6008153e7d")
+endif()
+set(CMAKE_CXX_MODULE_STD ON)
+project(MyTests LANGUAGES CXX)
+
+enable_testing()
+set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+add_subdirectory(../AnnoTest annotest-build)
 
 add_executable(my_tests test.cpp)
 target_link_libraries(my_tests PRIVATE annotest::annotest)
-```
-
-### Install from source
-
-```bash
-git clone https://github.com/EJainDev/AnnoTest.git
-cd AnnoTest
-
-cmake -B build \
-    -DCMAKE_C_COMPILER=gcc-16 \
-    -DCMAKE_CXX_COMPILER=g++-16 \
-    -DCMAKE_BUILD_TYPE=Release
-
-cmake --build build
-cmake --install build
-```
-
-Then use:
-
-```cmake
-find_package(AnnoTest REQUIRED)
-target_link_libraries(my_app PRIVATE annotest::annotest)
-```
-
-### Requirements
-
-| Component | Minimum | Notes |
-|-----------|---------|-------|
-| Compiler | GCC 16 | C++26 reflection required |
-| CMake | 4.3 | Required for `CXX_MODULES` file set |
-| C++ Standard | 26 | Mandatory |
-| OS | Linux, macOS | Death tests require fork (Unix/macOS) |
-
-> [!NOTE]
-> AnnoTest uses C++26 reflection (`std::meta::*`) and the C++26 module system.
-> A compiler with experimental C++26 support is required.
-
----
-
-## Features
-
-### Annotation-based test definition
-
-Mark test functions with `[[=Test{}]]` — no macros, no string-based test names needed.
-
-| Annotation | Syntax | Description |
-|------------|--------|-------------|
-| **Test** | `[Test]` | Marks a function as a test case |
-| **Named test** | `[Test<"custom name">]` | Overrides the display name |
-| **Disabled** | `[Test{.disabled = true}]` | Skips the test without deleting it |
-| **before_each** | `[before_each]` | Runs before every test in the suite |
-| **after_each** | `[after_each]` | Runs after every test in the suite |
-| **before_all** | `[before_all]` | Runs once before the entire suite |
-| **after_all** | `[after_all]` | Runs once after the entire suite |
-| **parameterize** | `[parameterize{tuple(1,2), tuple(3,4)}]` | Runs with each parameter set |
-| **RequiresOS** | `[RequiresOS{OS::Linux}]` | Skips test on other platforms |
-| **DisallowOS** | `[DisallowOS{OS::Windows}]` | Skips test on listed platforms |
-
-### Assertions (fail-fast)
-
-Throw `assertion_error` and stop the current test immediately:
-
-```cpp
-assert_equal(5, 2 + 3);
-assert_not_equal(1, 2);
-assert_true(result.valid());
-assert_near(3.14, M_PI, 0.01);
-assert_throws<std::out_of_range>([] { vec.at(99); });
-assert_contract_violation([] { /* triggers a contract */ });
-```
-
-### Expectations (continue on failure)
-
-Throw `Abort` instead — use when you want to keep testing after a failure:
-
-```cpp
-expectEqual(a, b);       // Assert equality, continue on failure
-expectThrows<std::bad_alloc>([] { /* may throw */ });
-```
-
-### Parameterized tests
-
-Run the same logic with different inputs:
-
-```cpp
-[parameterize{tuple(1, 2), tuple(10, 20), tuple(100, 200)}]
-void sums_match(int a, int b) {
-    assert_equal(a + b, add(a, b));
-}
-```
-
-### Death tests
-
-Verify that a function causes process termination (Unix/macOS only):
-
-```cpp
-[DeathTest]
-void crashes_on_null() {
-    assertDeath([] { *reinterpret_cast<int*>(0) = 42; });
-}
-```
-
-### Contract testing
-
-Assert that C++26 `pre`/`post` contracts fire as expected:
-
-```cpp
-assert_contract_violation([] { /* triggers a pre/post violation */ });
-assert_no_contract_violation([] { /* no contract fires */ });
-```
-
----
-
-## CMake Integration
-
-### Test Discovery
-
-AnnoTest ships with a built-in CMake test discovery function — no manual `add_test()` calls:
-
-```cmake
-add_executable(my_tests test.cpp)
-target_link_libraries(my_tests PRIVATE annotest::annotest)
-
-# Automatically registers each discovered test as a CTest entry
 annotest_discover_tests(my_tests)
 ```
 
-### Runtime CLI Flags
+Configure with `cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=g++`, build, then
+run `ctest --test-dir build --output-on-failure`. The `import std` setup must precede
+`project()` in the consumer, too. The UUIDs match the tested CMake series;
+future versions may need a different experimental setting.
 
-Every AnnoTest-linked executable supports:
+For FetchContent, replace `add_subdirectory` with the following, substituting a
+published commit containing this API for `<commit>`:
 
-| Flag | Description |
-|------|-------------|
-| `--list` | Print suite name and indented test names |
-| `--test-name <Name>` | Run only the specified test |
-
-### CMake Presets
-
-The project includes `CMakePresets.json` with pre-configured Debug and Release builds:
-
-```bash
-cmake --preset release-gcc-16.1
-cmake --build --preset build-release
+```cmake
+include(FetchContent)
+FetchContent_Declare(annotest
+  GIT_REPOSITORY https://github.com/EJainDev/AnnoTest.git
+  GIT_TAG <commit>)
+FetchContent_MakeAvailable(annotest)
 ```
 
----
+Older v1.0 tags may not contain this API. Source builds expose both `annotest` and
+`annotest::annotest`; installed packages expose `annotest::annotest`.
 
-## Comparison
+To install the library build into a local prefix:
 
-### AnnoTest vs GoogleTest
-
-| Feature | AnnoTest | GoogleTest |
-|---------|----------|------------|
-| Test definition | `[Test]` annotation | `TEST_F(TestCase, Name)` |
-| Assertions | `assert_equal(5, 2+3)` | `ASSERT_EQ(5, 2+3)` |
-| Macros | **None** | Heavy macro usage |
-| C++26 Modules | `import annotest;` | Header-only |
-| Reflection | Compile-time via `std::meta` | Manual registration |
-
-### AnnoTest vs Catch2
-
-| Feature | AnnoTest | Catch2 |
-|---------|----------|--------|
-| Syntax | Annotation-based | `TEST_CASE("name")` |
-| Assertions | `assert_equal` / `expectEqual` | `REQUIRE` / `CHECK` |
-| Test names | From function names | String literal required |
-| Modern C++ | C++26 modules | C++11+ (headers) |
-
----
-
-## Project Status
-
-AnnoTest is under active development. Current implementation supports:
-
-- ✅ Annotation-based test definitions
-- ✅ Assertions and expectations (fail-fast and continue-on-failure)
-- ✅ Lifecycle hooks (before_each, after_each, before_all, after_all)
-- ✅ Parameterized tests
-- ✅ Death tests (Unix/macOS)
-- ✅ Contract violation assertions
-- ✅ CMake test discovery
-- ✅ C++26 modules
-
-Planned:
-
-- ⏳ Windows support (death tests via spawn)
-- ⏳ CI coverage across more compiler versions
-- ⏳ Richer failure message formatting
-- ⏳ More features
-- ⏳ Better test naming
-
-> [!NOTE]
-> The API may change before the first stable release.
-
----
-
-## Module Architecture
-
-```
-annotest              — umbrella module: import annotest;
-├── annotest:tuple    — compile-time tuples for parameterized tests
-├── annotest:utils    — reflection helpers (format, enum_to_string)
-├── annotest:exceptions — assertion_error / Abort exception classes
-├── annotest:asserts  — assert* helpers (throw assertion_error)
-├── annotest:expects  — expect* helpers (throw Abort)
-├── annotest:death_test — assertDeath / expectDeath (fork-based)
-├── annotest:posix    — fork / waitpid wrappers
-└── annotest:contracts — contract violation handling
+```sh
+cmake --install build --prefix "$PWD/install"
 ```
 
----
+In a consumer with the same compiler and module configuration, replace
+`add_subdirectory` with `find_package(AnnoTest CONFIG REQUIRED)` and configure with
+`-DCMAKE_PREFIX_PATH=/absolute/path/to/install`. StructuralTuple and SerialXML must
+also be discoverable through their installed CMake packages. Treat the package as
+toolchain-specific; module and compiler compatibility across installations is not guaranteed.
 
-## Resources
+The discovery helper runs the built executable with `--list` and registers each case
+in CTest. Use simple names containing letters, digits, underscores, hyphens, or spaces;
+names with CMake-special characters are not handled robustly by this helper.
 
-- [Documentation](https://annotest.readthedocs.io/) — full API reference and examples
-- [Contributing](CONTRIBUTING.md) — how to get started
-- [GitHub Issues](https://github.com/EJainDev/AnnoTest/issues) — bug reports and feature requests
+## Documentation and contributing
 
----
+See the [documentation](https://annotest.readthedocs.io/), runnable examples above,
+and [self-test guide](tests/README.md). Build the documentation locally with:
 
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide.
-
-Quick start for contributors:
-
-```bash
-cmake -B build -DCMAKE_CXX_COMPILER=g++-16 -DBUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-ctest --test-dir build
+```sh
+python3 -m venv .venv-docs
+.venv-docs/bin/python -m pip install -r docs/requirements.txt
+.venv-docs/bin/python -m sphinx -b html docs/source docs/build/html
 ```
 
----
-
-## License
-
-AnnoTest is licensed under the MIT License — see [LICENSE](LICENSE) for details.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance and [LICENSE](LICENSE)
+for the MIT license.
