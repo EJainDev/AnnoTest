@@ -35,7 +35,7 @@ that both success and failure behavior match expectations.
 | `annotation_tests.cpp`, `integration/test_annotations.py` | `test`, `suite`, custom/default names, disabled tests/suites, defaults, static/const methods, unannotated/private members, all OS annotations, ignored unrelated suite/method annotations, and empty suites |
 | `lifecycle_tests.cpp`, `integration/test_lifecycle.py` | `before_each`/`after_each` ordering, shared state, assertion/expectation/standard/unknown exceptions in each phase, cleanup after failure, skipping, and contract state isolation |
 | `contract_tests.cpp`, `integration/test_contracts.py` | Actual C++26 pre/post/inline contracts under observe semantics; all four helpers with void/value returns; failures, callable exceptions, flag reset, and custom handler delegation |
-| `death_tests.cpp`, `integration/test_death.py` | Both death helpers with nonzero exit, exceptions and signals; normal return/zero exit failures and child state isolation (Unix only) |
+| `death_tests.cpp`, `integration/test_death.py` | Both death helpers with nonzero exit, exceptions and signals; normal return/zero exit failures and child state isolation (Linux, macOS, and Windows; Windows uses replay) |
 | `fault_tests.cpp`, `integration/test_faults.py` | Linux fault injection for partial capture initialization, descriptor cleanup/restoration, and fork/wait errors; coverage-only child counter flushing |
 | `internal_tests.cpp`, `integration/test_internals.py` | Private log state, absent optional diagnostics, exception formatting, unrecorded assertions, and null CLI pointers without exporting internals; compile-time signed/unsigned integer formatting including zero and 64-bit limits |
 | `utility_tests.cpp` | Enum formatting, invalid values, and the shipped CMake discovery helper |
@@ -49,25 +49,18 @@ nonzero compiler exit. All temporary report paths are isolated per invocation,
 so individual runtime tests can run concurrently. Helper and behavior scenarios
 are registered separately in CTest; use `ctest -N` to inspect them.
 
-These tests cover the implemented API. Historical examples and docs also mention
-`before_all`, `after_all`, `Abort`, and legacy camel-case names which are absent
-from the current library; they are not treated as implemented features. OS
-filtering is tested against the host platform. Fork/waitpid resource failures
-cannot be induced deterministically by this suite.
+These tests cover the current API. OS filtering is tested against the host
+platform. Linux wrappers inject resource failures and interrupted waits. Native
+backend checks cover output redirection and stack traces on all three platforms,
+and Windows process relaunch, handshake, repeated checks, UTF-8 arguments, and
+abort handling. Linux tests and the Windows backend under Wine have passed locally;
+full native Windows/macOS compiler validation is handled by CI.
 
-The GCC 16.2 coverage run on 2026-10-11 passed all 195 tests and reached 100%
-reachable runtime source-associated branch coverage (346/346), with 98.6% runtime
-line coverage. Raw compiler branch coverage is 65.0%; it includes call and cleanup
-arcs that are outside the agreed source-decision metric. The coverage gate is
-`tools/coverage_audit.py`, also run in CI. Local data and counts are under
-`build/coverage/`. Constant evaluation and compile-failure checks are not runtime
-coverage. Cross-platform coverage has not been established.
-
-Source branch coverage measures executed decisions in the library, not coverage
-of all template instantiations or supported C++ types. The generic fixtures add
-behaviorally distinct custom operands, formatters, and proxy conversions; they
-do not establish comprehensive template-type coverage. The percentages and
-195-test count above describe the earlier run, before these fixtures were added.
+The coverage gate is `tools/coverage_audit.py`, also run in Linux CI. It measures
+reachable runtime source-associated branches, excluding documented compiler and
+unreachable cleanup outcomes. Constant evaluation and compile-failure tests are
+separate checks. Coverage of one platform or template specialization does not
+establish coverage of every supported platform or C++ type.
 
 Compile-time checks explicitly instantiate both signed and unsigned paths of the
 internal integer formatter. Unrelated template annotations on suites and methods
@@ -85,7 +78,7 @@ python3 tools/check_installation.py --build-dir build
 ```
 
 The installed and FetchContent consumers in `tests/consumer` exercise the public
-link target, contract-handler header, assertions, parameters, and CTest discovery.
+link target, contract-handler header, assertions, parameters, death checks, and CTest discovery.
 The installation is relocated to a path containing spaces and its exports are
 checked for source/build paths. CI configures non-default include/library directories
 before running this check. `--cmake /path/to/cmake` selects a CMake version for the

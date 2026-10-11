@@ -3,32 +3,37 @@
 Death Tests
 ===========
 
-.. cpp:namespace:: annotest
+``annotest::assertDeath(callable)`` and ``annotest::expectDeath(callable)`` run a
+callable in a child process on Linux, macOS, and Windows. A nonzero exit, signal,
+or uncaught exception counts as death. Returning normally or exiting with status
+zero fails the check. Assertion failure unwinds the body; expectation failure
+records a failure and continues.
 
-Death tests verify that code under test causes the process to exit abnormally. They use ``fork()`` / ``waitpid()`` on Unix and macOS to isolate the child process — the parent never crashes.
+Linux and macOS
+---------------
 
-.. note:: Death tests are not available on Windows.
+The child is created with ``fork`` and the parent waits with ``waitpid``, retrying
+interrupted waits. The child inherits the parent's memory and file descriptors;
+changes to ordinary child memory do not change the parent. Complex shared
+resources and background threads still require care.
 
-Under the Hood
---------------
+Windows
+-------
 
-The ``fork()`` call creates a child process that runs ``func()`` in a try-catch block. The parent waits with ``waitpid()`` and checks the exit status. A normal exit (status 0) is treated as a failure; any non-zero exit is treated as a successful death.
+Windows relaunches the current executable with an internal selector for the test
+and death-check ordinal. It repeats setup and the test body up to that check,
+skipping earlier death callables. Named tests, parameterized cases, and multiple
+checks in one test are supported. A handshake ensures startup failures before
+the callable do not falsely pass a death check.
 
-.. warning:: The child process inherits all file descriptors, signal handlers, and atexit handlers from the parent. Avoid complex parent state (shared memory, global constructors, registered cleanup handlers) when using death tests — the child's lifetime is bounded by ``func()``'s execution.
+Use these helpers inside ``run_tests`` and forward ``argc`` and ``argv`` from
+``main``. Setup and code before the death check must be deterministic and safe to
+repeat. State from previously executed tests and parent-only resources are not
+inherited. Pointers into the parent process cannot be used in the child.
+Replayed setup and body output can appear in captured output.
 
 Example
 -------
 
-.. code-block:: cpp
-
-   [[= Test{"death by exception"}]]
-   void dies_on_exception() {
-       assertDeath([]() { throw std::runtime_error("crash!"); });
-   }
-
-   [[= Test{"death by abort"}]]
-   void dies_on_abort() {
-       assertDeath([]() { std::abort(); });
-   }
-
-For full function signatures, see :doc:`assertions`.
+.. literalinclude:: ../../../../examples/example05_death_tests.cpp
+   :language: cpp

@@ -6,37 +6,106 @@ Installing
 Requirements
 ------------
 
-To build AnnoTest, you need:
+AnnoTest implements Linux, macOS, and native Windows backends. Build with GCC 16
+or newer, CMake 4.3.3 or newer, and Ninja. The compiler must provide C++26
+reflection, annotations, standard-library modules, and contracts. Apple Clang
+and MSVC are not supported toolchains for these features.
 
-* **C++26 compatible compiler** — tested on GCC 16.1
-* **CMake 4.3 or higher** — required for C++26 module support and `CXX_MODULES` file set support
-    * The project uses the experimental C++23 `import std;` feature via the module feature UUID ``451f2fe2-a8a2-47c3-bc32-94786d8fc91b``
-* **Ninja** — or another CMake generator that supports C++20 modules
+Python 3 is needed for the self-tests and installation smoke checks. Git and
+network access are needed when CMake fetches StructuralTuple and SerialXML at
+the pinned commits. Installed dependency packages can be used instead.
 
-Installation
-------------
+Platform setup
+--------------
 
-Clone and build:
+On Linux, use GCC 16 and the repository's development container, or an equivalent
+native installation of the compiler, CMake, and Ninja.
 
-.. code-block:: bash
+On macOS, install the Homebrew tools:
 
-    git clone https://github.com/EJainDev/AnnoTest.git && cd AnnoTest
-    cmake -B build -DCMAKE_BUILD_TYPE=Release
-    cmake --build build --target install
+.. code-block:: sh
 
-Advanced Installation
----------------------
+    brew install gcc cmake ninja python
 
-* To build and run the self-tests, pass ``-DBUILD_TESTS=ON``
+Select ``g++-16`` explicitly; macOS's default C++ compiler is Apple Clang.
 
-The library installs to your system prefix. To use it in another CMake project:
+On Windows, install `MSYS2 <https://www.msys2.org/>`_ and open **UCRT64**:
+
+.. code-block:: sh
+
+    pacman -Syu
+    # Reopen UCRT64 if requested by the updater.
+    pacman -S --needed git mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake \
+      mingw-w64-ucrt-x86_64-ninja mingw-w64-ucrt-x86_64-python
+
+Build and run from UCRT64. The binaries are native Windows ``.exe`` files.
+Keep the UCRT64 ``bin`` directory on ``PATH`` when running outside this shell
+so that GCC runtime DLLs can be found.
+
+Build and install
+-----------------
+
+.. code-block:: sh
+
+    git clone https://github.com/EJainDev/AnnoTest.git
+    cd AnnoTest
+    cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=g++ \
+      -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON
+    cmake --build build --parallel 2
+    ctest --test-dir build --output-on-failure
+    cmake --install build --prefix /path/to/annotest
+
+Use ``g++-16`` on macOS. Standalone builds enable examples by default; embedded
+builds default to the library only. Self-tests are opt-in. Set
+``BUILD_TESTS=OFF`` and ``BUILD_EXAMPLES=OFF`` for a library-only build.
+``CMAKE_INSTALL_INCLUDEDIR`` and ``CMAKE_INSTALL_LIBDIR`` support custom layouts.
+
+Installed consumer
+------------------
+
+The consumer must configure C++26 standard-library modules before ``project()``.
+CMake's experimental import-std UUID depends on the CMake version:
 
 .. code-block:: cmake
 
+    cmake_minimum_required(VERSION 4.3.3)
+    set(CMAKE_CXX_STANDARD 26)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+    if(CMAKE_VERSION VERSION_LESS 4.4)
+      set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
+    else()
+      set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "f35a9ac6-8463-4d38-8eec-5d6008153e7d")
+    endif()
+    set(CMAKE_CXX_MODULE_STD ON)
+    project(MyTests LANGUAGES CXX)
+    # CMake 4.3 shares a std BMI that must also enable reflection.
+    if(CMAKE_VERSION VERSION_LESS 4.4)
+      string(APPEND CMAKE_CXX_FLAGS " -freflection")
+    endif()
     find_package(AnnoTest CONFIG REQUIRED)
+    enable_testing()
     add_executable(my_tests main.cpp)
-    target_link_libraries(my_tests PRIVATE annotest)
+    target_link_libraries(my_tests PRIVATE annotest::annotest)
+    annotest_discover_tests(my_tests)
 
-The installed CMake package also provides ``annotest_discover_tests()`` for CTest integration — see the API documentation.
+Pass ``-DCMAKE_PREFIX_PATH=/path/to/annotest`` when configuring the consumer.
+The package installs its module sources and contract-handler header, and exports
+the reflection flags and required link libraries. Prefixes can be relocated.
+The same target and discovery helper are available with ``FetchContent``.
 
-Checkout how to get started with the library in the :ref:`Getting Started <getting_started>` section.
+Validation and release packages
+-------------------------------
+
+.. code-block:: sh
+
+    python3 tools/check_installation.py --build-dir build
+
+This verifies installed and FetchContent consumers, relocates the prefix to a
+path containing spaces, and checks exported paths. Native CI jobs cover Linux,
+macOS, and Windows; tagged release workflows package each native build. Archives
+contain platform-specific libraries and module sources, and still require the
+corresponding GCC toolchain and runtime. Native Windows and macOS CI results are
+the validation of those full toolchains; Linux and the Windows backend under
+Wine have also been exercised locally.
+
+See :ref:`getting_started` for the public API.

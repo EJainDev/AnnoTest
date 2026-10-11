@@ -1,222 +1,49 @@
 Testing Annotations and Functions
 =================================
 
-.. cpp:namespace:: annotest
+All public API names below are in ``annotest``. Annotation names are lowercase.
 
-This page documents all annotations, enums, and the test runner function. For assertion and expectation APIs, see :doc:`assertions`.
-
-.. _design_decisions:
-
-.. _example_gallery:
-
-Design Decisions
+Tests and suites
 ----------------
 
-AnnoTest makes deliberate design choices that distinguish it from other C++ testing frameworks. Read :ref:`design_decisions` in Getting Started for full details.
-
-.. important:: Test suite structs must be **public aggregates** with default member initializers. Do not use constructors, private members, or virtual functions.
-
-Enums
------
-
-.. cpp:enum-class:: OS
-
-    Represents the different operating systems to enable or disable tests on specific platforms.
-
-    .. cpp:enumerator:: Windows
-
-        Windows (Win32).
-
-    .. cpp:enumerator:: Mac
-
-        macOS (Apple).
-
-    .. cpp:enumerator:: Linux
-
-        Linux.
-
-    .. cpp:enumerator:: Unknown
-
-        Any other platform.
-
-Annotations
------------
-
-.. cpp:struct:: Test
-
-    Annotates a function as a test case. The function name is used as the test display name unless a custom name is provided.
-
-    The ``Test`` struct supports an optional string name and a ``disabled`` flag:
-
-    * ``[[= Test{}]]`` — anonymous test, name derived from function name.
-    * ``[[= Test<\"My Named Test\">{}]]`` — test with a custom display name.
-    * ``[[= Test{.disabled = true}]]`` — skipped test.
-
-    .. code-block:: cpp
-
-        struct MyTests {
-            [[= Test{}]] void anonymous_test() { assert_equal(1, 1); }
-
-            [[= Test<"custom name">{}]] void actual_name() { assert_true(true); }
-
-            [[= Test{.disabled = true}]] void skipped() {}
-        };
-
-    .. important:: Tests must not use try-catch blocks around any ``assert`` or ``expect`` calls — use the assertion functions directly.
-
-    See also :ref:`basic example <example_gallery>`.
-
-.. cpp:struct:: before_each
-
-    Annotates a function to be executed before **each** test in a test suite.
-
-    .. note:: If this function throws an exception, the test is aborted.
-
-    .. important:: Only one function per suite may be annotated with ``before_each``. If multiple are found, only the last one is used.
-
-    .. code-block:: cpp
-
-        struct FixtureTests {
-            int counter = 0;
-
-            [[= before_each{}]] void reset() { counter = 0; }
-
-            [[= Test{}]] void one() { ++counter; assert_true(counter == 1); }
-            [[= Test{}]] void two() { ++counter; ++counter; assert_true(counter == 2); }
-        };
-
-    See also :ref:`lifecycle example <example_gallery>`.
-
-.. cpp:struct:: after_each
-
-    Annotates a function to be executed after **each** test in a test suite.
-
-    .. note:: If this function throws an exception, only a warning is printed.
-
-    .. important:: Only one function per suite may be annotated with ``after_each``.
-
-    See also :ref:`lifecycle example <example_gallery>`.
-
-.. cpp:struct:: before_all
-
-    Annotates a function to be executed **once** before all tests in a test suite.
-
-    .. note:: If this function throws an exception, the test suite is aborted.
-
-    .. note:: Running with CTest causes this function to be executed before each test case, which may significantly slow down your tests.
-
-    See also :ref:`lifecycle example <example_gallery>`.
-
-.. cpp:struct:: after_all
-
-    Annotates a function to be executed **once** after all tests in a test suite.
-
-    .. note:: If this function throws an exception, only a warning is printed.
-
-    See also :ref:`lifecycle example <example_gallery>`.
-
-Utility Annotations
-^^^^^^^^^^^^^^^^^^^
-
-.. cpp:struct:: parameterize
-
-    Annotates a test case to run with different sets of parameters. Each parameter set is executed as a sub-test.
-
-    To use, pass one or more :cpp:func:`tuple` calls, where each tuple represents a **complete** set of parameters for the function — each value corresponds to a function parameter in order.
-
-    .. code-block:: cpp
-
-        [[= Test{}, = parameterize{tuple(5), tuple(50)} ]]
-        void parameterized(int val) {
-            assert_true(val == 5 || val == 50);
-        }
-
-    With multiple parameters:
-
-    .. code-block:: cpp
-
-        [[= Test{}, = parameterize{tuple(2, 3), tuple(10, 20)} ]]
-        void add(int a, int b) {
-            assert_equal(a + b, a + b);  // parameters injected in order
-        }
-
-    See also :ref:`parameterized example <example_gallery>`.
-
-.. cpp:struct:: RequiresOS
-
-    Annotates a test case to run only on specific operating systems.
-
-    .. code-block:: cpp
-
-        [[= Test{}, = RequiresOS{OS::Linux} ]] void testLinux();
-
-    If the current OS does not match, the test is skipped with a diagnostic.
-
-    Accepts multiple OS values — the test runs if the current OS matches **any** of them:
-
-    .. code-block:: cpp
-
-        [[= Test{}, = RequiresOS{OS::Linux, OS::Mac} ]] void cross_platform();
-
-    See also :ref:`OS annotations example <example_gallery>`.
-
-.. cpp:struct:: DisallowOS
-
-    Annotates a test case to be skipped on specific operating systems.
-
-    .. code-block:: cpp
-
-        [[= Test{}, = DisallowOS{OS::Windows} ]] void test();
-
-    Opposite of :cpp:struct:`RequiresOS`. The test runs on any platform **not** listed.
-
-    Multiple values — the test is skipped if the current OS matches **any** of them:
-
-    .. code-block:: cpp
-
-        [[= Test{}, = DisallowOS{OS::Windows, OS::Mac} ]] void linux_only();
-
-    See also :ref:`OS annotations example <example_gallery>`.
-
-Functions
+``test{}`` marks a public method. ``test<"name">{}`` supplies a custom display
+name; ``test{.disabled = true}`` skips it. ``suite<"name">{}`` names a suite,
+and ``suite{.disabled = true}`` disables all its cases.
+
+``run_tests<T>(argc, argv)`` discovers the annotations, constructs a suite,
+runs the selected cases, and returns 0 on success or 1 on failure. See
+:doc:`/usage/getting_started` for filtering, reporting, and CTest integration.
+
+Lifecycle
 ---------
 
-.. cpp:function:: template <std::is_class T> int test(int argc, char** argv, T suite = {})
+``before_each{}`` and ``after_each{}`` mark setup and cleanup. Only one of each
+is allowed per suite. Hooks take no required arguments and must be publicly
+callable. They cannot also be tests. Hook failures fail the current case;
+cleanup still runs after setup or body failure.
 
-    The main entry point that runs all tests in a test suite and prints results.
+Parameterization
+----------------
 
-    * ``argc, argv`` — forwarded from ``main()``; the library also recognizes ``--list`` (prints suite + test names) and ``--test-name <Name>`` (runs only that test).
-    * ``suite`` — an optional instance of your test suite struct. By default the library value-initializes it.
+``parameters(values...)`` describes one complete set of function arguments.
+``parameterize{parameters(...), parameters(...)}`` expands a test into cases
+with one-based suffixes. ``parameters(...).cross(parameters(...))`` produces
+value combinations. See :doc:`/examples/parameterized`.
 
-    Returns **0** if all tests passed (or were skipped) and **1** if any test failed.
+``template_params<Types...>`` describes a template argument set, and
+``parameterize_template<template_params<...>, ...>{}`` applies it to a test
+method template. ``parameterize_template::of`` and ``template_params::cross_t``
+support type products. See :doc:`/examples/typed`.
 
-    .. code-block:: cpp
+``parameterize_pair<template_params<...>, parameters<...>>`` couples template
+and function arguments. ``parameterize_dual`` expands those pairs into cases.
+See :doc:`/examples/dual_parameters`.
 
-        int main(int argc, char** argv) {
-            return test<MyTests>(argc, argv);
-        }
+Operating systems
+-----------------
 
-    .. note:: The ``--test-name`` filter matches full qualified names (``Suite.test_name``) and simple names (``test_name``). Test names containing spaces, semicolons, equals signs, or other shell/CMake-special characters may cause issues with ``annotest_discover_tests()`` CMake integration. Use only alphanumeric, underscore, hyphen, and space characters in test names.
-
-.. cpp:function:: template <typename... Ts> constexpr auto tuple(Ts... args)
-
-    Creates a compile-time tuple for use with :cpp:struct:`parameterize`.
-
-    .. code-block:: cpp
-
-        auto t = tuple(5, 10);    // tuple<int, int>
-        auto u = tuple(3.14);     // tuple<double>
-
-    See also :ref:`parameterized example <example_gallery>`.
-
-.. cpp:function:: template <typename E> consteval auto getMembers()
-
-    Returns the compile-time reflection members of a type. Used internally for test discovery.
-
-.. cpp:function:: template <typename E> consteval auto getAnnotations()
-
-    Returns the compile-time annotations on a reflection entity.
-
-.. cpp:function:: template <typename E> consteval auto getNonstaticDataMembers()
-
-    Returns the compile-time non-static data members of a type.
+``OS`` has values ``Linux``, ``Mac``, ``Windows``, and ``Unknown``.
+``requires_os{OS::Linux, OS::Mac}`` runs a test when any listed OS matches.
+``disallows_os{OS::Windows}`` skips a test when any listed OS matches. These
+annotations control execution; the body must compile on every target platform.
+See :doc:`/examples/os_annotations`.

@@ -36,3 +36,14 @@ html_sidebars = {
         "sidebar/ethical-ads.html",
     ]
 }
+
+
+def setup(app):
+    # Pygments' attribute state does not yet accept C++26 expression annotations.
+    import importlib.util
+    from pathlib import Path
+    spec = importlib.util.spec_from_file_location('annotest_lexer', Path(__file__).with_name('annotest_lexer.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    app.add_lexer('cpp', module.AnnoTestCppLexer)
+    return {'parallel_read_safe': True, 'parallel_write_safe': True}

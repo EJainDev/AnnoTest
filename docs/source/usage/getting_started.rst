@@ -1,204 +1,100 @@
 .. _getting_started:
 
 Getting Started
----------------
+===============
 
 .. _testing_example:
 
-Testing Framework
-^^^^^^^^^^^^^^^^^
+Write and run a suite
+---------------------
+
+AnnoTest is a C++26 module. Import it, use the ``annotest`` namespace, annotate
+public methods with ``test``, and forward the command line to ``run_tests``:
 
 .. code-block:: cpp
 
     import annotest;
+    using namespace annotest;
 
-    struct AddTest {
-        [[= Test{}]] void basic() {
-            assert_equal(4, 2 + 2);
-        }
-
-        [[= Test{.disabled = true}]] void skipped() {}
-
-        [[= Test{}, = parameterize{tuple(5), tuple(50)} ]] void parameterized(int val) {
-            assert_true(val == 5 || val == 50);
-        }
+    struct AddTests {
+        [[= test{}]] void basic() { assert_equal(4, 2 + 2); }
+        [[= test{.disabled = true}]] void skipped() {}
+        [[= test{}, = parameterize{parameters(5), parameters(50)}]]
+        void parameterized(int value) { assert_true(value == 5 || value == 50); }
     };
 
     int main(int argc, char** argv) {
-        return test<AddTest>(argc, argv);
+        return run_tests<AddTests>(argc, argv);
     }
 
-Using ``import annotest;``
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-AnnoTest is a **C++26 module**, not a header-only library. You never write ``#include <annotest.hpp>``. Instead, you write:
-
-.. code-block:: cpp
-
-    import annotest;
-
-This imports the umbrella module, which re-exports all sub-modules: ``annotest:asserts``, ``annotest:expects``, ``annotest:contracts``, ``annotest:exceptions``, ``annotest:death_test``, ``annotest:tuple``, ``annotest:utils``, and ``annotest:posix``.
-
-This is **MACRO FREE** 🎉. No preprocessor pollution, no include guards, no translation-unit duplication. The module system gives you a single import point with zero overhead.
+``run_tests`` constructs one suite instance per call. Public static and const
+methods are supported too. Test methods with required arguments need a
+parameterization annotation. Named tests use ``test<"custom name">{}``; suites
+can use ``suite<"custom suite">{}`` and can be disabled.
 
 .. _design_decisions:
 
-Design Decisions
-^^^^^^^^^^^^^^^^
+Fixture lifecycle
+-----------------
 
-AnnoTest makes deliberate design choices that distinguish it from other C++ testing frameworks.
-
-Why structs, not classes?
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-All test suite structs use **public members** by design:
+A suite must be default-constructible. Constructors are allowed; public
+aggregates with member initializers are often convenient. State persists
+between tests unless the setup hook resets it:
 
 .. code-block:: cpp
 
-    struct AddTest {
-        int counter = 0;  // public — you can read and write directly
-
-        [[= before_each{}]] void reset() { counter = 0; }
-
-        [[= Test{}]] void one() {
-            ++counter;  // direct access, no getters/setters
-            assert_true(counter == 1);
-        }
+    struct FixtureTests {
+        int value = 0;
+        [[= before_each{}]] void setup() { value = 10; }
+        [[= after_each{}]] void cleanup() { value = 0; }
+        [[= test{}]] void increment() { assert_equal(11, ++value); }
     };
 
-**Why?** AnnoTest discovers test members through C++26 reflection (`std::meta::members_of`), which only sees **non-private** members. By using plain structs with public data members, you get:
+Only one hook of each kind is allowed. Duplicate hooks and combining a hook with
+``test`` on the same method are compile-time errors. Setup failure prevents the
+body from running; cleanup still runs after setup or body failure. Hook exceptions
+fail the test. Skipped tests do not run hooks. There are no suite-wide lifecycle
+hooks. Data members may be private; annotated test and hook methods must be public.
 
-1. **Zero boilerplate** — no getters, no setters, no friend declarations
-2. **Direct state sharing** between ``before_each``, ``after_each``, and test methods
-3. **Reflection compatibility** — the library can see all your members without intrusive changes
-4. **No inheritance needed** — composition through struct members is sufficient for test fixtures
+A failed assertion records a failure and unwinds the current test body. A failed
+expectation records a failure and continues. Both make the run return 1, and later
+tests still execute. Uncaught exceptions and unexpected contract violations also
+fail tests. See :doc:`/api/testing/assertions` and :doc:`/api/testing/contracts`.
 
-**You still get encapsulation if you want it** — AnnoTest doesn't prevent you from using private members. It simply doesn't require or use them.
+Command line and CTest
+----------------------
 
-Plain old structs (POD)
-~~~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: sh
 
-AnnoTest expects your test suite struct to be **value-initializable** with no constructor logic. The library creates an instance of your struct internally:
+    ./my_tests --list
+    ./my_tests --test-name AddTests.basic
+    ./my_tests --test-name AddTests.parameterized.2 --xml-output report.xml
 
-.. code-block:: cpp
+Windows executables have an ``.exe`` suffix. Filters use fully qualified names;
+parameterized cases have one-based numeric suffixes. ``--help`` describes the
+supported options. Test failures, invalid arguments, unknown names, and report
+write failures return 1; successful runs return 0.
 
-    T suite = {};  // value-initialization, no arguments
+``annotest_discover_tests(my_tests)`` lists the executable after building it and
+registers each case with CTest. Each selected case runs in its own process, with
+its own suite instance and per-test hooks. Running the executable directly
+runs the suite in a single process.
 
-This means:
+Reports and platform behavior
+-----------------------------
 
-* Use default member initializers, not constructors
-* Keep fixture state simple — plain ints, vectors, strings
-* No virtual functions needed (AnnoTest doesn't use polymorphism)
+``--xml-output`` writes XML containing totals, timing, failures, and captured
+stdout/stderr. Capture includes C stdio and uses temporary files to accommodate
+large writes. Windows synchronizes CRT descriptors with native standard handles.
+Capture is process-wide, so background writers must finish before the test ends.
+Windows command-line names and report paths support UTF-8.
 
-No inheritance
-~~~~~~~~~~~~~~
+Stack traces use ``std::stacktrace`` when the toolchain supports it; otherwise
+native backtraces are used, with raw frame addresses on Windows.
+:doc:`/api/testing/death` explains the Windows replay model and POSIX isolation.
 
-Test suites are **not base classes** — you don't extend them. Each ``struct MyTest`` is a standalone unit that gets discovered and run independently. If you need shared state, put it in the struct itself or use ``static`` members.
+More examples
+-------------
 
-Data members go in the struct
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Put your test fixtures **inside** the struct, not in ``main()`` or globals:
-
-.. code-block:: cpp
-
-    // Good — fixture lives with its tests
-    struct AddTest {
-        int x = 10;
-        int y = 20;
-
-        [[= before_each{}]] void reset() { x = 0; y = 0; }
-
-        [[= Test{}]] void sum() { assert_equal(30, x + y); }
-    };
-
-.. code-block:: cpp
-
-    // Bad — state separated from tests
-    int x = 10;
-    int y = 20;
-
-    struct AddTest {
-        [[= before_each{}]] void reset() { x = 0; y = 0; }  // hidden globals
-    };
-
-No private members
-~~~~~~~~~~~~~~~~~~
-
-Don't use private access specifiers in your test structs. AnnoTest's reflection discovery reads all members at compile time and needs them to be visible. Private members are invisible to ``std::meta::members_of`` and will be silently ignored by the framework.
-
-Default members only
-~~~~~~~~~~~~~~~~~~~~
-
-All struct members should have default values. The library value-initializes your struct:
-
-.. code-block:: cpp
-
-    // Good — all members have defaults
-    struct MyTest {
-        int counter = 0;
-        std::vector<int> data{};
-        std::string name = "test";
-
-        [[= before_each{}]] void reset() { counter = 0; data.clear(); }
-    };
-
-    // Bad — no defaults, library can't construct
-    struct BadTest {
-        int counter;  // uninitialized — undefined behavior
-        std::string name;  // empty, but no explicit default
-
-        [[= before_each{}]] void reset() { counter = 0; }
-    };
-
-No constructors
-~~~~~~~~~~~~~~~
-
-The library creates your struct with ``T{}`` (value-initialization). Do not define constructors:
-
-.. code-block:: cpp
-
-    // Bad — AnnoTest can't call this
-    struct BadTest {
-        BadTest() { /* setup */ }
-    };
-
-Use ``before_each`` for setup logic instead:
-
-.. code-block:: cpp
-
-    // Good
-    struct GoodTest {
-        [[= before_each{}]] void setup() { /* setup logic */ }
-    };
-
-CTest integration
-~~~~~~~~~~~~~~~~~
-
-When running tests via CTest, **each test is executed in a separate process**. This means:
-
-* ``before_all`` runs once *per test*, not once per test suite
-* ``after_all`` runs once *per test*, not once after all tests
-* ``before_each`` and ``after_each`` behave the same as when running standalone
-
-This is a CTest characteristic, not an AnnoTest limitation. To use suite-level lifecycle hooks with guaranteed single execution, run the test executable directly rather than through CTest.
-
-Aggregate initialization
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Your test suite struct is an **aggregate** — it can be initialized with brace-enclosed initializer lists. The library uses this for test discovery and member iteration.
-
-More Examples
-~~~~~~~~~~~~~
-
-See the complete example gallery in :ref:`Getting Started <testing_example>`:
-
-* :doc:`/examples/basic` — basic tests, named tests, disabled tests
-* :doc:`/examples/lifecycle` — before_all, before_each, after_each, after_all hooks
-* :doc:`/examples/parameterized` — parameterize with tuple
-* :doc:`/examples/os_annotations` — RequiresOS and DisallowOS for platform-specific tests
-* :doc:`/examples/death_tests` — assertDeath and expectDeath for crash-testing
-* :doc:`/examples/contracts` — C++26 contract testing with assert_contract_violation
-* :doc:`/examples/full_suite` — comprehensive demo combining ALL features
-
-.. note:: This library is still under development. Breaking changes may occur.
+All ten runnable examples are in :doc:`/examples/index`, including typed and dual
+parameterization, OS filtering, death checks, contracts, and reports.
