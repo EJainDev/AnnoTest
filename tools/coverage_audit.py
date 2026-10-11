@@ -17,7 +17,7 @@ parser.add_argument('--output', type=Path, required=True)
 args = parser.parse_args()
 root = args.root.resolve()
 files = {}
-for p in args.data.glob('*.gz'):
+for p in args.data.rglob('*.gz'):
     for f in json.load(gzip.open(p))['files']:
         if '/include/' not in f['file'] or 'CLI11' in f['file']:
             continue

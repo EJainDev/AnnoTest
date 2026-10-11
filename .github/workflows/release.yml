@@ -2,129 +2,37 @@ name: Release
 
 on:
     push:
-        tags:
-            - "v*"
+        tags: ["v*"]
 
 permissions:
-    contents: write
+    contents: read
 
 jobs:
-    release:
+    build:
+        uses: ./.github/workflows/build_and_test.yml
+        with:
+            package: true
+
+    publish:
+        needs: build
         runs-on: ubuntu-24.04
-        container:
-            image: gcc@sha256:47c649664b62db94d186b16936e203bb07ab1d10a0ef860cee198e594f636757
+        timeout-minutes: 10
+        permissions:
+            contents: write
         steps:
-            - name: Install CMake
-              run: |
-                  apt update
-                  apt install -y wget tar ninja-build python3
-
-                  wget https://github.com/Kitware/CMake/releases/download/v4.3.3/cmake-4.3.3-linux-x86_64.tar.gz
-
-                  tar -xzf cmake-4.3.3-linux-x86_64.tar.gz -C /opt
-
-                  ln -s /opt/cmake-4.3.3-linux-x86_64/bin/* /usr/local/bin/
-
-            - name: Checkout Project
-              uses: actions/checkout@v6.0.3
-
-            - name: Build Project
-              uses: threeal/cmake-action@v2.1.0
+            - uses: actions/download-artifact@v4
               with:
-                  build-dir: build
-                  generator: Ninja
-                  c-compiler: gcc
-                  cxx-compiler: g++
-                  options: |
-                      BUILD_TESTS=ON
-                      CMAKE_BUILD_TYPE=Release
-
-            - name: Test Project
-              run: ctest --test-dir build --output-on-failure --parallel 2
-
-            - name: Verify installation and FetchContent consumers
-              run: python3 tools/check_installation.py --build-dir build
-
-            - name: Install package
+                  pattern: package-*
+                  path: dist
+                  merge-multiple: true
+            - name: Verify the complete release artifact set
               run: |
-                  cmake --install build --prefix package
-
-            - name: Add metadata
-              run: |
-                  cp README.md package/
-                  cp LICENSE package/
-
-            - name: Archive
-              run: |
-                  tar -czf annotest-${GITHUB_REF_NAME}.tar.gz package
-
-            - name: Create release
+                  test -f "dist/annotest-${GITHUB_REF_NAME}-linux-x86_64.tar.gz"
+                  test -f "dist/annotest-${GITHUB_REF_NAME}-macos-arm64.tar.gz"
+                  test -f "dist/annotest-${GITHUB_REF_NAME}-macos-x86_64.tar.gz"
+                  test -f "dist/annotest-${GITHUB_REF_NAME}-windows-x86_64.zip"
+            - name: Publish validated packages together
               uses: softprops/action-gh-release@v2
               with:
-                  files: |
-                      annotest-${GITHUB_REF_NAME}.tar.gz
-
-    native-packages:
-        needs: release
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    - os: macos-15
-                      platform: macos-arm64
-                      compiler: g++-16
-                      shell: bash
-                      python: python3
-                      archive: gztar
-                    - os: windows-2025
-                      platform: windows-x86_64
-                      compiler: g++
-                      shell: msys2 {0}
-                      python: python
-                      archive: zip
-        runs-on: ${{ matrix.os }}
-        defaults:
-            run:
-                shell: ${{ matrix.shell }}
-        steps:
-            - uses: actions/checkout@v6.0.3
-            - name: Install macOS toolchain
-              if: runner.os == 'macOS'
-              run: brew install gcc cmake ninja python
-            - name: Install Windows toolchain
-              if: runner.os == 'Windows'
-              uses: msys2/setup-msys2@v2
-              with:
-                  msystem: UCRT64
-                  update: true
-                  install: >-
-                      git
-                      mingw-w64-ucrt-x86_64-gcc
-                      mingw-w64-ucrt-x86_64-cmake
-                      mingw-w64-ucrt-x86_64-ninja
-                      mingw-w64-ucrt-x86_64-python
-            - name: Build, test, and verify installation
-              run: |
-                  cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} \
-                    -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON
-                  cmake --build build --parallel 2
-                  ctest --test-dir build --output-on-failure --parallel 2
-                  ${{ matrix.python }} tools/check_installation.py --build-dir build
-                  cmake --install build --prefix package
-            - name: Package native library
-              env:
-                  ANNOTEST_PLATFORM: ${{ matrix.platform }}
-                  ANNOTEST_ARCHIVE_FORMAT: ${{ matrix.archive }}
-              run: |
-                  ${{ matrix.python }} - <<'PY'
-                  import os
-                  import shutil
-                  for file in ('README.md', 'LICENSE'):
-                      shutil.copy(file, 'package')
-                  name = 'annotest-' + os.environ['GITHUB_REF_NAME'] + '-' + os.environ['ANNOTEST_PLATFORM']
-                  shutil.make_archive(name, os.environ['ANNOTEST_ARCHIVE_FORMAT'], '.', 'package')
-                  PY
-            - name: Upload native release package
-              uses: softprops/action-gh-release@v2
-              with:
-                  files: annotest-*-${{ matrix.platform }}.*
+                  files: dist/*
+                  fail_on_unmatched_files: true

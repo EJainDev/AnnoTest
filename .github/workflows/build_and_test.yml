@@ -2,12 +2,22 @@ name: Build
 on:
     push:
         branches: [main]
-        tags: ["v*"]
     pull_request:
         branches: [main]
 
+    workflow_call:
+        inputs:
+            package:
+                description: Build native release archives after validation
+                type: boolean
+                default: false
+
+permissions:
+    contents: read
+
 jobs:
     build-and-test:
+        timeout-minutes: 45
         runs-on: ubuntu-24.04
         container:
             image: gcc@sha256:47c649664b62db94d186b16936e203bb07ab1d10a0ef860cee198e594f636757
@@ -26,20 +36,12 @@ jobs:
             - name: Checkout Project
               uses: actions/checkout@v6.0.3
 
-            - name: Build Project
-              uses: threeal/cmake-action@v2.1.0
-              with:
-                  build-dir: build
-                  generator: Ninja
-                  c-compiler: gcc
-                  cxx-compiler: g++
-                  options: |
-                      BUILD_TESTS=ON
-                      BUILD_EXAMPLES=ON
-                      CMAKE_BUILD_TYPE=Release
-
-            - name: Test Project
-              uses: threeal/ctest-action@v1.1.0
+            - name: Build and test
+              run: |
+                  cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=g++ \
+                    -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON
+                  cmake --build build --parallel 2
+                  ctest --test-dir build --output-on-failure --no-tests=error --parallel 2
 
             - name: Verify installation and FetchContent consumers
               run: |
@@ -57,39 +59,54 @@ jobs:
                     -DCMAKE_EXE_LINKER_FLAGS=--coverage
                   cmake --build build/coverage --parallel 2
                   find build/coverage -name '*.gcda' -delete
-                  ctest --test-dir build/coverage --output-on-failure --parallel 2
-                  mkdir -p build/coverage/gcov-json
-                  cd build/coverage/gcov-json
-                  find ../CMakeFiles/annotest.dir ../tests/CMakeFiles -name '*.gcno' \
-                    -exec gcov --json-format -b -c {} + > gcov.log
-                  cd ../../..
+                  ctest --test-dir build/coverage --output-on-failure --no-tests=error --parallel 2
+                  python3 tools/collect_coverage.py build/coverage build/coverage/gcov-json
                   python3 tools/coverage_audit.py build/coverage/gcov-json \
                     --output build/coverage/reachable-source-coverage.json
 
-    macos:
-        runs-on: macos-15
-        steps:
-            - uses: actions/checkout@v6.0.3
-            - name: Install native toolchain
-              run: brew install gcc ninja cmake python
-            - name: Build and test
-              run: |
-                  cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=g++-16 \
-                    -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON \
-                    -DCMAKE_INSTALL_INCLUDEDIR=include/annotest-sdk \
-                    -DCMAKE_INSTALL_LIBDIR=lib/annotest-sdk
-                  cmake --build build --parallel 2
-                  ctest --test-dir build --output-on-failure --parallel 2
-                  python3 tools/check_installation.py --build-dir build
+            - name: Package Linux library
+              if: inputs.package
+              run: python3 tools/package_release.py --build-dir build --tag "$GITHUB_REF_NAME" --platform linux-x86_64
+            - uses: actions/upload-artifact@v4
+              if: inputs.package
+              with:
+                  name: package-linux-x86_64
+                  path: dist/*
+                  if-no-files-found: error
 
-    windows:
-        runs-on: windows-2025
+    native:
+        timeout-minutes: 45
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - os: macos-15
+                      platform: macos-arm64
+                      compiler: g++-16
+                      shell: bash
+                      python: python3
+                    - os: macos-15-intel
+                      platform: macos-x86_64
+                      compiler: g++-16
+                      shell: bash
+                      python: python3
+                    - os: windows-2025
+                      platform: windows-x86_64
+                      compiler: g++
+                      shell: msys2 {0}
+                      python: python
+        runs-on: ${{ matrix.os }}
         defaults:
             run:
-                shell: msys2 {0}
+                shell: ${{ matrix.shell }}
         steps:
             - uses: actions/checkout@v6.0.3
-            - uses: msys2/setup-msys2@v2
+            - name: Install macOS toolchain
+              if: runner.os == 'macOS'
+              run: brew install gcc ninja cmake python
+            - name: Install Windows toolchain
+              if: runner.os == 'Windows'
+              uses: msys2/setup-msys2@v2
               with:
                   msystem: UCRT64
                   update: true
@@ -99,12 +116,34 @@ jobs:
                       mingw-w64-ucrt-x86_64-cmake
                       mingw-w64-ucrt-x86_64-ninja
                       mingw-w64-ucrt-x86_64-python
-            - name: Build and test native Windows executables
+            - name: Build and test native executables
               run: |
-                  cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=g++ \
+                  cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} \
                     -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON \
                     -DCMAKE_INSTALL_INCLUDEDIR=include/annotest-sdk \
                     -DCMAKE_INSTALL_LIBDIR=lib/annotest-sdk
                   cmake --build build --parallel 2
-                  ctest --test-dir build --output-on-failure --parallel 2
-                  python tools/check_installation.py --build-dir build
+                  ctest --test-dir build --output-on-failure --no-tests=error --parallel 2
+                  ${{ matrix.python }} tools/check_installation.py --build-dir build
+            - name: Package native library
+              if: inputs.package
+              run: ${{ matrix.python }} tools/package_release.py --build-dir build --tag "$GITHUB_REF_NAME" --platform ${{ matrix.platform }}
+            - uses: actions/upload-artifact@v4
+              if: inputs.package
+              with:
+                  name: package-${{ matrix.platform }}
+                  path: dist/*
+                  if-no-files-found: error
+
+    docs:
+        runs-on: ubuntu-24.04
+        timeout-minutes: 10
+        steps:
+            - uses: actions/checkout@v6.0.3
+            - uses: actions/setup-python@v6
+              with:
+                  python-version: '3.13'
+            - name: Build documentation with strict diagnostics
+              run: |
+                  python -m pip install -r docs/requirements.txt
+                  python -m sphinx -n -W --keep-going -b html docs/source build/docs
