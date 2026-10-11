@@ -1,3 +1,9 @@
+module;
+
+#include <unistd.h>
+
+#include <cstdio>
+
 export module annotest;
 
 export import :contracts;
@@ -99,6 +105,7 @@ consteval auto get_tests() {
                             std::meta::identifier_of(m)));
           }
 
+          lifecycle_found = true;
           result.before_each = m;
           result.has_before_each = true;
         } else if constexpr (t == ^^after_each) {
@@ -111,14 +118,25 @@ consteval auto get_tests() {
                 std::format("after_each cannot be declared on a `test` method. Method name: {}",
                             std::meta::identifier_of(m)));
           }
+          lifecycle_found = true;
           result.after_each = m;
           result.has_after_each = true;
         } else if constexpr (t == ^^parameterize || t == ^^parameterize_template ||
                              t == ^^parameterize_dual) {
+          current_test.parameterization_type =
+              t == ^^parameterize ? parameterization_types::Value
+                                  : (t == ^^parameterize_template ? parameterization_types::Template
+                                                                  : parameterization_types::Dual);
           current_test.parameterize_annotation = a;
           current_test.parameterized = true;
           using AnnoType = typename[:std::meta::type_of(a):];
           current_test.num_parameterizations = AnnoType::N;
+        } else if constexpr (t == ^^requires_os) {
+          current_test.has_requires_os = true;
+          current_test.requires_os_annotation = a;
+        } else if constexpr (t == ^^disallows_os) {
+          current_test.has_disallows_os = true;
+          current_test.disallows_os_annotation = a;
         }
       }
 
@@ -151,86 +169,170 @@ consteval bool not_has_required_parameter() {
   return true;
 }
 
-bool run_before_each(const auto& func) {
-  try {
-    func();
-  } catch (const std::exception& e) {
-    std::println("before_each function failed with exception: {}", e.what());
-    return false;
-  } catch (...) {
-    std::println("before_each function failed with unknown assertion_error");
-    return false;
+// Temporary files let large writes complete without full pipes or background reader threads.
+class std_streams {
+ public:
+  std_streams() {
+    std::cout.flush();
+    std::cerr.flush();
+    std::fflush(nullptr);
+    out = std::tmpfile();
+    err = std::tmpfile();
+    saved_out = dup(STDOUT_FILENO);
+    saved_err = dup(STDERR_FILENO);
+    if (!out || !err || saved_out < 0 || saved_err < 0) {
+      restore();
+      throw std::runtime_error("Cannot capture test output");
+    }
+    if (dup2(fileno(out), STDOUT_FILENO) < 0 || dup2(fileno(err), STDERR_FILENO) < 0) {
+      restore();
+      throw std::runtime_error("Cannot redirect test output");
+    }
   }
-  return true;
+  std_streams(const std_streams&) = delete;
+  std_streams& operator=(const std_streams&) = delete;
+  ~std_streams() {
+    std::cout.flush();
+    std::cerr.flush();
+    std::fflush(nullptr);
+    if (out) suite_log.testcases.back().sysout = read_file(out);
+    if (err) suite_log.testcases.back().syserr = read_file(err);
+    restore();
+  }
+
+ private:
+  static std::string read_file(std::FILE* file) {
+    std::rewind(file);
+    std::string result;
+    char buffer[4096];
+    while (auto n = std::fread(buffer, 1, sizeof(buffer), file)) result.append(buffer, n);
+    return result;
+  }
+  void restore() {
+    if (saved_out >= 0) {
+      dup2(saved_out, STDOUT_FILENO);
+      close(saved_out);
+      saved_out = -1;
+    }
+    if (saved_err >= 0) {
+      dup2(saved_err, STDERR_FILENO);
+      close(saved_err);
+      saved_err = -1;
+    }
+    if (out) {
+      std::fclose(out);
+      out = nullptr;
+    }
+    if (err) {
+      std::fclose(err);
+      err = nullptr;
+    }
+  }
+  std::FILE* out = nullptr;
+  std::FILE* err = nullptr;
+  int saved_out = -1;
+  int saved_err = -1;
+};
+
+void record_exception(const std::string& phase) {
+  try {
+    throw;
+  } catch (const assertion_error& e) {
+    // Assertion helpers have already recorded their failure; manually thrown errors have not.
+    if (!e.recorded()) {
+      suite_log.add_failure({failure_types::assertion, e.message(), {.message = e.message()}});
+    }
+  } catch (const std::exception& e) {
+    auto msg = std::format("{}: {}", phase, e.what());
+    suite_log.add_failure({failure_types::uncaught_exception, msg, {.message = msg}});
+  } catch (...) {
+    auto msg = phase + ": unknown exception";
+    suite_log.add_failure({failure_types::unknown, msg, {.message = msg}});
+  }
 }
 
-void run_after_each(const auto& func) {
-  try {
-    func();
-  } catch (const std::exception& e) {
-    std::println("after_each function failed with exception: {}", e.what());
-  } catch (...) {
-    std::println("after_each function failed with unknown assertion_error");
+template <auto Suite, auto Test, auto... Parameters>
+int run_test(auto& s, const std::string_view name) {
+  contract_violation_occurred = false;
+  suite_log.testcases.emplace_back(
+      test_xml_log{.test_class = suite_log.name, .name = std::string(name)});
+  auto start = std::chrono::steady_clock::now();
+  {
+    std_streams streams;
+    bool ready = true;
+    if constexpr (Suite.has_before_each) {
+      try {
+        s.[:Suite.before_each:]();
+      } catch (...) {
+        record_exception("before_each");
+        ready = false;
+      }
+    }
+    if (ready) {
+      try {
+        s.[:Test:](Parameters...);
+      } catch (...) {
+        record_exception("test");
+      }
+    }
+    if constexpr (Suite.has_after_each) {
+      try {
+        s.[:Suite.after_each:]();
+      } catch (...) {
+        record_exception("after_each");
+      }
+    }
   }
+  if (std::exchange(contract_violation_occurred, false)) {
+    suite_log.add_failure({failure_types::contract_violation,
+                           "Unexpected contract violation",
+                           {.message = "Unexpected contract violation"}});
+  }
+  auto& result = suite_log.testcases.back();
+  result.time = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+  for (const auto& failure : result.failures) {
+    if (failure.type == failure_types::uncaught_exception ||
+        failure.type == failure_types::unknown || failure.type == failure_types::contract_violation)
+      ++result.errors;
+  }
+  result.failed = !result.failures.empty();
+  suite_log.failed += result.failed;
+  suite_log.errors += result.errors;
+  std::println("{}: {}", name, result.failed ? "Failed" : "Passed");
+  for (const auto& failure : result.failures) std::println(std::cerr, "{}", failure.cdata);
+  return result.failed ? 1 : 0;
+}
+
+template <auto test_name, auto i>
+consteval auto get_parameterized_test_name() {
+  return std::define_static_string(std::string(test_name) + "." + to_string(i + 1));
 }
 
 template <auto Suite, internal_test Test>
-int run_parameterized_test(auto s, int parameterize_target_idx) pre(parameterize_target_idx > -2) {
+int run_parameterized_test(auto& s, int parameterize_target_idx) pre(parameterize_target_idx > -2) {
   int status_code = 0;
 
+  using Annotation = typename[:std::meta::type_of(Test.parameterize_annotation):];
   static constexpr auto parameterize_struct =
-      std::meta::extract<([:std::meta::substitute(
-                                ^^parameterize, std::meta::template_arguments_of(std::meta::type_of(
-                                                    Test.parameterize_annotation))):])>(
-          Test.parameterize_annotation);
+      std::meta::extract<Annotation>(Test.parameterize_annotation);
+  static constexpr auto indices = std::make_index_sequence<Annotation::N>{};
 
-  template for (constexpr auto i : std::make_index_sequence<parameterize_struct.N>{}) {
+  template for (constexpr auto i : indices) {
     static constexpr auto args_tuple = parameterize_struct.parameters.template get<i>();
-    static constexpr auto [... args] = args_tuple;
+    static constexpr auto [... args] = args_tuple.params;
 
     static constexpr auto test_name = Test.name;
-    active_test_instance = active_test{
-        .name = std::format("{}.{}({})", std::meta::identifier_of(Suite), test_name, args_tuple)};
+    static constexpr auto current_test_name = get_parameterized_test_name<test_name, i>();
 
-    if (parameterize_target_idx > 1) {
+    if (parameterize_target_idx >= 0) {
       if (i != parameterize_target_idx) {
         continue;
       }
     }
 
-    if constexpr (Suite.has_before_each) {
-      if (!run_before_each([&s]() { s.[:Suite.before_each:](); })) {
-        status_code = 1;
-        continue;
-      }
-    }
+    status_code |= run_test<Suite, Test.test, args...>(s, current_test_name);
 
-    try {
-      active_test_instance.start_time = std::chrono::steady_clock::now();
-      s.[:Test.test:](args...);
-      active_test_instance.end_time = std::chrono::steady_clock::now();
-
-      if (contract_violation_occurred) {
-        throw assertion_error("Contract violation occurred during test execution");
-      }
-    } catch (const assertion_error& e) {
-      active_test_instance.catch_exception(e);
-      status_code = 1;
-    } catch (const std::exception& e) {
-      active_test_instance.catch_exception(e);
-      status_code = 1;
-    } catch (...) {
-      active_test_instance.catch_exception();
-      status_code = 1;
-    }
-
-    if constexpr (Suite.has_after_each) {
-      if (!run_after_each([&s]() { s.[:Suite.after_each:](); })) {
-        status_code = 1;
-      }
-    }
-
-    if (parameterize_target_idx > 1) {
+    if (parameterize_target_idx >= 0) {
       break;
     }
   }
@@ -239,59 +341,33 @@ int run_parameterized_test(auto s, int parameterize_target_idx) pre(parameterize
 }
 
 template <auto Suite, internal_test Test>
-int run_parameterized_template_test(auto s, int parameterize_target_idx)
+int run_parameterized_template_test(auto& s, int parameterize_target_idx)
     pre(parameterize_target_idx > -2) {
   int status_code = 0;
 
   static constexpr auto template_args_list = std::define_static_array(
       std::meta::template_arguments_of(std::meta::type_of(Test.parameterize_annotation)));
-  static constexpr auto N = template_args_list.size();
+  using Annotation = typename[:std::meta::type_of(Test.parameterize_annotation):];
+  static constexpr auto indices = std::make_index_sequence<Annotation::N>{};
 
-  template for (constexpr auto i : std::make_index_sequence<N>{}) {
-    if (parameterize_target_idx > 1) {
+  static constexpr auto name = Test.name;
+
+  template for (constexpr auto i : indices) {
+    static constexpr auto template_args =
+        std::define_static_array(std::meta::template_arguments_of(template_args_list[i]));
+
+    static constexpr auto test_name = get_parameterized_test_name<name, i>();
+
+    if (parameterize_target_idx >= 0) {
       if (i != parameterize_target_idx) {
         continue;
       }
     }
 
-    if constexpr (Suite.has_before_each) {
-      if (!run_before_each([&s]() { s.[:Suite.before_each:](); })) {
-        status_code = 1;
-        continue;
-      }
-    }
+    static constexpr auto specialization = std::meta::substitute(Test.raw_test, template_args);
+    status_code |= run_test<Suite, specialization>(s, test_name);
 
-    static constexpr auto template_args =
-        std::define_static_array(std::meta::template_arguments_of(template_args_list[i]));
-
-    try {
-      auto start = std::chrono::steady_clock::now();
-      s.[:std::meta::substitute(Test.test, template_args):]();
-      auto end = std::chrono::steady_clock::now();
-
-      auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-
-      if (contract_violation_occurred) {
-        throw assertion_error("Contract violation occurred during test execution");
-      }
-    } catch (const assertion_error& e) {
-      std::println("Failed with assertion_error: {}", e.message());
-      status_code = 1;
-    } catch (const std::exception& e) {
-      std::println("Failed with (uncaught) exception message: {}", e.what());
-      status_code = 1;
-    } catch (...) {
-      std::println("Failed with unknown assertion_error");
-      status_code = 1;
-    }
-
-    if constexpr (Suite.has_after_each) {
-      if (!run_after_each([&s]() { s.[:Suite.after_each:](); })) {
-        status_code = 1;
-      }
-    }
-
-    if (parameterize_target_idx > 1) {
+    if (parameterize_target_idx >= 0) {
       break;
     }
   }
@@ -300,68 +376,35 @@ int run_parameterized_template_test(auto s, int parameterize_target_idx)
 }
 
 template <auto Suite, internal_test Test>
-int run_parameterized_dual_test(auto s, int parameterize_target_idx)
+int run_parameterized_dual_test(auto& s, int parameterize_target_idx)
     pre(parameterize_target_idx > -2) {
   int status_code = 0;
 
-  static constexpr auto parameterize_struct = std::meta::extract<
-      typename[:std::meta::substitute(^^parameterize_dual,
-                                      std::meta::template_arguments_of(
-                                          std::meta::type_of(Test.parameterize_annotation))):]>(
-      Test.parameterize_annotation);
+  using Annotation = typename[:std::meta::type_of(Test.parameterize_annotation):];
+  static constexpr auto parameterize_struct =
+      std::meta::extract<Annotation>(Test.parameterize_annotation);
 
   static constexpr auto template_args_list = std::define_static_array(
       std::meta::template_arguments_of(std::meta::type_of(Test.parameterize_annotation)));
   static constexpr auto idx_sequence = std::make_index_sequence<parameterize_struct.N>{};
 
   template for (constexpr auto i : idx_sequence) {
-    if (parameterize_target_idx > 1) {
+    static constexpr auto template_args = std::define_static_array(std::meta::template_arguments_of(
+        std::meta::template_arguments_of(template_args_list[i])[0]));
+    static constexpr auto args_tuple = parameterize_struct.sets.template get<i>().params.params;
+    static constexpr auto [... args] = args_tuple;
+    static constexpr auto test_name = get_parameterized_test_name<Test.name, i>();
+
+    if (parameterize_target_idx >= 0) {
       if (i != parameterize_target_idx) {
         continue;
       }
     }
 
-    if constexpr (Suite.has_before_each) {
-      if (!run_before_each([&s]() { s.[:Suite.before_each:](); })) {
-        status_code = 1;
-        continue;
-      }
-    }
+    static constexpr auto specialization = std::meta::substitute(Test.raw_test, template_args);
+    status_code |= run_test<Suite, specialization, args...>(s, test_name);
 
-    static constexpr auto template_args = std::define_static_array(std::meta::template_arguments_of(
-        std::meta::template_arguments_of(template_args_list[i])[0]));
-    static constexpr auto [... args] = parameterize_struct.sets.template get<i>().params.params;
-
-    try {
-      auto start = std::chrono::steady_clock::now();
-      s.[:std::meta::substitute(Test.raw_test, template_args):](args...);
-      auto end = std::chrono::steady_clock::now();
-
-      auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-
-      std::println("Parameterization passed in {:.3f} ms", duration.count() / 1'000'000.0);
-
-      if (contract_violation_occurred) {
-        throw assertion_error("Contract violation occurred during test execution");
-      }
-    } catch (const assertion_error& e) {
-      std::println("Failed with assertion_error: {}", e.message());
-      status_code = 1;
-    } catch (const std::exception& e) {
-      std::println("Failed with (uncaught) exception message: {}", e.what());
-      status_code = 1;
-    } catch (...) {
-      std::println("Failed with unknown assertion_error");
-      status_code = 1;
-    }
-
-    if constexpr (Suite.has_after_each) {
-      if (!run_after_each([&s]() { s.[:Suite.after_each:](); })) {
-        status_code = 1;
-      }
-    }
-
-    if (parameterize_target_idx > 1) {
+    if (parameterize_target_idx >= 0) {
       break;
     }
   }
@@ -370,48 +413,10 @@ int run_parameterized_dual_test(auto s, int parameterize_target_idx)
 }
 
 template <auto Suite, internal_test Test>
-int run_regular_test(auto s) {
-  int status_code = 0;
-
+int run_regular_test(auto& s) {
   static constexpr auto name = Test.name;
 
-  std::println("Running test: {}", name);
-  if constexpr (Suite.has_before_each) {
-    if (!run_before_each([&s]() { s.[:Suite.before_each:](); })) {
-      return 1;
-    }
-  }
-
-  try {
-    auto start = std::chrono::steady_clock::now();
-    s.[:Test.test:]();
-    auto end = std::chrono::steady_clock::now();
-
-    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-
-    if (contract_violation_occurred) {
-      throw assertion_error("Contract violation occurred during test execution");
-    }
-
-    std::println("Passed in {:.3f} ms", duration.count() / 1'000'000.0);
-  } catch (const assertion_error& e) {
-    std::println("Failed with assertion_error: {}", e.message());
-    status_code = 1;
-  } catch (const std::exception& e) {
-    std::println("Failed with (uncaught) exception message: {}", e.what());
-    status_code = 1;
-  } catch (...) {
-    std::println("Failed with unknown assertion_error");
-    status_code = 1;
-  }
-
-  if constexpr (Suite.has_after_each) {
-    if (!run_after_each([&s]() { s.[:Suite.after_each:](); })) {
-      status_code = 1;
-    }
-  }
-
-  return status_code;
+  return run_test<Suite, Test.test>(s, name);
 }
 
 export template <typename T>
@@ -430,6 +435,9 @@ int run_tests(int argc, char** argv) {
 
   auto list_opt = app.add_flag("-l, --list", list_tests, "List all available tests");
 
+  std::string xml_output;
+  app.add_option("--xml-output", xml_output, "Write a suite XML report to this file");
+
   std::vector<std::string> test_names;
   app.add_option("-t, --test-name", test_names,
                  "Run a specific test by fully qualified name (can be used multiple times for "
@@ -445,6 +453,16 @@ int run_tests(int argc, char** argv) {
     std::println(test_list);
     return 0;  // Exit after listing tests
   }
+
+  auto remaining_names = test_names;
+  suite_log.reset();
+  auto suite_start = std::chrono::steady_clock::now();
+  suite_log.name = std::string(std::meta::identifier_of(^^T));
+  static constexpr auto source_location = std::meta::source_location_of(^^T);
+  suite_log.file = source_location.file_name();
+  suite_log.total_tests = 0;
+  suite_log.timestamp = std::format(
+      "{:%FT%TZ}", std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now()));
 
   if (test_names.size() == 0) {
     std::println("Running tests in suite {}", std::meta::identifier_of(^^T));
@@ -471,43 +489,41 @@ int run_tests(int argc, char** argv) {
   template for (constexpr auto test : Children) {
     contract_violation_occurred = false;  // Reset contract flag before each test
 
-    // Name matching
-    int parameterize_target_idx = -1;
-    if constexpr (!test.parameterized) {
-      if (test_names.size() > 0) {
-        auto pos = std::ranges::find(test_names, prefix + test.name);
-        if (pos != test_names.end()) {
-          continue;
-        } else {
-          test_names.erase(pos);
-        }
-      }
+    static constexpr bool is_parameterized = test.parameterized;
+    static constexpr int parameter_count = test.num_parameterizations;
+    std::vector<int> parameterize_targets;
+    auto full_name = prefix + test.name;
+    if (test_names.empty()) {
+      parameterize_targets.push_back(-1);
     } else {
-      if (test_names.size() > 0) {
-        static constexpr auto name = test.name;
-        auto pos = std::ranges::find_if(test_names, [&](const auto& test_name) {
-          return test_name.substr(0, test_name.find_last_of('.')) == (prefix + name);
-        });
-        if (pos == test_names.end()) {
-          continue;
-        } else {
-          parameterize_target_idx =
-              (*pos)[pos->size() - 1] - '0' - 1;  // Convert last character to index
-          test_names.erase(pos);
-
-          if (pos == test_names.end() - 1) {
-            std::println(
-                "Warning, no parameterization index specified for test {}, running all "
-                "parameterizations",
-                name);
-            parameterize_target_idx = -1;
+      for (const auto& requested : test_names) {
+        if (requested == full_name) {
+          parameterize_targets = {-1};
+          std::erase(remaining_names, requested);
+        } else if (is_parameterized && requested.starts_with(full_name + ".")) {
+          auto suffix = std::string_view(requested).substr(full_name.size() + 1);
+          int index = 0;
+          auto [end, ec] = std::from_chars(suffix.data(), suffix.data() + suffix.size(), index);
+          if (ec != std::errc{} || end != suffix.data() + suffix.size() || index < 1 ||
+              index > parameter_count) {
+            std::println(std::cerr, "Invalid parameterization: {}", requested);
+            return 1;
           }
+          if (std::ranges::find(parameterize_targets, -1) == parameterize_targets.end() &&
+              std::ranges::find(parameterize_targets, index - 1) == parameterize_targets.end()) {
+            parameterize_targets.push_back(index - 1);
+          }
+          std::erase(remaining_names, requested);
         }
       }
+      if (parameterize_targets.empty()) continue;
     }
 
     // Skip disabled tests
     if constexpr (test.disabled) {
+      suite_log.skipped += is_parameterized && parameterize_targets == std::vector<int>{-1}
+                               ? parameter_count
+                               : parameterize_targets.size();
       std::println("Skipping disabled test: {}", test.name);
       continue;
     }
@@ -517,22 +533,26 @@ int run_tests(int argc, char** argv) {
 
     // Check for required operating systems
     if constexpr (test.has_requires_os) {
+      stop = true;
       static constexpr auto required_os_list = std::meta::extract<
           typename[:std::meta::substitute(^^requires_os,
                                           std::meta::template_arguments_of(
                                               std::meta::type_of(test.requires_os_annotation))):]>(
           test.requires_os_annotation);
       template for (constexpr auto required_os : required_os_list.os) {
-        if (required_os != os) {
-          std::println("Current OS {} does not match required OS {}, skipping test {}",
+        if (required_os == os) {
+          std::println("Current OS {} matches required OS {} for test {}",
                        enum_to_string(required_os), enum_to_string(os), test.name);
-          stop = true;
+          stop = false;
           break;
         }
       }
     }
 
     if (stop) {
+      suite_log.skipped += is_parameterized && parameterize_targets == std::vector<int>{-1}
+                               ? parameter_count
+                               : parameterize_targets.size();
       continue;
     }
 
@@ -554,39 +574,60 @@ int run_tests(int argc, char** argv) {
     }
 
     if (stop) {
+      suite_log.skipped += is_parameterized && parameterize_targets == std::vector<int>{-1}
+                               ? parameter_count
+                               : parameterize_targets.size();
       continue;
     }
 
-    if constexpr (test.parameterized) {
-      if constexpr (test.parameterization_type == parameterization_types::Value) {
-        if (run_parameterized_test<Suite, test>(s, parameterize_target_idx) == 1) {
+    for (int parameterize_target_idx : parameterize_targets) {
+      if constexpr (test.parameterized) {
+        if constexpr (test.parameterization_type == parameterization_types::Value) {
+          if (run_parameterized_test<Suite, test>(s, parameterize_target_idx) == 1) {
+            status_code = 1;
+          }
+        } else if constexpr (test.parameterization_type == parameterization_types::Template) {
+          if (run_parameterized_template_test<Suite, test>(s, parameterize_target_idx) == 1) {
+            status_code = 1;
+          }
+        } else {
+          if (run_parameterized_dual_test<Suite, test>(s, parameterize_target_idx) == 1) {
+            status_code = 1;
+          }
+        }
+      } else if constexpr (not_has_required_parameter<test.test>()) {
+        if (run_regular_test<Suite, test>(s) == 1) {
           status_code = 1;
         }
-      } else if constexpr (test.parameterization_type == parameterization_types::Template) {
-        if (run_parameterized_template_test<Suite, test>(s, parameterize_target_idx) == 1) {
-          status_code = 1;
-        }
-      } else {
-        if (run_parameterized_dual_test<Suite, test>(s, parameterize_target_idx) == 1) {
-          status_code = 1;
-        }
+      } else if constexpr (!test.parameterized) {
+        std::println(
+            "Warning: test `{}` did not execute because it has required arguments that were not "
+            "given via a parameterization annotation.",
+            test.name);
       }
-    } else if constexpr (not_has_required_parameter<test>()) {
-      if (run_regular_test<Suite, test>(s) == 1) {
-        status_code = 1;
-      }
-    } else if constexpr (!test.parameterized) {
-      std::println(
-          "Warning: test `{}` did not execute because it has required arguments that were not "
-          "given via a parameterization annotation.",
-          test.name);
     }
   }
 
-  if (test_names.size() > 0) {
-    std::println(std::cerr, "Warning: The following test names were not found: {}", test_names);
+  if (!remaining_names.empty()) {
+    status_code = 1;
+    std::println(std::cerr, "Warning: The following test names were not found: {}",
+                 remaining_names);
   }
 
+  suite_log.total_tests = suite_log.testcases.size() + suite_log.skipped;
+  suite_log.time =
+      std::chrono::duration<double>(std::chrono::steady_clock::now() - suite_start).count();
+  if (!xml_output.empty()) {
+    try {
+      std::ofstream report(xml_output);
+      report << xml_report();
+      report.flush();
+      if (!report) throw std::runtime_error("Cannot write report file");
+    } catch (const std::exception& e) {
+      std::println(std::cerr, "Cannot write XML report {}: {}", xml_output, e.what());
+      return 1;
+    }
+  }
   return status_code;
 }
 

@@ -1,153 +1,168 @@
 export module annotest:expects;
 
-import :exceptions;
-import :utils;
 import :contracts;
+import :utils;
+import :logger;
 
 import std;
 
-namespace annotest {
-// Expect statements that can be called
-export void expectEqual(auto expected, auto actual) {
+export namespace annotest {
+inline void add_failure_expect(const std::string_view msg, const std::source_location& loc) {
+  suite_log.add_failure(failure_xml_log{
+      failure_types::expectation, std::string{msg},
+      failure_cdata{std::make_pair(loc.file_name(), loc.line()), std::string{msg}}});
+}
+
+// Assert statements that can be called
+void expect_equal(auto expected, auto actual,
+                  const std::source_location& loc = std::source_location::current()) {
   if (expected != actual) {
-    std::println(std::cerr, "Expectation failed: expected {}, got {}", expected, actual);
+    add_failure_expect(std::format("Expectation failed: expected {}, got {}", expected, actual),
+                       loc);
   }
 }
 
-export void expectNotEqual(auto expected, auto actual) {
+void expect_not_equal(auto expected, auto actual,
+                      const std::source_location& loc = std::source_location::current()) {
   if (expected == actual) {
-    std::println(std::cerr, "Expectation failed: expected not equal to {}, but got {}", expected,
-                 actual);
+    add_failure_expect(
+        std::format("Expectation failed: expected not equal to {}, got {}", expected, actual), loc);
   }
 }
 
-export void expectTrue(auto value) {
+void expect_true(auto value, const std::source_location& loc = std::source_location::current()) {
   if (!value) {
-    std::println(std::cerr, "Expectation failed: expected true, got false for {}", value);
+    add_failure_expect(std::format("Expectation failed: expected true, got false for {}", value),
+                       loc);
   }
 }
 
-export void expectFalse(auto value) {
+void expect_false(auto value, const std::source_location& loc = std::source_location::current()) {
   if (value) {
-    std::println(std::cerr, "Expectation failed: expected false, got true for {}", value);
+    add_failure_expect(std::format("Expectation failed: expected false, got true for {}", value),
+                       loc);
   }
 }
 
-export template <typename T, typename U, typename K = std::common_type_t<T, U>>
-void expectNear(T expected, U actual, K tol = static_cast<K>(1e-3)) {
+template <typename T, typename U, typename K = std::common_type_t<T, U>>
+void expect_near(T expected, U actual, K tol = static_cast<K>(0.001),
+                 const std::source_location& loc = std::source_location::current()) {
   if (!(std::abs(expected - actual) <= tol)) {
-    std::println(std::cerr, "Expectation failed: expected {}, got {} within {}", expected, actual,
-                 tol);
+    add_failure_expect(
+        std::format("Expectation failed: expected {}, got {} within {}", expected, actual, tol),
+        loc);
   }
 }
 
-export void expectLess(auto a, auto b) {
+void expect_less(auto a, auto b,
+                 const std::source_location& loc = std::source_location::current()) {
   if (!(a < b)) {
-    std::println(std::cerr, "Expectation failed: expected {}, got {}", a, b);
+    add_failure_expect(std::format("Expectation failed: expected {}, got {}", a, b), loc);
   }
 }
 
-export void expectLessEqual(auto a, auto b) {
+void expect_less_equal(auto a, auto b,
+                       const std::source_location& loc = std::source_location::current()) {
   if (!(a <= b)) {
-    std::println(std::cerr, "Expectation failed: expected {}, got {}", a, b);
+    add_failure_expect(std::format("Expectation failed: expected {}, got {}", a, b), loc);
   }
 }
 
-export void expectGreater(auto a, auto b) {
+void expect_greater(auto a, auto b,
+                    const std::source_location& loc = std::source_location::current()) {
   if (!(a > b)) {
-    std::println(std::cerr, "Expectation failed: expected {}, got {}", a, b);
+    add_failure_expect(std::format("Expectation failed: expected {}, got {}", a, b), loc);
   }
 }
 
-export void expectGreaterEqual(auto a, auto b) {
+void expect_greater_equal(auto a, auto b,
+                          const std::source_location& loc = std::source_location::current()) {
   if (!(a >= b)) {
-    std::println(std::cerr, "Expectation failed: expected {}, got {}", a, b);
+    add_failure_expect(std::format("Expectation failed: expected {}, got {}", a, b), loc);
   }
 }
 
-export void expectContains(auto const& container, auto const& value) {
+void expect_contains(auto const& container, auto const& value,
+                     const std::source_location& loc = std::source_location::current()) {
   if (std::find(std::begin(container), std::end(container), value) == std::end(container)) {
-    std::println(std::cerr, "Expectation failed: container does not contain value {}", value);
+    add_failure_expect(
+        std::format("Expectation failed: container does not contain value {}", value), loc);
   }
 }
 
-export template <typename E = std::exception>
-void expectThrows(auto func) {
+template <typename E = std::exception>
+void expect_throws(auto func, const std::source_location& loc = std::source_location::current()) {
   try {
     func();
-    std::println(std::cerr,
-                 "Expectation failed: expected exception of type {}, but no exception was thrown",
-                 typeid(E).name());
   } catch (const E&) {
     return;
   } catch (...) {
-    std::println(
-        std::cerr,
-        "Expectation failed: expected exception of type {}, but got different exception type",
-        typeid(E).name());
-  }
-}
-
-export template <typename E>
-void expectThrowsExact(auto func) {
-  try {
-    func();
-    std::println(std::cerr, "Expectation failed: expected exception, none thrown");
-  } catch (...) {
-    auto ep = std::current_exception();
-    try {
-      std::rethrow_exception(ep);
-    } catch (const E& e) {
-      if (typeid(e) != typeid(E)) {
-        std::println(std::cerr, "Expectation failed: expected exact exception type {}, got {}",
-                     typeid(E).name(), typeid(e).name());
-      }
-      return;  // exact match
-    } catch (...) {
-      std::println(std::cerr,
-                   "Expectation failed: expected exception of type {}, but got different type",
-                   typeid(E).name());
-    }
-  }
-}
-
-export void expectNull(auto ptr) {
-  if (ptr != nullptr) {
-    std::println(std::cerr, "Expectation failed: expected nullptr, got {}", ptr);
-  }
-}
-
-export template <typename Func>
-void expectContractViolation(Func f) {
-  if constexpr (!std::is_void_v<std::invoke_result_t<Func>>) {
-    auto result = f();
-    if (!annotest::contract_violation_occurred) {
-      std::println(std::cerr,
-                   "Expectation failed: expected contract violation, but it was not detected");
-    }
+    add_failure_expect("Expectation failed: thrown exception type did not match expected", loc);
     return;
   }
-  f();
-  if (!annotest::contract_violation_occurred) {
-    std::println(std::cerr,
-                 "Expectation failed: expected contract violation, but it was not detected");
+  add_failure_expect("Expectation failed: expected exception, none thrown", loc);
+}
+
+template <typename E>
+void expect_throws_exact(auto f,
+                         const std::source_location& loc = std::source_location::current()) {
+  try {
+    f();
+  } catch (const E& e) {
+    if (typeid(e) != typeid(E)) {
+      add_failure_expect(std::format("Expected exact exception type {}, got {}", typeid(E).name(),
+                                     typeid(e).name()),
+                         loc);
+    }
+    return;
+  } catch (...) {
+    add_failure_expect("Thrown exception type did not match expected", loc);
+    return;
+  }
+  add_failure_expect("Expected exception, none thrown", loc);
+}
+
+void expect_null(auto ptr, const std::source_location& loc = std::source_location::current()) {
+  if (ptr != nullptr) {
+    add_failure_expect(
+        std::format("Expectation failed: expected nullptr, got {}", static_cast<const void*>(ptr)),
+        loc);
   }
 }
 
-export template <typename Func>
-auto expectNoContractViolation(Func f) {
-  if constexpr (!std::is_void_v<std::invoke_result_t<Func>>) {
+template <typename Func>
+auto expect_contract_violation(Func f,
+                               const std::source_location& loc = std::source_location::current()) {
+  contract_violation_occurred = false;
+  auto check = [&] {
+    bool occurred = std::exchange(contract_violation_occurred, false);
+    if (!occurred) add_failure_expect("Expected contract violation, but none was detected", loc);
+  };
+  if constexpr (std::is_void_v<std::invoke_result_t<Func>>) {
+    f();
+    check();
+  } else {
     auto result = f();
-    if (annotest::contract_violation_occurred) {
-      std::println(std::cerr,
-                   "Expectation failed: expected no contract violation, but one was detected");
-    }
+    check();
     return result;
   }
-  f();
-  if (annotest::contract_violation_occurred) {
-    std::println(std::cerr,
-                 "Expectation failed: expected no contract violation, but one was detected");
+}
+
+template <typename Func>
+auto expect_no_contract_violation(
+    Func f, const std::source_location& loc = std::source_location::current()) {
+  contract_violation_occurred = false;
+  auto check = [&] {
+    bool occurred = std::exchange(contract_violation_occurred, false);
+    if (occurred) add_failure_expect("Expected no contract violation, but one was detected", loc);
+  };
+  if constexpr (std::is_void_v<std::invoke_result_t<Func>>) {
+    f();
+    check();
+  } else {
+    auto result = f();
+    check();
+    return result;
   }
 }
 }  // namespace annotest

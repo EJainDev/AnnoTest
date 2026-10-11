@@ -59,14 +59,16 @@ struct parameters {
 
   template <typename... Us>
   constexpr tuple<parameters<Ts..., Us>...> cross(const parameters<Us...>& other) const {
-    tuple<parameters<Ts..., Us>...> result;
-
-    template for (constexpr auto i : std::make_index_sequence<sizeof...(Us)>{}) {
-      result.params.template get<i>() =
-          parameters{structural_tuple::tuple_cat(params, tuple{other.params.template get<i>()})};
-    }
-
-    return result;
+    return [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+      return [&]<std::size_t... Js>(std::index_sequence<Js...>) {
+        auto append = [&]<std::size_t J>() {
+          return parameters<Ts..., Us... [J]> {
+            params.template get<Is>()..., other.params.template get<J>()
+          };
+        };
+        return tuple{append.template operator()<Js>()...};
+      }(std::make_index_sequence<sizeof...(Us)>{});
+    }(std::make_index_sequence<sizeof...(Ts)>{});
   }
 };
 

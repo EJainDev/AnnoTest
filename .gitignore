@@ -5,3 +5,5 @@ build/
 !.github/
 !.clang*
 !.readthedocs.yaml
+!.devcontainer/
+!.devcontainer/**

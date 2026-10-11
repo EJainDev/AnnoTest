@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 4.3)
+cmake_minimum_required(VERSION 4.3.3)
 
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-if(CMAKE_VERSION VERSION_LESS_EQUAL 4.3)
+if(CMAKE_VERSION VERSION_LESS 4.4)
   set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
 elseif(CMAKE_VERSION VERSION_GREATER_EQUAL 4.4)
   set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "f35a9ac6-8463-4d38-8eec-5d6008153e7d")
@@ -14,11 +14,41 @@ project(
   VERSION 1.0.0.0
   LANGUAGES CXX)
 
-find_package(SerialXML REQUIRED)
-find_package(StructuralTuple REQUIRED)
+include(FetchContent)
 
 option(BUILD_TESTS "Enable building of tests" OFF)
 option(BUILD_EXAMPLES "Enable building of examples" ON)
+
+# These dependencies use the same option names. Scope their optional targets so
+# fetching libraries does not alter AnnoTest's build choices.
+block(SCOPE_FOR VARIABLES)
+set(BUILD_TESTS OFF)
+set(BUILD_EXAMPLES OFF)
+set(BUILD_BENCHMARKS OFF)
+
+find_package(StructuralTuple QUIET)
+if(NOT StructuralTuple_FOUND)
+  FetchContent_Declare(
+    structural_tuple
+    GIT_REPOSITORY https://github.com/EJainDev/StructuralTuple.git
+    GIT_TAG 7ad88be28ceece1d6d41da72754c6cf2c969fd6d)
+  FetchContent_MakeAvailable(structural_tuple)
+  target_compile_options(structural_tuple PUBLIC -freflection)
+  if(NOT TARGET structural_tuple::structural_tuple)
+    add_library(structural_tuple::structural_tuple ALIAS structural_tuple)
+  endif()
+endif()
+
+find_package(SerialXML QUIET)
+if(NOT SerialXML_FOUND)
+  FetchContent_Declare(
+    serial_xml
+    GIT_REPOSITORY https://github.com/EJainDev/SerialXML.git
+    GIT_TAG 9de4d3a13756df6033a3820470761f4ba5c41380)
+  FetchContent_MakeAvailable(serial_xml)
+endif()
+
+endblock()
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
@@ -30,9 +60,8 @@ endif()
 
 # Library
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -freflection")
-
 add_library(annotest STATIC)
+target_compile_options(annotest PUBLIC -freflection)
 target_sources(
   annotest
   PUBLIC FILE_SET
@@ -56,7 +85,9 @@ target_sources(
 target_include_directories(
   annotest PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
                   $<INSTALL_INTERFACE:include>)
-target_link_libraries(annotest PUBLIC serial_xml::serial_xml stdc++exp)
+target_link_libraries(
+  annotest PUBLIC serial_xml::serial_xml structural_tuple::structural_tuple
+                  stdc++exp)
 target_compile_features(annotest PUBLIC cxx_std_26)
 
 # Installation configuration

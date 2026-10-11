@@ -1,6 +1,7 @@
 export module annotest:death_test;
 
-import :exceptions;
+import :asserts;
+import :expects;
 import :posix;
 
 import std;
@@ -45,22 +46,24 @@ DeathResult runDeathTest(F&& func) {
 }
 #endif
 
-export void assertDeath(auto func) {
+export void assertDeath(auto func,
+                        const std::source_location& loc = std::source_location::current()) {
 #if defined(__unix__) || defined(__APPLE__)
   auto result = runDeathTest(std::move(func));
   if (!result.died) {
-    throw assertion_error("Assertion failed: expected process death, child " + result.detail);
+    add_failure("Assertion failed: expected process death, child " + result.detail, loc);
   }
 #else
 #warning "assertDeath not implemented for Windows"
 #endif
 }
 
-export void expectDeath(auto func) {
+export void expectDeath(auto func,
+                        const std::source_location& loc = std::source_location::current()) {
 #if defined(__unix__) || defined(__APPLE__)
   auto result = runDeathTest(std::move(func));
   if (!result.died) {
-    std::println(std::cerr, "Expectation failed: expected process death, child {}", result.detail);
+    add_failure_expect("Expectation failed: expected process death, child " + result.detail, loc);
   }
 #else
 #warning "expectDeath not implemented for Windows"
