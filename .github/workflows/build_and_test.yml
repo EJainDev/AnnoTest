@@ -40,6 +40,14 @@ jobs:
             - name: Test Project
               uses: threeal/ctest-action@v1.1.0
 
+            - name: Verify installation and FetchContent consumers
+              run: |
+                  cmake -S . -B build \
+                    -DCMAKE_INSTALL_INCLUDEDIR=include/annotest-sdk \
+                    -DCMAKE_INSTALL_LIBDIR=lib/annotest-sdk
+                  cmake --build build --parallel 2
+                  python3 tools/check_installation.py --build-dir build
+
             - name: Check reachable source branch coverage
               run: |
                   cmake -S . -B build/coverage -G Ninja \

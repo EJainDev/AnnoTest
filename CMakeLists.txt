@@ -14,10 +14,17 @@ project(
   VERSION 1.0.0.0
   LANGUAGES CXX)
 
+# CMake 4.3 builds one shared std BMI and does not inherit target options.
+# Append after compiler detection: GCC rejects -freflection in its default mode.
+# Embedding consumers must also set this flag in their top-level directory.
+if(CMAKE_VERSION VERSION_LESS 4.4 AND NOT CMAKE_CXX_FLAGS MATCHES "(^| )-freflection( |$)")
+  string(APPEND CMAKE_CXX_FLAGS " -freflection")
+endif()
+
 include(FetchContent)
 
 option(BUILD_TESTS "Enable building of tests" OFF)
-option(BUILD_EXAMPLES "Enable building of examples" ON)
+option(BUILD_EXAMPLES "Enable building of examples" ${PROJECT_IS_TOP_LEVEL})
 option(BUILD_BENCHMARKS "Build compile-time comparisons against GoogleTest" OFF)
 
 # These dependencies use the same option names. Scope their optional targets so
@@ -54,6 +61,21 @@ endblock()
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
+# The pinned dependencies hard-code `include` in their install interfaces.
+# Keep their exported include paths consistent with GNUInstallDirs overrides.
+foreach(dependency IN ITEMS structural_tuple serial_xml)
+  if(TARGET ${dependency})
+    get_target_property(is_imported ${dependency} IMPORTED)
+    if(NOT is_imported)
+      get_target_property(include_dirs ${dependency} INTERFACE_INCLUDE_DIRECTORIES)
+      string(REPLACE "$<INSTALL_INTERFACE:include>"
+                     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+                     include_dirs "${include_dirs}")
+      set_property(TARGET ${dependency} PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${include_dirs}")
+    endif()
+  endif()
+endforeach()
+
 if(BUILD_TESTS)
   include(CTest)
   enable_testing()
@@ -87,7 +109,7 @@ target_sources(annotest
                PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/runner.cxx")
 target_include_directories(
   annotest PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-                  $<INSTALL_INTERFACE:include>)
+                  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 target_link_libraries(
   annotest PUBLIC serial_xml::serial_xml structural_tuple::structural_tuple
                   stdc++exp)
@@ -123,11 +145,12 @@ write_basic_package_version_file(
 install(
   EXPORT annotest_targets
   NAMESPACE annotest::
+  CXX_MODULES_DIRECTORY cxx-modules
   DESTINATION "${ANNOTEST_INSTALL_CMAKEDIR}")
 
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/DiscoverTests.cmake
               ${CMAKE_CURRENT_SOURCE_DIR}/cmake/DiscoverTestsRunner.cmake
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/AnnoTest")
+        DESTINATION "${ANNOTEST_INSTALL_CMAKEDIR}")
 
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/include/annotest_contract.h"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")

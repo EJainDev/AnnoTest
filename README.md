@@ -57,7 +57,8 @@ ctest --test-dir build --output-on-failure
 ```
 
 Use your GCC compiler path if `g++` selects another version. Examples are built by
-default; self-tests are opt-in. To build only the library, set `BUILD_TESTS=OFF` and
+default for a standalone checkout; embedded builds default to the library only.
+Self-tests are opt-in. To build only the library, set `BUILD_TESTS=OFF` and
 `BUILD_EXAMPLES=OFF`.
 
 ```sh
@@ -182,6 +183,10 @@ else()
 endif()
 set(CMAKE_CXX_MODULE_STD ON)
 project(MyTests LANGUAGES CXX)
+if(CMAKE_VERSION VERSION_LESS 4.4)
+  # Enable reflection on CMake 4.3's shared std module after compiler detection.
+  string(APPEND CMAKE_CXX_FLAGS " -freflection")
+endif()
 
 enable_testing()
 set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -196,7 +201,9 @@ annotest_discover_tests(my_tests)
 Configure with `cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=g++`, build, then
 run `ctest --test-dir build --output-on-failure`. The `import std` setup must precede
 `project()` in the consumer, too. The UUIDs match the tested CMake series;
-future versions may need a different experimental setting.
+future versions may need a different experimental setting. CMake 4.3 also requires
+`-freflection` in the top-level `CMAKE_CXX_FLAGS` after `project()` so its shared `std` module
+contains reflection declarations. CMake 4.4 propagates these options through targets.
 
 For FetchContent, replace `add_subdirectory` with the following, substituting a
 published commit containing this API for `<commit>`:
@@ -212,17 +219,49 @@ FetchContent_MakeAvailable(annotest)
 Older v1.0 tags may not contain this API. Source builds expose both `annotest` and
 `annotest::annotest`; installed packages expose `annotest::annotest`.
 
-To install the library build into a local prefix:
+To install a standalone library build into a local prefix:
 
 ```sh
-cmake --install build --prefix "$PWD/install"
+cmake -S . -B build/install -G Ninja \
+  -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF
+cmake --build build/install --parallel 2
+cmake --install build/install --prefix "$PWD/install"
 ```
 
-In a consumer with the same compiler and module configuration, replace
-`add_subdirectory` with `find_package(AnnoTest CONFIG REQUIRED)` and configure with
-`-DCMAKE_PREFIX_PATH=/absolute/path/to/install`. StructuralTuple and SerialXML must
-also be discoverable through their installed CMake packages. Treat the package as
-toolchain-specific; module and compiler compatibility across installations is not guaranteed.
+Fetched dependencies are installed into the same prefix. If dependencies were found
+as preinstalled packages instead, their prefixes must also be available to the consumer.
+The installed contract handler is available as `<annotest_contract.h>`.
+
+In the consumer CMake project above, replace `add_subdirectory` with
+`find_package(AnnoTest CONFIG REQUIRED)`. Keep the compiler, standard-module setup,
+executable, link target and discovery call. Configure and run with:
+
+```sh
+cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=g++ \
+  -DCMAKE_PREFIX_PATH=/absolute/path/to/install
+cmake --build build --parallel 2
+ctest --test-dir build --output-on-failure
+```
+
+The installation can be moved to another prefix; point CMake at the new location.
+For a custom layout, configure the producer with `CMAKE_INSTALL_INCLUDEDIR` and
+`CMAKE_INSTALL_LIBDIR`. If that library directory is outside CMake's default search
+layout, pass `-DAnnoTest_DIR=/new/prefix/<libdir>/cmake/AnnoTest` instead of relying
+on `CMAKE_PREFIX_PATH`. Bundled dependency packages are resolved beside AnnoTest's
+package configuration. Use the same compiler and compatible build settings; CMake
+rebuilds module interfaces for the consumer, and the static libraries remain toolchain-specific.
+
+To verify a build's installation and FetchContent integration:
+
+```sh
+python3 tools/check_installation.py --build-dir build/install
+```
+
+This installs into an isolated prefix, moves it to a path containing spaces, checks
+exports for source/build path leaks, and builds external consumers exercising
+assertions, parameterization, contracts and CTest discovery. CI also runs it with
+non-default include and library directories.
 
 The discovery helper runs the built executable with `--list` and registers each case
 in CTest. Use simple names containing letters, digits, underscores, hyphens, or spaces;

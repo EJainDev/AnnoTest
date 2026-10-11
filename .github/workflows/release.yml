@@ -12,12 +12,12 @@ jobs:
     release:
         runs-on: ubuntu-24.04
         container:
-            image: gcc:16.1
+            image: gcc@sha256:47c649664b62db94d186b16936e203bb07ab1d10a0ef860cee198e594f636757
         steps:
             - name: Install CMake
               run: |
                   apt update
-                  apt install -y wget tar ninja-build
+                  apt install -y wget tar ninja-build python3
 
                   wget https://github.com/Kitware/CMake/releases/download/v4.3.3/cmake-4.3.3-linux-x86_64.tar.gz
 
@@ -38,6 +38,12 @@ jobs:
                   options: |
                       BUILD_TESTS=ON
                       CMAKE_BUILD_TYPE=Release
+
+            - name: Test Project
+              run: ctest --test-dir build --output-on-failure --parallel 2
+
+            - name: Verify installation and FetchContent consumers
+              run: python3 tools/check_installation.py --build-dir build
 
             - name: Install package
               run: |

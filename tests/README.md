@@ -77,3 +77,17 @@ exercise the ignored-annotation alternatives, including either order around a
 dispatch only assigns that callback to parameterized tests, and calling it for a
 nonparameterized test would fall off a non-void function. These checks are not
 counted as runtime source branches.
+
+Package integration is checked separately after the producer build:
+
+```sh
+python3 tools/check_installation.py --build-dir build
+```
+
+The installed and FetchContent consumers in `tests/consumer` exercise the public
+link target, contract-handler header, assertions, parameters, and CTest discovery.
+The installation is relocated to a path containing spaces and its exports are
+checked for source/build paths. CI configures non-default include/library directories
+before running this check. `--cmake /path/to/cmake` selects a CMake version for the
+consumer checks; CMake 4.3 requires reflection on its shared standard-library module,
+which the consumer configures after `project()` and before defining targets.
