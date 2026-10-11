@@ -1,6 +1,7 @@
 export module annotest:logger;
 
 import std;
+import :diagnostics;
 
 import :exceptions;
 
@@ -20,7 +21,7 @@ enum class failure_types {
 struct failure_cdata {
   std::optional<std::pair<std::string, std::size_t>> location;
   std::string message;
-  std::optional<std::stacktrace> stacktrace = std::stacktrace::current();
+  std::optional<stacktrace_type> stacktrace = capture_stacktrace();
 };
 
 struct failure_xml_log {

@@ -2,6 +2,9 @@ from support import RunnerTest
 
 
 class FaultTests(RunnerTest):
+    def test_interrupted_wait_retries(self):
+        self.single_case("FaultTests", "assert_death", scenario="wait_interrupted")
+
     def test_child_return_is_failure(self):
         _, _, case = self.single_case("FaultTests", "child_return", 1)
         self.assertIn("exited normally with status 0", self.failure(case, "assertion")[0].attrib["message"])

@@ -29,20 +29,48 @@ published documentation and older release tags may describe an earlier API.
 
 ## Requirements
 
-The verified development environment is **Linux, GCC 16.2, CMake 4.4.3, and Ninja**.
-CI uses a pinned GCC container and CMake 4.3.3. A compiler with C++26 reflection,
-annotations, standard-library modules, and contracts is required.
+AnnoTest implements Linux, macOS, and native Windows backends. Use **GCC 16 or
+newer, CMake 4.3.3 or newer, and Ninja**, with C++26 reflection, annotations,
+standard-library modules, and contracts. CI includes native macOS and Windows
+jobs alongside the pinned Linux GCC container. Tagged releases also build macOS
+ARM64 and Windows x86-64 installation archives after testing each native build.
 
 - CMake minimum: 4.3.3. The experimental `import std` setting is version-sensitive.
 - C++ standard: 26, with `-freflection` propagated by the library target.
 - Python 3 is required only when `BUILD_TESTS=ON`.
 - StructuralTuple and SerialXML are found as installed packages or fetched at pinned
   commits during configuration. Fetching requires Git and network access.
-- Linux is the verified platform. macOS and Windows support has not been established;
-  output capture uses POSIX APIs and death tests use `fork`/`waitpid`.
+- macOS uses Homebrew GCC; Apple Clang does not provide the required reflection support.
+- Windows uses MSYS2 UCRT64 GCC and produces native `.exe` files. MSVC is not a
+  supported compiler for these C++26 features.
+- Stack traces use `std::stacktrace` when available, otherwise native backtraces
+  (raw frame addresses on Windows).
 
 The [development container](.devcontainer/devcontainer.json) provides GCC 16.2 and CMake.
 Use Ninja for the commands below.
+
+## Native platform setup
+
+On macOS, install [Homebrew GCC](https://formulae.brew.sh/formula/gcc):
+
+```sh
+brew install gcc cmake ninja python
+```
+
+Use `-DCMAKE_CXX_COMPILER=g++-16` in the build command below.
+
+On Windows, install [MSYS2](https://www.msys2.org/) and open its **UCRT64** shell:
+
+```sh
+pacman -Syu
+# Reopen UCRT64 if the updater asks, then install the native tools:
+pacman -S --needed git mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake \
+  mingw-w64-ucrt-x86_64-ninja mingw-w64-ucrt-x86_64-python
+```
+
+Run the build commands from UCRT64. Keep `C:\msys64\ucrt64\bin` on `PATH` when
+running executables outside that shell so GCC runtime DLLs can be found. Example
+executables have an `.exe` suffix on Windows. Python tests use UTF-8 report output.
 
 ## Build and run
 
@@ -141,7 +169,17 @@ also fail the test. Disabled or OS-filtered tests do not run their hooks.
 | Process death | `assertDeath(callable)` | `expectDeath(callable)` |
 
 Death helpers retain their camel-case names. A thrown exception in the child counts as
-death; normal return or exit status zero does not.
+death; normal return or exit status zero does not. Linux and macOS use `fork` and
+`waitpid`. Windows relaunches the executable, selects the current test, and replays
+its setup and body up to the requested death check. Earlier death callables are
+skipped during replay; multiple checks and parameterized cases are supported.
+
+On Windows, use death checks inside `run_tests` and forward `argc`/`argv` as shown
+above. Setup and the body before the death check must be deterministic and safe to
+repeat. State from previously executed tests, parent-only resources, and pointers
+into another process are not inherited. A child that fails before reaching the
+callable reports a failed death check. Output capture is process-wide on all
+platforms, so test bodies should finish background writers before returning.
 
 For contract checks, include `<annotest_contract.h>` in exactly one translation unit
 per executable and enable `-fcontracts -fcontract-evaluation-semantic=observe` on the

@@ -1,6 +1,7 @@
 export module annotest:exceptions;
 
 import std;
+import :diagnostics;
 
 namespace annotest {
 // An exception class for test failures, to distinguish from other exceptions. It does not inherit
@@ -18,7 +19,7 @@ class assertion_error {
   ~assertion_error() = default;
 
   assertion_error(const std::string_view message, bool recorded = false)
-      : recorded_(recorded), message_(message), stacktrace_(std::stacktrace::current()) {}
+      : recorded_(recorded), message_(message), stacktrace_(capture_stacktrace()) {}
 
   std::string message() const {
     return std::format("Assertion failed with message \"{}\"", message_);
@@ -26,11 +27,11 @@ class assertion_error {
 
   bool recorded() const { return recorded_; }
 
-  const std::stacktrace& stacktrace() const { return stacktrace_; }
+  const stacktrace_type& stacktrace() const { return stacktrace_; }
 
  private:
   bool recorded_ = false;
   std::string message_;
-  std::stacktrace stacktrace_ = std::stacktrace::current();
+  stacktrace_type stacktrace_ = capture_stacktrace();
 };
 }  // namespace annotest

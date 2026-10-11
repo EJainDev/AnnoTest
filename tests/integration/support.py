@@ -16,8 +16,8 @@ class RunnerTest(unittest.TestCase):
         if scenario is not None:
             env["ANNOTEST_SCENARIO"] = scenario
         return subprocess.run(
-            [str(self.binary_dir / executable), *args],
-            capture_output=True, text=True, env=env, timeout=20,
+            [str(self.binary_dir / (executable + (".exe" if os.name == "nt" else ""))), *args],
+            capture_output=True, text=True, encoding="utf-8", env=env, timeout=20,
         )
 
     def report(self, executable, names=(), code=0, scenario=None, options=()):

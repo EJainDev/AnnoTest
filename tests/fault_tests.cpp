@@ -1,5 +1,7 @@
-#include <unistd.h>
 #include <sys/wait.h>
+#include <unistd.h>
+
+#include <cerrno>
 #include <cstdio>
 
 import annotest;
@@ -22,7 +24,7 @@ std::size_t open_descriptors() {
   return std::distance(std::filesystem::directory_iterator("/proc/self/fd"),
                        std::filesystem::directory_iterator{});
 }
-}
+}  // namespace
 
 extern "C" {
 FILE* __real_tmpfile();
@@ -51,12 +53,18 @@ pid_t __wrap_fork() {
   return __real_fork();
 }
 pid_t __wrap_waitpid(pid_t pid, int* status, int options) {
+  if (fail("wait_interrupted")) {
+    errno = EINTR;
+    return -1;
+  }
   auto result = __real_waitpid(pid, status, options);
   // Reap the real child before simulating the error, so the fixture leaves no zombie.
-  if (fail("wait")) return -1;
+  if (fail("wait")) {
+    errno = ECHILD;
+    return -1;
+  }
   return result;
 }
-
 }
 
 #ifdef ANNOTEST_COVERAGE
@@ -74,13 +82,19 @@ struct FaultTests {
     std::println("body executed");
     std::println(std::cerr, "stderr executed");
   }
-  [[= test{}]] void assert_death() { assertDeath([] { std::_Exit(1); }); }
+  [[= test{}]] void assert_death() {
+    assertDeath([] { std::_Exit(1); });
+  }
   [[= test{}]] void expect_death() {
     expectDeath([] { std::_Exit(1); });
     std::println("continued");
   }
-  [[= test{}]] void child_return() { assertDeath([] {}); }
-  [[= test{}]] void child_exception() { expectDeath([] { throw 42; }); }
+  [[= test{}]] void child_return() {
+    assertDeath([] {});
+  }
+  [[= test{}]] void child_exception() {
+    expectDeath([] { throw 42; });
+  }
 };
 
 int main(int argc, char** argv) {

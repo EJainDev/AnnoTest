@@ -1,8 +1,8 @@
 module;
 
-#include <unistd.h>
-
 #include <cstdio>
+
+#include "annotest_platform.h"
 
 module annotest;
 
@@ -17,18 +17,20 @@ class std_streams {
     std::cout.flush();
     std::cerr.flush();
     std::fflush(nullptr);
-    out = std::tmpfile();
-    err = std::tmpfile();
-    saved_out = dup(STDOUT_FILENO);
-    saved_err = dup(STDERR_FILENO);
+    out = annotest_platform::temporary_file();
+    err = annotest_platform::temporary_file();
+    saved_out = annotest_platform::duplicate(1);
+    saved_err = annotest_platform::duplicate(2);
     if (!out || !err || saved_out < 0 || saved_err < 0) {
       restore();
       throw std::runtime_error("Cannot capture test output");
     }
-    if (dup2(fileno(out), STDOUT_FILENO) < 0 || dup2(fileno(err), STDERR_FILENO) < 0) {
+    if (annotest_platform::redirect(annotest_platform::descriptor(out), 1) < 0 ||
+        annotest_platform::redirect(annotest_platform::descriptor(err), 2) < 0) {
       restore();
       throw std::runtime_error("Cannot redirect test output");
     }
+    annotest_platform::sync_standard_handles();
   }
   std_streams(const std_streams&) = delete;
   std_streams& operator=(const std_streams&) = delete;
@@ -51,15 +53,16 @@ class std_streams {
   }
   void restore() {
     if (saved_out >= 0) {
-      dup2(saved_out, STDOUT_FILENO);
-      close(saved_out);
+      annotest_platform::redirect(saved_out, 1);
+      annotest_platform::close_descriptor(saved_out);
       saved_out = -1;
     }
     if (saved_err >= 0) {
-      dup2(saved_err, STDERR_FILENO);
-      close(saved_err);
+      annotest_platform::redirect(saved_err, 2);
+      annotest_platform::close_descriptor(saved_err);
       saved_err = -1;
     }
+    annotest_platform::sync_standard_handles();
     if (out) {
       std::fclose(out);
       out = nullptr;
@@ -94,12 +97,18 @@ void record_exception(const std::string& phase) {
 
 int execute_test(void* context, std::string_view name, test_callback test, test_callback before,
                  test_callback after) {
+  annotest_platform::reset_death_ordinal();
   contract_violation_occurred = false;
   suite_log.testcases.emplace_back(
       test_xml_log{.test_class = suite_log.name, .name = std::string(name)});
   auto start = std::chrono::steady_clock::now();
   {
+#ifdef _WIN32
+    std::optional<std_streams> streams;
+    if (!annotest_platform::death_child_active()) streams.emplace();
+#else
     std_streams streams;
+#endif
     bool ready = true;
     if (before) {
       try {
@@ -145,6 +154,14 @@ int execute_test(void* context, std::string_view name, test_callback test, test_
 }
 
 runner_options parse_options(int argc, char** argv) {
+#ifdef _WIN32
+  auto utf8 = annotest_platform::utf8_arguments(argc, argv);
+  std::vector<char*> arguments;
+  if (!utf8.empty()) {
+    for (auto& argument : utf8) arguments.push_back(argument.data());
+    argv = arguments.data();
+  }
+#endif
   runner_options options;
   bool show_help = false;
   bool xml_seen = false;
@@ -201,6 +218,43 @@ runner_options parse_options(int argc, char** argv) {
       break;
     }
     std::string_view arg = argv[i];
+#ifdef _WIN32
+    if (arg.starts_with("--annotest-death-name=")) {
+      auto value = arg.substr(std::string_view("--annotest-death-name=").size());
+      std::string name;
+      bool valid = !value.empty() && value.size() % 2 == 0;
+      for (std::size_t offset = 0; valid && offset < value.size(); offset += 2) {
+        unsigned byte = 0;
+        auto [end, ec] =
+            std::from_chars(value.data() + offset, value.data() + offset + 2, byte, 16);
+        valid = ec == std::errc{} && end == value.data() + offset + 2 && byte != 0;
+        name += static_cast<char>(byte);
+      }
+      if (valid)
+        options.test_names.emplace_back(name);
+      else
+        error("Invalid death-test child name");
+      continue;
+    }
+    if (arg.starts_with("--annotest-death-child=")) {
+      auto value = arg.substr(std::string_view("--annotest-death-child=").size());
+      auto separator = value.find(':');
+      unsigned ordinal = 0;
+      std::uintptr_t handle = 0;
+      auto first = value.substr(0, separator);
+      auto second =
+          separator == std::string_view::npos ? std::string_view{} : value.substr(separator + 1);
+      auto [end1, ec1] = std::from_chars(first.data(), first.data() + first.size(), ordinal);
+      auto [end2, ec2] = std::from_chars(second.data(), second.data() + second.size(), handle);
+      if (ec1 != std::errc{} || ec2 != std::errc{} || end1 != first.data() + first.size() ||
+          end2 != second.data() + second.size() || ordinal == 0 || handle == 0) {
+        error("Invalid death-test child arguments");
+      } else {
+        annotest_platform::configure_death_child(ordinal, handle);
+      }
+      continue;
+    }
+#endif
     if (arg == "--") {
       if (i + 1 < argc) error("Positional arguments are not supported");
       break;
@@ -436,7 +490,8 @@ int execute_suite(void* context, std::string_view suite_name,
       std::chrono::duration<double>(std::chrono::steady_clock::now() - suite_start).count();
   if (!xml_output.empty()) {
     try {
-      std::ofstream report(xml_output);
+      std::ofstream report(
+          std::filesystem::path(std::u8string(xml_output.begin(), xml_output.end())));
       report << xml_report();
       report.flush();
       if (!report) throw std::runtime_error("Cannot write report file");

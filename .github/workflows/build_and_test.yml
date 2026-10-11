@@ -2,6 +2,7 @@ name: Build
 on:
     push:
         branches: [main]
+        tags: ["v*"]
     pull_request:
         branches: [main]
 
@@ -64,3 +65,46 @@ jobs:
                   cd ../../..
                   python3 tools/coverage_audit.py build/coverage/gcov-json \
                     --output build/coverage/reachable-source-coverage.json
+
+    macos:
+        runs-on: macos-15
+        steps:
+            - uses: actions/checkout@v6.0.3
+            - name: Install native toolchain
+              run: brew install gcc ninja cmake python
+            - name: Build and test
+              run: |
+                  cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=g++-16 \
+                    -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON \
+                    -DCMAKE_INSTALL_INCLUDEDIR=include/annotest-sdk \
+                    -DCMAKE_INSTALL_LIBDIR=lib/annotest-sdk
+                  cmake --build build --parallel 2
+                  ctest --test-dir build --output-on-failure --parallel 2
+                  python3 tools/check_installation.py --build-dir build
+
+    windows:
+        runs-on: windows-2025
+        defaults:
+            run:
+                shell: msys2 {0}
+        steps:
+            - uses: actions/checkout@v6.0.3
+            - uses: msys2/setup-msys2@v2
+              with:
+                  msystem: UCRT64
+                  update: true
+                  install: >-
+                      git
+                      mingw-w64-ucrt-x86_64-gcc
+                      mingw-w64-ucrt-x86_64-cmake
+                      mingw-w64-ucrt-x86_64-ninja
+                      mingw-w64-ucrt-x86_64-python
+            - name: Build and test native Windows executables
+              run: |
+                  cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=g++ \
+                    -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON \
+                    -DCMAKE_INSTALL_INCLUDEDIR=include/annotest-sdk \
+                    -DCMAKE_INSTALL_LIBDIR=lib/annotest-sdk
+                  cmake --build build --parallel 2
+                  ctest --test-dir build --output-on-failure --parallel 2
+                  python tools/check_installation.py --build-dir build

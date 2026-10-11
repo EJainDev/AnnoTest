@@ -53,9 +53,9 @@ def main():
         raise RuntimeError(f'Expected one installed AnnoTest config, found {configs}')
     # No exported CMake file may refer to the producer or the original prefix.
     for path in relocated.rglob('*.cmake'):
-        contents = path.read_text()
+        contents = path.read_text(encoding="utf-8").replace("\\", "/")
         for forbidden in (str(producer), str(source), str(prefix)):
-            if forbidden in contents:
+            if forbidden.replace("\\", "/") in contents:
                 raise RuntimeError(f'Non-relocatable path {forbidden} in {path}')
 
     for mode in ('installed', 'fetchcontent'):
@@ -70,6 +70,7 @@ def main():
                                   '--show-only=json-v1'], check=True, capture_output=True, text=True)
         names = {test['name'] for test in json.loads(listing.stdout)['tests']}
         expected = {'ConsumerTests.arithmetic', 'ConsumerTests.contract handler',
+                    'ConsumerTests.death check with spaces',
                     'ConsumerTests.parameters_work.1', 'ConsumerTests.parameters_work.2'}
         if names != expected:
             raise RuntimeError(f'{mode} discovery mismatch: {names}')

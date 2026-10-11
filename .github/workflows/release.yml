@@ -63,3 +63,68 @@ jobs:
               with:
                   files: |
                       annotest-${GITHUB_REF_NAME}.tar.gz
+
+    native-packages:
+        needs: release
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - os: macos-15
+                      platform: macos-arm64
+                      compiler: g++-16
+                      shell: bash
+                      python: python3
+                      archive: gztar
+                    - os: windows-2025
+                      platform: windows-x86_64
+                      compiler: g++
+                      shell: msys2 {0}
+                      python: python
+                      archive: zip
+        runs-on: ${{ matrix.os }}
+        defaults:
+            run:
+                shell: ${{ matrix.shell }}
+        steps:
+            - uses: actions/checkout@v6.0.3
+            - name: Install macOS toolchain
+              if: runner.os == 'macOS'
+              run: brew install gcc cmake ninja python
+            - name: Install Windows toolchain
+              if: runner.os == 'Windows'
+              uses: msys2/setup-msys2@v2
+              with:
+                  msystem: UCRT64
+                  update: true
+                  install: >-
+                      git
+                      mingw-w64-ucrt-x86_64-gcc
+                      mingw-w64-ucrt-x86_64-cmake
+                      mingw-w64-ucrt-x86_64-ninja
+                      mingw-w64-ucrt-x86_64-python
+            - name: Build, test, and verify installation
+              run: |
+                  cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} \
+                    -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON
+                  cmake --build build --parallel 2
+                  ctest --test-dir build --output-on-failure --parallel 2
+                  ${{ matrix.python }} tools/check_installation.py --build-dir build
+                  cmake --install build --prefix package
+            - name: Package native library
+              env:
+                  ANNOTEST_PLATFORM: ${{ matrix.platform }}
+                  ANNOTEST_ARCHIVE_FORMAT: ${{ matrix.archive }}
+              run: |
+                  ${{ matrix.python }} - <<'PY'
+                  import os
+                  import shutil
+                  for file in ('README.md', 'LICENSE'):
+                      shutil.copy(file, 'package')
+                  name = 'annotest-' + os.environ['GITHUB_REF_NAME'] + '-' + os.environ['ANNOTEST_PLATFORM']
+                  shutil.make_archive(name, os.environ['ANNOTEST_ARCHIVE_FORMAT'], '.', 'package')
+                  PY
+            - name: Upload native release package
+              uses: softprops/action-gh-release@v2
+              with:
+                  files: annotest-*-${{ matrix.platform }}.*

@@ -1,5 +1,5 @@
 // OS annotations filter test execution; they do not make the library portable.
-// Linux is the currently verified build platform.
+// The runner detects Linux, macOS, and native Windows.
 import annotest;
 import std;
 

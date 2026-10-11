@@ -10,7 +10,7 @@ class ReportingTests(RunnerTest):
         _, root, case = self.single_case("BehaviorTests", "explicit_source_location", 1)
         # Only time, timestamp, absolute source prefix, and stack frames vary.
         attributes = dict(root.attrib)
-        self.assertTrue(attributes.pop("file").endswith("/tests/behavior_tests.cpp"))
+        self.assertTrue(attributes.pop("file").replace("\\", "/").endswith("/tests/behavior_tests.cpp"))
         attributes.pop("time")
         attributes.pop("timestamp")
         self.assertEqual(attributes, {"name": "BehaviorTests", "tests": "1",
@@ -68,7 +68,7 @@ class ReportingTests(RunnerTest):
 
     def test_xml_output_attached_path_spaces_and_overwrite(self):
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "report with spaces.xml"
+            path = Path(directory) / "report with spaces café.xml"
             path.write_text("stale data" * 1000)
             result = self.run_binary("AnnotationTests", ["--test-name=AnnotationTests.defaults", f"--xml-output={path}"])
             self.assertEqual(result.returncode, 0, result.stderr)

@@ -6,6 +6,19 @@ import std;
 using namespace annotest;
 
 struct DeathTests {
+  int fixture = 0;
+  [[= before_each{}]] void setup() { fixture = 7; }
+  [[= test<"quoted \"name\" café">{}]] void named_pass() {
+    assertDeath([&] { std::_Exit(fixture == 7 ? 1 : 0); });
+  }
+  [[= test{}]] void multiple_pass() {
+    assertDeath([] { std::_Exit(2); });
+    expectDeath([] { std::_Exit(3); });
+    assertDeath([] { throw 1; });
+  }
+  [[ = test{}, = parameterize{parameters(2), parameters(3)} ]] void parameter_pass(int value) {
+    assertDeath([&] { std::_Exit(value); });
+  }
   [[= test{}]] void assert_exit_pass() {
     assertDeath([] { std::_Exit(7); });
   }
@@ -19,10 +32,10 @@ struct DeathTests {
     expectDeath([] { throw 42; });
   }
   [[= test{}]] void assert_signal_pass() {
-    assertDeath([] { std::raise(SIGKILL); });
+    assertDeath([] { std::raise(SIGTERM); });
   }
   [[= test{}]] void expect_signal_pass() {
-    expectDeath([] { std::raise(SIGKILL); });
+    expectDeath([] { std::raise(SIGTERM); });
   }
   [[= test{}]] void assert_return_fail() {
     assertDeath([] {});

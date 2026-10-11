@@ -5,6 +5,9 @@ using namespace annotest;
 int positive(int value) pre(value > 0) { return value; }
 
 struct ConsumerTests {
+  [[= test<"death check with spaces">{}]] void death() {
+    assertDeath([] { std::_Exit(7); });
+  }
   [[= test{}]] void arithmetic() { assert_equal(4, 2 + 2); }
 
   [[= test<"contract handler">{}]] void contract_handler() {

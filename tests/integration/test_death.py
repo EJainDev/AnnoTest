@@ -7,7 +7,8 @@ class DeathTests(RunnerTest):
                     for kind in ("assert", "expect")
                     for behavior, result in (("exit", "pass"), ("exception", "pass"), ("signal", "pass"),
                                              ("return", "fail"), ("zero_exit", "fail"))}
-        expected.add("isolation_pass")
+        expected.update({"isolation_pass", "multiple_pass", 'quoted "name" café',
+                         "parameter_pass.1", "parameter_pass.2"})
         _, names = self.listed_names("DeathTests")
         self.assertEqual(set(names), expected)
         for name in sorted(expected):

@@ -21,6 +21,10 @@ if(CMAKE_VERSION VERSION_LESS 4.4 AND NOT CMAKE_CXX_FLAGS MATCHES "(^| )-freflec
   string(APPEND CMAKE_CXX_FLAGS " -freflection")
 endif()
 
+if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_VERSION VERSION_LESS 16)
+  message(FATAL_ERROR "AnnoTest requires GCC 16 or newer with C++26 reflection. Use Homebrew GCC on macOS or MSYS2 UCRT64 GCC on Windows.")
+endif()
+
 include(FetchContent)
 
 option(BUILD_TESTS "Enable building of tests" OFF)
@@ -95,6 +99,7 @@ target_sources(
          BASE_DIRS
          "${CMAKE_CURRENT_SOURCE_DIR}/include"
          FILES
+         "${CMAKE_CURRENT_SOURCE_DIR}/include/diagnostics.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/structs.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/exceptions.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/asserts.cxx"
@@ -106,14 +111,40 @@ target_sources(
          "${CMAKE_CURRENT_SOURCE_DIR}/include/contracts.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/logger.cxx")
 target_sources(annotest
-               PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/runner.cxx")
+               PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/runner.cxx"
+                       "${CMAKE_CURRENT_SOURCE_DIR}/include/platform.cpp")
 target_include_directories(
   annotest PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
                   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 target_link_libraries(
-  annotest PUBLIC serial_xml::serial_xml structural_tuple::structural_tuple
-                  stdc++exp)
+  annotest PUBLIC serial_xml::serial_xml structural_tuple::structural_tuple)
 target_compile_features(annotest PUBLIC cxx_std_26)
+
+# libstdc++ builds do not all provide std::stacktrace or the same support library.
+if(WIN32)
+  target_link_libraries(annotest PUBLIC shell32)
+endif()
+include(CheckCXXSourceCompiles)
+block(SCOPE_FOR VARIABLES)
+  set(stacktrace_check "#include <stacktrace>\nint main() { auto s = std::stacktrace::current(); return s.size(); }")
+  check_cxx_source_compiles("${stacktrace_check}" ANNOTEST_STACKTRACE_DEFAULT)
+  if(NOT ANNOTEST_STACKTRACE_DEFAULT)
+    set(stacktrace_available OFF)
+    foreach(library IN ITEMS stdc++exp stdc++_libbacktrace)
+      set(CMAKE_REQUIRED_LIBRARIES ${library})
+      string(MAKE_C_IDENTIFIER "ANNOTEST_STACKTRACE_${library}" result)
+      check_cxx_source_compiles("${stacktrace_check}" ${result})
+      if(${result})
+        set(stacktrace_available ON)
+        target_link_libraries(annotest PUBLIC ${library})
+        break()
+      endif()
+    endforeach()
+    if(NOT stacktrace_available)
+      target_compile_definitions(annotest PUBLIC ANNOTEST_NATIVE_STACKTRACE=1)
+    endif()
+  endif()
+endblock()
 
 # Installation configuration
 
@@ -154,6 +185,8 @@ install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/DiscoverTests.cmake
 
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/include/annotest_contract.h"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/include/annotest_platform.h"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/annotest")
 
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/AnnoTestConfig.cmake"
               "${CMAKE_CURRENT_BINARY_DIR}/AnnoTestConfigVersion.cmake"

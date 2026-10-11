@@ -1,8 +1,14 @@
+module;
+#include <cerrno>
+
+#include "annotest_platform.h"
+
 export module annotest:death_test;
 
 import :asserts;
 import :expects;
 import :posix;
+import :logger;
 
 import std;
 
@@ -35,7 +41,11 @@ DeathResult runDeathTest(F&& func) {
   }
 
   int status = 0;
-  if (waitpid(pid, &status, 0) < 0) {
+  pid_t waited;
+  do {
+    waited = waitpid(pid, &status, 0);
+  } while (waited < 0 && errno == EINTR);
+  if (waited < 0) {
     return {false, "waitpid() failed"};
   }
 
@@ -44,30 +54,41 @@ DeathResult runDeathTest(F&& func) {
   }
   return {true, std::format("exited with status {}", status)};
 }
+#elif defined(_WIN32)
+template <typename F>
+DeathResult runDeathTest(F&& func) {
+  if (annotest_platform::death_child_active()) {
+    if (!annotest_platform::enter_death_child()) return {true, "earlier death check replayed"};
+    try {
+      func();
+      std::_Exit(0);
+    } catch (...) {
+      std::_Exit(1);
+    }
+  }
+  if (suite_log.testcases.empty()) return {false, "Death tests require an active test runner"};
+  auto result =
+      annotest_platform::spawn_death_child(suite_log.name + "." + suite_log.testcases.back().name);
+  return {result.died, std::move(result.detail)};
+}
+#else
+#error "AnnoTest requires Windows or a POSIX platform"
 #endif
 
 export void assertDeath(auto func,
                         const std::source_location& loc = std::source_location::current()) {
-#if defined(__unix__) || defined(__APPLE__)
   auto result = runDeathTest(std::move(func));
   if (!result.died) {
     add_failure("Assertion failed: expected process death, child " + result.detail, loc);
   }
-#else
-#warning "assertDeath not implemented for Windows"
-#endif
 }
 
 export void expectDeath(auto func,
                         const std::source_location& loc = std::source_location::current()) {
-#if defined(__unix__) || defined(__APPLE__)
   auto result = runDeathTest(std::move(func));
   if (!result.died) {
     add_failure_expect("Expectation failed: expected process death, child " + result.detail, loc);
   }
-#else
-#warning "expectDeath not implemented for Windows"
-#endif
 }
 
 }  // namespace annotest
