@@ -1,3 +1,4 @@
+#include <charconv>
 #include <cstdlib>
 #include <cstring>
 #include <vector>
@@ -37,8 +38,11 @@ std::string utf8(std::wstring_view value) {
                       nullptr, nullptr);
   return result;
 }
-unsigned child_ordinal = 0;
-unsigned ordinal = 0;
+// Each selected ancestor contributes one ordinal; the last component selects
+// the callable that sends the readiness handshake. Nested checks extend this path.
+std::vector<unsigned> child_path;
+std::vector<unsigned> ordinals{0};
+bool callable_active = false;
 HANDLE child_ready = nullptr;
 
 std::wstring quote(std::wstring_view argument) {
@@ -93,6 +97,28 @@ int duplicate(int fd) { return _dup(fd); }
 int redirect(int source, int destination) { return _dup2(source, destination); }
 int close_descriptor(int fd) { return _close(fd); }
 int descriptor(std::FILE* stream) { return _fileno(stream); }
+standard_handles save_standard_handles() {
+  auto output = reinterpret_cast<std::uintptr_t>(GetStdHandle(STD_OUTPUT_HANDLE));
+  auto error = reinterpret_cast<std::uintptr_t>(GetStdHandle(STD_ERROR_HANDLE));
+  auto aliased_descriptor = [](std::uintptr_t value) {
+    if (!value || value == static_cast<std::uintptr_t>(-1)) return -1;
+    for (int fd : {1, 2}) {
+      if (value == static_cast<std::uintptr_t>(_get_osfhandle(fd))) return fd;
+    }
+    return -1;
+  };
+  return {output, error, aliased_descriptor(output), aliased_descriptor(error)};
+}
+void restore_standard_handles(standard_handles saved) {
+  // Redirecting a CRT descriptor closes its original OS handle. Resolve aliases
+  // against the restored descriptors; independent native handles retain identity.
+  auto restored = [](std::uintptr_t original, int fd) {
+    return fd < 0 ? reinterpret_cast<HANDLE>(original)
+                  : reinterpret_cast<HANDLE>(_get_osfhandle(fd));
+  };
+  SetStdHandle(STD_OUTPUT_HANDLE, restored(saved.output, saved.output_descriptor));
+  SetStdHandle(STD_ERROR_HANDLE, restored(saved.error, saved.error_descriptor));
+}
 void sync_standard_handles() {
   SetStdHandle(STD_OUTPUT_HANDLE, reinterpret_cast<HANDLE>(_get_osfhandle(1)));
   SetStdHandle(STD_ERROR_HANDLE, reinterpret_cast<HANDLE>(_get_osfhandle(2)));
@@ -125,26 +151,56 @@ std::vector<std::string> utf8_arguments(int argc, char** argv) {
   return result;
 }
 void configure_death_child(unsigned target, std::uintptr_t ready) {
-  child_ordinal = target;
+  configure_death_child(std::to_string(target), ready);
+}
+bool configure_death_child(std::string_view path, std::uintptr_t ready) {
+  std::vector<unsigned> parsed;
+  while (!path.empty()) {
+    auto dot = path.find('.');
+    auto part = path.substr(0, dot);
+    unsigned value = 0;
+    auto result = std::from_chars(part.data(), part.data() + part.size(), value);
+    if (result.ec != std::errc{} || result.ptr != part.data() + part.size() || !value)
+      return false;
+    parsed.push_back(value);
+    if (dot == std::string_view::npos) break;
+    path.remove_prefix(dot + 1);
+    if (path.empty()) return false;
+  }
+  if (parsed.empty() || !ready) return false;
+  child_path = std::move(parsed);
+  ordinals = {0};
+  callable_active = false;
   child_ready = reinterpret_cast<HANDLE>(ready);
   SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
 #ifdef _UCRT
   _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
 #endif
+  return true;
 }
-bool death_child_active() { return child_ordinal != 0; }
-void reset_death_ordinal() { ordinal = 0; }
+bool death_child_active() { return !child_path.empty(); }
+bool death_callable_active() { return callable_active; }
+void reset_death_ordinal() { ordinals = {0}; }
 bool enter_death_child() {
-  if (++ordinal != child_ordinal) return false;
+  const auto depth = ordinals.size() - 1;
+  if (depth >= child_path.size() || ++ordinals.back() != child_path[depth]) return false;
+  ordinals.push_back(0);
+  if (ordinals.size() <= child_path.size()) return true;
   DWORD written = 0;
   const char marker = 'R';
   if (!WriteFile(child_ready, &marker, 1, &written, nullptr) || written != 1) std::_Exit(0);
   CloseHandle(child_ready);
   child_ready = nullptr;
+  callable_active = true;
   return true;
 }
 death_result spawn_death_child(std::string_view name) {
-  ++ordinal;
+  ++ordinals.back();
+  std::wstring selected_path;
+  for (auto value : ordinals) {
+    if (!selected_path.empty()) selected_path += L'.';
+    selected_path += std::to_wstring(value);
+  }
   std::wstring executable(32768, L'\0');
   const DWORD length = GetModuleFileNameW(nullptr, executable.data(), executable.size());
   if (!length || length >= executable.size()) return {false, "Cannot locate test executable"};
@@ -179,7 +235,7 @@ death_result spawn_death_child(std::string_view name) {
                                  sizeof(inherited), nullptr, nullptr))
     return {false, "Cannot configure child handles"};
   auto command = quote(executable) + L" --annotest-death-name=" + encoded +
-                 L" --annotest-death-child=" + std::to_wstring(ordinal) + L":" +
+                 L" --annotest-death-child=" + selected_path + L":" +
                  std::to_wstring(reinterpret_cast<std::uintptr_t>(write.value));
   STARTUPINFOEXW startup{};
   startup.StartupInfo.cb = sizeof(startup);
@@ -213,6 +269,8 @@ int duplicate(int fd) { return ::dup(fd); }
 int redirect(int source, int destination) { return ::dup2(source, destination); }
 int close_descriptor(int fd) { return ::close(fd); }
 int descriptor(std::FILE* stream) { return ::fileno(stream); }
+standard_handles save_standard_handles() { return {}; }
+void restore_standard_handles(standard_handles) {}
 void sync_standard_handles() {}
 std::string capture_stacktrace() {
   void* frames[32];
@@ -230,6 +288,8 @@ std::string capture_stacktrace() {
 }
 std::vector<std::string> utf8_arguments(int, char**) { return {}; }
 void configure_death_child(unsigned, std::uintptr_t) {}
+bool configure_death_child(std::string_view, std::uintptr_t) { return false; }
+bool death_callable_active() { return false; }
 bool death_child_active() { return false; }
 void reset_death_ordinal() {}
 bool enter_death_child() { return false; }

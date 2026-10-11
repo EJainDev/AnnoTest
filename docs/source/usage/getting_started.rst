@@ -105,6 +105,10 @@ large writes. Windows synchronizes CRT descriptors with native standard handles.
 Capture is process-wide, so background writers must finish before the test ends.
 Windows command-line names and report paths support UTF-8.
 
+XML preserves valid Unicode. Forbidden XML control bytes and malformed UTF-8
+are represented as visible ``\xNN`` escapes in the report. Captured runtime
+data and console diagnostics retain their original bytes.
+
 Stack traces use ``std::stacktrace`` when the toolchain supports it; otherwise
 native backtraces are used, with raw frame addresses on Windows.
 :doc:`/api/testing/death` explains the Windows replay model and POSIX isolation.

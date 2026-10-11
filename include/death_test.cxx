@@ -57,7 +57,7 @@ DeathResult runDeathTest(F&& func) {
 #elif defined(_WIN32)
 template <typename F>
 DeathResult runDeathTest(F&& func) {
-  if (annotest_platform::death_child_active()) {
+  if (annotest_platform::death_child_active() && !annotest_platform::death_callable_active()) {
     if (!annotest_platform::enter_death_child()) return {true, "earlier death check replayed"};
     try {
       func();

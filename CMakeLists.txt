@@ -17,12 +17,17 @@ project(
 # CMake 4.3 builds one shared std BMI and does not inherit target options.
 # Append after compiler detection: GCC rejects -freflection in its default mode.
 # Embedding consumers must also set this flag in their top-level directory.
-if(CMAKE_VERSION VERSION_LESS 4.4 AND NOT CMAKE_CXX_FLAGS MATCHES "(^| )-freflection( |$)")
+if(CMAKE_VERSION VERSION_LESS 4.4 AND NOT CMAKE_CXX_FLAGS MATCHES
+                                      "(^| )-freflection( |$)")
   string(APPEND CMAKE_CXX_FLAGS " -freflection")
 endif()
 
-if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_VERSION VERSION_LESS 16)
-  message(FATAL_ERROR "AnnoTest requires GCC 16 or newer with C++26 reflection. Use Homebrew GCC on macOS or MSYS2 UCRT64 GCC on Windows.")
+if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_VERSION
+                                               VERSION_LESS 16)
+  message(
+    FATAL_ERROR
+      "AnnoTest requires GCC 16 or newer with C++26 reflection. Use Homebrew GCC on macOS or MSYS2 UCRT64 GCC on Windows."
+  )
 endif()
 
 include(FetchContent)
@@ -65,17 +70,19 @@ endblock()
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
-# The pinned dependencies hard-code `include` in their install interfaces.
-# Keep their exported include paths consistent with GNUInstallDirs overrides.
+# The pinned dependencies hard-code `include` in their install interfaces. Keep
+# their exported include paths consistent with GNUInstallDirs overrides.
 foreach(dependency IN ITEMS structural_tuple serial_xml)
   if(TARGET ${dependency})
     get_target_property(is_imported ${dependency} IMPORTED)
     if(NOT is_imported)
-      get_target_property(include_dirs ${dependency} INTERFACE_INCLUDE_DIRECTORIES)
+      get_target_property(include_dirs ${dependency}
+                          INTERFACE_INCLUDE_DIRECTORIES)
       string(REPLACE "$<INSTALL_INTERFACE:include>"
                      "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
                      include_dirs "${include_dirs}")
-      set_property(TARGET ${dependency} PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${include_dirs}")
+      set_property(TARGET ${dependency} PROPERTY INTERFACE_INCLUDE_DIRECTORIES
+                                                 "${include_dirs}")
     endif()
   endif()
 endforeach()
@@ -110,40 +117,43 @@ target_sources(
          "${CMAKE_CURRENT_SOURCE_DIR}/include/utils.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/contracts.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/logger.cxx")
-target_sources(annotest
-               PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/runner.cxx"
-                       "${CMAKE_CURRENT_SOURCE_DIR}/include/platform.cpp")
+target_sources(
+  annotest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/runner.cxx"
+                   "${CMAKE_CURRENT_SOURCE_DIR}/include/platform.cpp")
 target_include_directories(
   annotest PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
                   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-target_link_libraries(
-  annotest PUBLIC serial_xml::serial_xml structural_tuple::structural_tuple)
+target_link_libraries(annotest PUBLIC serial_xml::serial_xml
+                                      structural_tuple::structural_tuple)
 target_compile_features(annotest PUBLIC cxx_std_26)
 
-# libstdc++ builds do not all provide std::stacktrace or the same support library.
+# libstdc++ builds do not all provide std::stacktrace or the same support
+# library.
 if(WIN32)
   target_link_libraries(annotest PUBLIC shell32)
 endif()
 include(CheckCXXSourceCompiles)
 block(SCOPE_FOR VARIABLES)
-  set(stacktrace_check "#include <stacktrace>\nint main() { auto s = std::stacktrace::current(); return s.size(); }")
-  check_cxx_source_compiles("${stacktrace_check}" ANNOTEST_STACKTRACE_DEFAULT)
-  if(NOT ANNOTEST_STACKTRACE_DEFAULT)
-    set(stacktrace_available OFF)
-    foreach(library IN ITEMS stdc++exp stdc++_libbacktrace)
-      set(CMAKE_REQUIRED_LIBRARIES ${library})
-      string(MAKE_C_IDENTIFIER "ANNOTEST_STACKTRACE_${library}" result)
-      check_cxx_source_compiles("${stacktrace_check}" ${result})
-      if(${result})
-        set(stacktrace_available ON)
-        target_link_libraries(annotest PUBLIC ${library})
-        break()
-      endif()
-    endforeach()
-    if(NOT stacktrace_available)
-      target_compile_definitions(annotest PUBLIC ANNOTEST_NATIVE_STACKTRACE=1)
+set(stacktrace_check
+    "#include <stacktrace>\nint main() { auto s = std::stacktrace::current(); return s.size(); }"
+)
+check_cxx_source_compiles("${stacktrace_check}" ANNOTEST_STACKTRACE_DEFAULT)
+if(NOT ANNOTEST_STACKTRACE_DEFAULT)
+  set(stacktrace_available OFF)
+  foreach(library IN ITEMS stdc++exp stdc++_libbacktrace)
+    set(CMAKE_REQUIRED_LIBRARIES ${library})
+    string(MAKE_C_IDENTIFIER "ANNOTEST_STACKTRACE_${library}" result)
+    check_cxx_source_compiles("${stacktrace_check}" ${result})
+    if(${result})
+      set(stacktrace_available ON)
+      target_link_libraries(annotest PUBLIC ${library})
+      break()
     endif()
+  endforeach()
+  if(NOT stacktrace_available)
+    target_compile_definitions(annotest PUBLIC ANNOTEST_NATIVE_STACKTRACE=1)
   endif()
+endif()
 endblock()
 
 # Installation configuration

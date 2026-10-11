@@ -17,6 +17,7 @@ class std_streams {
     std::cout.flush();
     std::cerr.flush();
     std::fflush(nullptr);
+    saved_handles = annotest_platform::save_standard_handles();
     out = annotest_platform::temporary_file();
     err = annotest_platform::temporary_file();
     saved_out = annotest_platform::duplicate(1);
@@ -62,7 +63,7 @@ class std_streams {
       annotest_platform::close_descriptor(saved_err);
       saved_err = -1;
     }
-    annotest_platform::sync_standard_handles();
+    annotest_platform::restore_standard_handles(saved_handles);
     if (out) {
       std::fclose(out);
       out = nullptr;
@@ -76,6 +77,7 @@ class std_streams {
   std::FILE* err = nullptr;
   int saved_out = -1;
   int saved_err = -1;
+  annotest_platform::standard_handles saved_handles{};
 };
 
 void record_exception(const std::string& phase) {
@@ -239,18 +241,14 @@ runner_options parse_options(int argc, char** argv) {
     if (arg.starts_with("--annotest-death-child=")) {
       auto value = arg.substr(std::string_view("--annotest-death-child=").size());
       auto separator = value.find(':');
-      unsigned ordinal = 0;
       std::uintptr_t handle = 0;
       auto first = value.substr(0, separator);
       auto second =
           separator == std::string_view::npos ? std::string_view{} : value.substr(separator + 1);
-      auto [end1, ec1] = std::from_chars(first.data(), first.data() + first.size(), ordinal);
       auto [end2, ec2] = std::from_chars(second.data(), second.data() + second.size(), handle);
-      if (ec1 != std::errc{} || ec2 != std::errc{} || end1 != first.data() + first.size() ||
-          end2 != second.data() + second.size() || ordinal == 0 || handle == 0) {
+      if (ec2 != std::errc{} || end2 != second.data() + second.size() || handle == 0 ||
+          !annotest_platform::configure_death_child(first, handle)) {
         error("Invalid death-test child arguments");
-      } else {
-        annotest_platform::configure_death_child(ordinal, handle);
       }
       continue;
     }
@@ -319,6 +317,7 @@ runner_options parse_options(int argc, char** argv) {
 
 bool select_parameterizations(const std::string& full_name, bool parameterized, int count,
                               const std::vector<std::string>& requested_names,
+                              const std::unordered_map<std::string, std::string>& name_owners,
                               std::vector<std::string>& remaining_names,
                               std::vector<int>& targets) {
   if (requested_names.empty()) {
@@ -326,6 +325,10 @@ bool select_parameterizations(const std::string& full_name, bool parameterized, 
     return true;
   }
   for (const auto& requested : requested_names) {
+    // Exact names belong to one test, including expanded parameter instances.
+    // A dotted name must not be parsed as a selector for an earlier prefix.
+    auto owner = name_owners.find(requested);
+    if (owner != name_owners.end() && owner->second != full_name) continue;
     if (requested == full_name) {
       targets = {-1};
       std::erase(remaining_names, requested);
@@ -400,6 +403,15 @@ int execute_suite(void* context, std::string_view suite_name,
 
   std::string prefix = std::string(suite_name) + '.';
 
+  std::unordered_map<std::string, std::string> name_owners;
+  for (const auto& test : tests) {
+    auto full_name = prefix + test.name;
+    name_owners.emplace(full_name, full_name);
+    for (int i = 1; i <= test.parameter_count; ++i) {
+      name_owners.emplace(std::format("{}.{}", full_name, i), full_name);
+    }
+  }
+
   for (const auto& test : tests) {
     contract_violation_occurred = false;  // Reset contract flag before each test
 
@@ -409,7 +421,7 @@ int execute_suite(void* context, std::string_view suite_name,
     std::vector<int> parameterize_targets;
     auto full_name = prefix + test_name;
     if (!select_parameterizations(full_name, is_parameterized, parameter_count, test_names,
-                                  remaining_names, parameterize_targets))
+                                  name_owners, remaining_names, parameterize_targets))
       return 1;
     if (parameterize_targets.empty()) continue;
 
@@ -488,9 +500,10 @@ int execute_suite(void* context, std::string_view suite_name,
       std::chrono::duration<double>(std::chrono::steady_clock::now() - suite_start).count();
   if (!xml_output.empty()) {
     try {
+      auto contents = xml_report();
       std::ofstream report(
           std::filesystem::path(std::u8string(xml_output.begin(), xml_output.end())));
-      report << xml_report();
+      report << contents;
       report.flush();
       if (!report) throw std::runtime_error("Cannot write report file");
     } catch (const std::exception& e) {

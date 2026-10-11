@@ -23,12 +23,15 @@ Windows
 Windows relaunches the current executable with an internal selector for the test
 and death-check ordinal. It repeats setup and the test body up to that check,
 skipping earlier death callables. Named tests, parameterized cases, and multiple
-checks in one test are supported. A handshake ensures startup failures before
-the callable do not falsely pass a death check.
+checks in one test are supported. Nested checks are supported on every platform.
+For a nested Windows check, the child replays its enclosing death callables to
+reach the selected inner callable. A handshake is sent only when that callable
+is reached, so startup failures or exceptions in enclosing callables do not
+falsely pass the inner check.
 
 Use these helpers inside ``run_tests`` and forward ``argc`` and ``argv`` from
 ``main``. Setup and code before the death check must be deterministic and safe to
-repeat. State from previously executed tests and parent-only resources are not
+repeat, including enclosing callables for nested checks. State from previously executed tests and parent-only resources are not
 inherited. Pointers into the parent process cannot be used in the child.
 Replayed setup and body output can appear in captured output.
 

@@ -38,7 +38,7 @@ class DiscoveryTests(RunnerTest):
         tests = json.loads(result.stdout)['tests']
         self.assertEqual([test['name'] for test in tests], names)
         for test in tests:
-            self.assertEqual(test['command'][-1], test['name'])
+            self.assertEqual(test['command'][-1], '--test-name=' + test['name'])
         result = self.command(ctest, '--test-dir', directory, '--output-on-failure', '--no-tests=error')
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
@@ -75,6 +75,12 @@ class DiscoveryTests(RunnerTest):
             result, manifest = self.discover(directory, 'crlf')
             self.assertEqual(result.returncode, 0, result.stderr)
             self.verify_manifest(directory, manifest, ['Fixture.ok'])
+
+    def test_leading_hyphen_name(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result, manifest = self.discover(directory, 'leading')
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.verify_manifest(directory, manifest, ['-Fixture.ok'])
 
     def test_special_names_and_executable_path(self):
         with tempfile.TemporaryDirectory(prefix='annotest discovery ') as directory:

@@ -30,7 +30,18 @@ The library supports compile-time test discovery, fixture hooks, value/type para
 
     [[= test{}]] void my_test();
 
-.. note:: This library is still under development. Breaking changes may occur.
+Compatibility
+-------------
+
+Starting with v1.0, documented public annotations, assertions, expectations,
+runner options, and CMake targets retain source compatibility within v1.x.
+Correctness fixes can reject previously accepted invalid tests. Internal
+implementation modules and undocumented APIs are excluded.
+
+Rebuild libraries and module artifacts with the consuming compiler and compatible
+settings. GCC reflection and CMake standard-library module support remain
+experimental. Compatibility across compiler versions, module formats, ABIs, and
+experimental CMake settings is outside this source API promise.
 
 .. toctree::
    :maxdepth: 2

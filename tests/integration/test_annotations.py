@@ -20,7 +20,10 @@ class AnnotationTests(RunnerTest):
                 self.assertEqual(case.findtext("system-out"), output)
                 self.assertEqual(case.findall("failure"), [])
         _, names = self.listed_names("AnnotationTests")
-        self.assertNotIn("unrelated_without_test", names)
+        for absent in ("unrelated_without_test", "unrelated_plain_without_test",
+                       "public_template_helper", "private_template_helper",
+                       "unrelated_template_helper", "variable_template_helper"):
+            self.assertNotIn(absent, names)
 
     def test_os_annotations_and_disabled_tests(self):
         for name in ("required_current", "required_multiple", "disallowed_other"):

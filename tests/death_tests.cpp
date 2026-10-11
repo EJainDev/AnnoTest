@@ -1,4 +1,5 @@
 #include <csignal>
+#include <cstdio>
 
 import annotest;
 import std;
@@ -50,6 +51,29 @@ struct DeathTests {
   }
   [[= test{}]] void expect_zero_exit_fail() {
     expectDeath([] { std::_Exit(0); });
+  }
+  [[= test{}]] void nested_pass() {
+    assertDeath([] {
+      expectDeath([] {
+        assertDeath([] {
+          std::fputs("nested child\n", stdout);
+          std::fflush(stdout);
+          std::_Exit(7);
+        });
+        std::_Exit(8);
+      });
+      assertDeath([] {
+        std::fputs("second nested child\n", stdout);
+        std::fflush(stdout);
+        std::_Exit(9);
+      });
+      std::fputs("outer survived\n", stdout);
+      std::fflush(stdout);
+      std::_Exit(10);
+    });
+  }
+  [[= test{}]] void nested_return_fail() {
+    assertDeath([] { assertDeath([] { std::_Exit(7); }); });
   }
   [[= test{}]] void isolation_pass() {
     int value = 1;

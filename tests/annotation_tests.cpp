@@ -20,6 +20,8 @@ static_assert(!suite<"suite name">{}.is_empty());
 static_assert(test{.disabled = true}.disabled);
 static_assert(suite{.disabled = true}.disabled);
 
+struct UnrelatedAnnotation {};
+
 template <typename T = void>
 struct UnrelatedTemplateAnnotation {};
 
@@ -53,21 +55,37 @@ struct[[= suite{}]] AnnotationTests {
      = parameterize{parameters(1), parameters(2)} ]] void required_values(int) {
     assert_true(false);
   }
-  [[ = UnrelatedTemplateAnnotation{}, = test{} ]] void unrelated_before_test() {
+  [[ = UnrelatedAnnotation{}, = UnrelatedTemplateAnnotation{},
+     = test{} ]] void unrelated_before_test() {
     std::println("unrelated before");
   }
-  [[ = test{}, = UnrelatedTemplateAnnotation{} ]] void unrelated_after_test() {
+  [[ = test{}, = UnrelatedTemplateAnnotation{},
+     = UnrelatedAnnotation{} ]] void unrelated_after_test() {
     std::println("unrelated after");
   }
   [[= UnrelatedTemplateAnnotation{}]] void unrelated_without_test() { assert_true(false); }
+  [[= UnrelatedAnnotation{}]] void unrelated_plain_without_test() { assert_true(false); }
+  template <typename T>
+  void public_template_helper(T) {
+    assert_true(false);
+  }
+  template <typename T = void>
+  [[= UnrelatedAnnotation{}]] void unrelated_template_helper() {
+    assert_true(false);
+  }
+  template <typename T>
+  static constexpr bool variable_template_helper = sizeof(T) > 0;
   void unannotated() { assert_true(false); }
   [[= requires_os{current_os}]] void os_without_test() { assert_true(false); }
 
  private:
+  template <typename T>
+  void private_template_helper(T) {
+    assert_true(false);
+  }
   void inaccessible() { assert_true(false); }
 };
 
-struct UnrelatedAnnotation {};
 struct[[ = UnrelatedAnnotation{}, = UnrelatedTemplateAnnotation{}, = suite<"renamed suite">{} ]]
     NamedSuite {
   [[= test{}]] void body() { std::println("named suite"); }

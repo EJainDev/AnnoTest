@@ -42,6 +42,23 @@ class ReportingTests(RunnerTest):
         self.assertNotIn("cerr <", result.stderr)
         self.assertTrue(root.attrib["file"].endswith("lifecycle_tests.cpp"))
 
+    def test_binary_output_is_visible_valid_xml_and_preserves_unicode(self):
+        _, _, case = self.single_case("LifecycleTests", "binary_output")
+        expected = ("plain < & ]]>\t\r\n" +
+                    r"\x00\x01\x0b\x1f" + "\x7f\u0080é中\ue000🙂\U0010ffff" +
+                    r"\xef\xbf\xbe\xef\xbf\xbf\xc0\xaf\xed\xa0\x80\xf4\x90\x80\x80" +
+                    r"\xe0\x80\x80\xf0\x80\x80\x80\xf5\x80\xff\xe2!\xc2\xf0\x9f")
+        self.assertEqual(case.findtext("system-out"), "setup 1\n" + expected + "cleanup 1\n")
+        self.assertEqual(case.findtext("system-err"), expected)
+
+    def test_failure_xml_sanitizes_controls_without_changing_console_message(self):
+        result, _, case = self.single_case("LifecycleTests", "binary_failure", 1)
+        failure = self.failure(case, "uncaught_exception")[0]
+        message = r"test: control \x01 < & ]]> Unicode " + "é🙂"
+        self.assertEqual(failure.attrib["message"], message)
+        self.assertIn("Message: " + message + "\n", failure.text)
+        self.assertIn("control \x01 < & ]]> Unicode é🙂", result.stderr)
+
     def test_large_capture_does_not_deadlock_or_truncate(self):
         _, _, case = self.single_case("LifecycleTests", "large_output")
         self.assertEqual(case.findtext("system-out"), "setup 1\n" + "o" * 200000 + "cleanup 1\n")

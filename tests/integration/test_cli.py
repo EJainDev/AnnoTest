@@ -2,6 +2,20 @@ from support import RunnerTest
 
 
 class CliTests(RunnerTest):
+    def test_dotted_names_belong_to_exact_tests(self):
+        for name in ("value.special", "value.special.99", "nested.value.note", "nested.value.2"):
+            with self.subTest(name=name):
+                _, _, case = self.single_case("NameTests", name)
+                self.assertEqual(case.findall("failure"), [])
+        _, root = self.report("NameTests", ["NameTests.value.special", "NameTests.value.1"])
+        self.assertEqual([case.attrib['name'] for case in root.findall('testcase')],
+                         ["value.1", "value.special"])
+
+    def test_leading_hyphen_suite_name(self):
+        self.assertEqual(self.listed_names("NameTests", "leading"), ("-smoke", ["body"]))
+        _, root = self.report("NameTests", scenario="leading", options=("--test-name=-smoke.body",))
+        self.assertEqual([case.attrib['name'] for case in root.findall('testcase')], ["body"])
+
     def test_help_aliases_and_groups(self):
         for option in ("--help", "-h", "-lh", "-hl"):
             with self.subTest(option=option):

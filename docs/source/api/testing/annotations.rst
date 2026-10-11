@@ -35,6 +35,12 @@ value combinations. See :doc:`/examples/parameterized`.
 method template. ``parameterize_template::of`` and ``template_params::cross_t``
 support type products. See :doc:`/examples/typed`.
 
+GCC exposes method-template annotations through a specialization. Annotated
+template methods must accept an empty template argument list, typically by
+giving their template parameters defaults, such as ``template<typename T = int>``.
+The defaults enable discovery; each parameterized case still uses its specified
+types. Unannotated helper templates without defaults are ignored.
+
 ``parameterize_pair<template_params<...>, parameters<...>>`` couples template
 and function arguments. ``parameterize_dual`` expands those pairs into cases.
 See :doc:`/examples/dual_parameters`.

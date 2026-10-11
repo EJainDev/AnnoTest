@@ -12,6 +12,18 @@ ctest --test-dir build --output-on-failure
 Tests require the library's C++26 reflection compiler and Python 3. Python uses
 only its standard library. `BUILD_TESTS=OFF` does not require Python.
 
+With GCC 16 available as `g++`, use the dedicated Debug test preset:
+
+```sh
+cmake --preset test-debug-gcc-16-1
+cmake --build --preset build-test-debug --parallel 2
+ctest --preset test-debug
+```
+
+The `test-release` test preset selects the corresponding Release build. The
+editor's test explorer points at `build/test-debug` so scratch builds under
+`build/`, including deliberately broken mutation-audit binaries, are not selected.
+
 Test design follows the behavioral patterns in GoogleTest's own self-tests:
 [assertions, evaluation and diagnostics](https://github.com/google/googletest/blob/main/googletest/test/gtest_unittest.cc)
 and [independently verified XML reports](https://github.com/google/googletest/blob/main/googletest/test/gtest_xml_output_unittest.py).
@@ -32,17 +44,17 @@ that both success and failure behavior match expectations.
 | `behavior_tests.cpp`, `integration/test_behavior.py` | Exact expected/actual diagnostics, assertion unwinding, expectation continuation, mixed fatal/nonfatal failures, single operand/callback evaluation, explicit source locations, deferred/copy/reference semantics of `wrap`, noncopyable containers, and embedded-null strings |
 | `generic_tests.cpp`, `integration/test_generic.py` | Custom comparable/formattable operands for all six comparisons and containment; explicit boolean proxies for comparison results and truth checks; exact custom diagnostics; single operator/conversion evaluation; lazy formatting on success; throwing operators, proxy conversions, and formatters; exception reporting, unwinding, and continuation of later cases |
 | `parameterization_tests.cpp`, `integration/test_parameterization.py` | Value, template and dual annotations; multiple arguments and empty argument sets; tuple constructors; value/type cross products; `parameterize_template::of`; named/disabled cases; index selection, deduplication, ordering, and continuation |
-| `annotation_tests.cpp`, `integration/test_annotations.py` | `test`, `suite`, custom/default names, disabled tests/suites, defaults, static/const methods, unannotated/private members, all OS annotations, ignored unrelated suite/method annotations, and empty suites |
+| `annotation_tests.cpp`, `integration/test_annotations.py` | `test`, `suite`, custom/default names, disabled tests/suites, defaults, static/const methods, unannotated/private members and templates without defaults, all OS annotations, ignored unrelated suite/method annotations, and empty suites |
 | `lifecycle_tests.cpp`, `integration/test_lifecycle.py` | `before_each`/`after_each` ordering, shared state, assertion/expectation/standard/unknown exceptions in each phase, cleanup after failure, skipping, and contract state isolation |
 | `contract_tests.cpp`, `integration/test_contracts.py` | Actual C++26 pre/post/inline contracts under observe semantics; all four helpers with void/value returns; failures, callable exceptions, flag reset, and custom handler delegation |
-| `death_tests.cpp`, `integration/test_death.py` | Both death helpers with nonzero exit, exceptions and signals; normal return/zero exit failures and child state isolation (Linux, macOS, and Windows; Windows uses replay) |
+| `death_tests.cpp`, `integration/test_death.py` | Both death helpers with nonzero exit, exceptions and signals; normal return/zero exit failures, nested checks, and child state isolation (Linux, macOS, and Windows; Windows uses replay) |
 | `fault_tests.cpp`, `integration/test_faults.py` | Linux fault injection for partial capture initialization, descriptor cleanup/restoration, and fork/wait errors; coverage-only child counter flushing |
 | `internal_tests.cpp`, `integration/test_internals.py` | Private log state, absent optional diagnostics, exception formatting, unrecorded assertions, and null CLI pointers without exporting internals; compile-time signed/unsigned integer formatting including zero and 64-bit limits |
 | `utility_tests.cpp` | Enum formatting, invalid values, and the shipped CMake discovery helper |
-| `integration/test_cli.py` | Long/short/grouped/attached/repeated CLI options, filtering, unknown names, malformed arguments, help/list, and terminator |
-| `integration/test_reporting.py` | XML totals, timings, timestamp, source file, failure types, escaping, stdout/stderr including C stdio and large writes, capture isolation, report overwrites, file errors, and repeated-run reset |
-| `compile_fail/*.cpp`, `expect_compile_failure.cmake` | Rejection of duplicate lifecycle hooks, incompatible annotations, inaccessible/deleted methods, missing arguments, empty parameterizations, duplicate names, and line breaks; `assertion_error` remains inaccessible to importers |
-| `discovery_fixture.cpp`, `integration/test_discovery.py` | Failed/empty/malformed listings, timeouts, stale manifest removal, missing builds, invalid targets/options, special names and executable paths, CRLF, and separate multi-config manifests |
+| `name_tests.cpp`, `integration/test_cli.py` | Exact dotted names alongside parameter selection; leading-hyphen suite names; Long/short/grouped/attached/repeated CLI options, filtering, unknown names, malformed arguments, help/list, and terminator |
+| `integration/test_reporting.py` | XML totals, timings, timestamp, source file, failure types, control-byte and malformed UTF-8 escaping, valid Unicode, stdout/stderr including C stdio and large writes, capture isolation, report overwrites, file errors, and repeated-run reset |
+| `compile_fail/*.cpp`, `expect_compile_failure.cmake` | Rejection of duplicate lifecycle hooks, incompatible annotations, inaccessible/deleted methods, missing arguments, empty parameterizations, duplicate base and expanded names, and line breaks; `assertion_error` remains inaccessible to importers |
+| `discovery_fixture.cpp`, `integration/test_discovery.py` | Failed/empty/malformed listings, timeouts, stale manifest removal, missing builds, invalid targets/options, special names (including leading hyphens) and executable paths, CRLF, and separate multi-config manifests |
 
 CTest compile-failure cases are serialized because each invokes the build
 system. They require a diagnostic from the annotation validator, not merely a

@@ -40,6 +40,36 @@ extern "C++" int main(int argc, char** argv) {
     require(std::format("{}", failure_types::uncaught_exception) == "uncaught_exception");
     require(std::format("{}", failure_types::unknown) == "unknown");
     require(std::format("{}", static_cast<failure_types>(99)).empty());
+  } else if (name == "xml_snapshot_preserves_raw_log") {
+    suite_log.reset();
+    auto saved = suite_log;
+    suite_log.testcases.emplace_back();
+    auto bytes = std::string("\x00\x80", 2);
+    suite_log.name = bytes;
+    suite_log.timestamp = bytes;
+    const auto source_path = std::filesystem::path(u8"source-é中🙂\x01.cpp");
+    suite_log.file = source_path;
+    auto& entry = suite_log.testcases.back();
+    entry.name = bytes;
+    entry.test_class = bytes;
+    entry.sysout = bytes;
+    entry.syserr = bytes;
+    entry.failures.push_back({failure_types::expectation,
+                              bytes,
+                              {.location = std::pair{std::string("path\x01"), std::size_t(7)},
+                               .message = bytes,
+                               .stacktrace = std::nullopt}});
+    const auto serialized = xml_report();
+    const bool unchanged =
+        suite_log.name == bytes && suite_log.timestamp == bytes && suite_log.file == source_path &&
+        entry.name == bytes && entry.test_class == bytes && entry.sysout == bytes &&
+        entry.syserr == bytes && entry.failures.back().message == bytes &&
+        entry.failures.back().cdata.message == bytes && !entry.failures.back().cdata.sanitize_xml;
+    suite_log = std::move(saved);
+    require(unchanged);
+    require(serialized.find("\\x00\\x80") != std::string::npos);
+    require(serialized.find("source-é中🙂\\x01.cpp") != std::string::npos);
+    require(serialized.find("Location: path\\x01:7") != std::string::npos);
   } else if (name == "unrecorded_assertion") {
     suite_log.reset();
     suite_log.name = "InternalTests";

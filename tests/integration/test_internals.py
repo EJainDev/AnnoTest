@@ -21,5 +21,5 @@ def invariant(name):
 
 for name in ("logger_without_test", "optional_failure_fields", "failure_type_formatting",
              "unrecorded_assertion", "null_argv", "null_argument", "null_xml_path",
-             "null_test_name", "help_without_program", "empty_arguments", "unrunnable_plan"):
+             "null_test_name", "help_without_program", "empty_arguments", "unrunnable_plan", "xml_snapshot_preserves_raw_log"):
     setattr(InternalTests, f"test_{name}", invariant(name))

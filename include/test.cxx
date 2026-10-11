@@ -58,9 +58,15 @@ consteval auto get_tests() {
     bool test_found = false;
     bool lifecycle_found = false;
 
-    // Guard against auto-generated constructors and destructors
+    // GCC exposes function-template annotations only through a specialization.
+    // Test templates therefore require defaults (as documented); ordinary
+    // templates without defaults must not make an otherwise valid suite fail.
+    // Guard against auto-generated constructors and destructors.
     if constexpr (std::meta::has_identifier(m) &&
-                  (std::meta::is_function(m) || std::meta::is_template(m))) {
+                  (std::meta::is_function(m) ||
+                   (std::meta::is_template(m) &&
+                    std::meta::can_substitute(
+                        m, std::define_static_array(std::vector<std::meta::info>{}))))) {
       static constexpr auto member =
           (std::meta::is_function(m)
                ? m
@@ -76,67 +82,70 @@ consteval auto get_tests() {
       current_test.num_parameterizations = 0;
 
       template for (constexpr auto a : annotations) {
-        constexpr auto t = std::meta::template_of(std::meta::type_of(a));
+        if constexpr (std::meta::has_template_arguments(std::meta::type_of(a))) {
+          constexpr auto t = std::meta::template_of(std::meta::type_of(a));
 
-        if constexpr (t == ^^test) {
-          if (lifecycle_found) {
-            throw std::logic_error(
-                std::format("Cannot have a `test` annotation on a lifecycle "
-                            "(before_each or after_each) method. Method name: {}",
-                            std::meta::identifier_of(m)));
+          if constexpr (t == ^^test) {
+            if (lifecycle_found) {
+              throw std::logic_error(
+                  std::format("Cannot have a `test` annotation on a lifecycle "
+                              "(before_each or after_each) method. Method name: {}",
+                              std::meta::identifier_of(m)));
+            }
+
+            auto test_info = std::meta::extract<typename[:std::meta::type_of(a):]>(a);
+            current_test.disabled = result.disabled || test_info.disabled;
+
+            current_test.name = !test_info.is_empty()
+                                    ? std::define_static_string(std::string_view(test_info.name))
+                                    : std::define_static_string(std::meta::identifier_of(m));
+            test_found = true;
+          } else if constexpr (t == ^^before_each) {
+            if (result.has_before_each) {
+              throw std::logic_error(std::format(
+                  "Duplicate before_each annotation detected. First one at {} and second one at {}",
+                  std::meta::identifier_of(result.before_each), std::meta::identifier_of(m)));
+            } else if (test_found) {
+              throw std::logic_error(
+                  std::format("before_each cannot be declared on a `test` method or `suite` class. "
+                              "Test/Suite name: {}",
+                              std::meta::identifier_of(m)));
+            }
+
+            lifecycle_found = true;
+            result.before_each = m;
+            result.has_before_each = true;
+          } else if constexpr (t == ^^after_each) {
+            if (result.has_after_each) {
+              throw std::logic_error(std::format(
+                  "Duplicate after_each annotation detected. First one at {} and second one at {}",
+                  std::meta::identifier_of(result.after_each), std::meta::identifier_of(m)));
+            } else if (test_found) {
+              throw std::logic_error(
+                  std::format("after_each cannot be declared on a `test` method. Method name: {}",
+                              std::meta::identifier_of(m)));
+            }
+            lifecycle_found = true;
+            result.after_each = m;
+            result.has_after_each = true;
+          } else if constexpr (t == ^^parameterize || t == ^^parameterize_template ||
+                               t == ^^parameterize_dual) {
+            current_test.parameterization_type =
+                t == ^^parameterize
+                    ? parameterization_types::Value
+                    : (t == ^^parameterize_template ? parameterization_types::Template
+                                                    : parameterization_types::Dual);
+            current_test.parameterize_annotation = a;
+            current_test.parameterized = true;
+            using AnnoType = typename[:std::meta::type_of(a):];
+            current_test.num_parameterizations = AnnoType::N;
+          } else if constexpr (t == ^^requires_os) {
+            current_test.has_requires_os = true;
+            current_test.requires_os_annotation = a;
+          } else if constexpr (t == ^^disallows_os) {
+            current_test.has_disallows_os = true;
+            current_test.disallows_os_annotation = a;
           }
-
-          auto test_info = std::meta::extract<typename[:std::meta::type_of(a):]>(a);
-          current_test.disabled = result.disabled || test_info.disabled;
-
-          current_test.name = !test_info.is_empty()
-                                  ? std::define_static_string(std::string_view(test_info.name))
-                                  : std::define_static_string(std::meta::identifier_of(m));
-          test_found = true;
-        } else if constexpr (t == ^^before_each) {
-          if (result.has_before_each) {
-            throw std::logic_error(std::format(
-                "Duplicate before_each annotation detected. First one at {} and second one at {}",
-                std::meta::identifier_of(result.before_each), std::meta::identifier_of(m)));
-          } else if (test_found) {
-            throw std::logic_error(
-                std::format("before_each cannot be declared on a `test` method or `suite` class. "
-                            "Test/Suite name: {}",
-                            std::meta::identifier_of(m)));
-          }
-
-          lifecycle_found = true;
-          result.before_each = m;
-          result.has_before_each = true;
-        } else if constexpr (t == ^^after_each) {
-          if (result.has_after_each) {
-            throw std::logic_error(std::format(
-                "Duplicate after_each annotation detected. First one at {} and second one at {}",
-                std::meta::identifier_of(result.after_each), std::meta::identifier_of(m)));
-          } else if (test_found) {
-            throw std::logic_error(
-                std::format("after_each cannot be declared on a `test` method. Method name: {}",
-                            std::meta::identifier_of(m)));
-          }
-          lifecycle_found = true;
-          result.after_each = m;
-          result.has_after_each = true;
-        } else if constexpr (t == ^^parameterize || t == ^^parameterize_template ||
-                             t == ^^parameterize_dual) {
-          current_test.parameterization_type =
-              t == ^^parameterize ? parameterization_types::Value
-                                  : (t == ^^parameterize_template ? parameterization_types::Template
-                                                                  : parameterization_types::Dual);
-          current_test.parameterize_annotation = a;
-          current_test.parameterized = true;
-          using AnnoType = typename[:std::meta::type_of(a):];
-          current_test.num_parameterizations = AnnoType::N;
-        } else if constexpr (t == ^^requires_os) {
-          current_test.has_requires_os = true;
-          current_test.requires_os_annotation = a;
-        } else if constexpr (t == ^^disallows_os) {
-          current_test.has_disallows_os = true;
-          current_test.disallows_os_annotation = a;
         }
       }
 
@@ -174,6 +183,21 @@ consteval auto get_tests() {
         }
         children.emplace_back(current_test);
       }
+    }
+  }
+
+  // Base names are selection aliases for parameterized tests. Reserve them
+  // alongside concrete case names so every filter has exactly one meaning.
+  std::vector<std::string> names;
+  for (const auto& child : children) names.emplace_back(child.name);
+  for (const auto& child : children) {
+    if (!child.parameterized) continue;
+    for (std::size_t i = 0; i < child.num_parameterizations; ++i) {
+      auto name = std::string(child.name) + "." + to_string(i + 1);
+      if (std::ranges::find(names, name) != names.end()) {
+        throw std::logic_error(std::format("Duplicate expanded test name: {}", name));
+      }
+      names.emplace_back(std::move(name));
     }
   }
 

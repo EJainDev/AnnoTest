@@ -13,17 +13,23 @@ Thank you for your interest in contributing to AnnoTest!
 ## Development Setup
 
 You'll need:
-- GCC 16.1+ (C++26 support required)
-- CMake 4.3+ (required for CXX_MODULES file set and `import std;` support)
+- GCC 16+ (C++26 support required)
+- CMake 4.3.3+ (required for CXX_MODULES file set and `import std;` support)
 - Ninja build system
 
 ```bash
 # Build the library and tests
-cmake -B build -DCMAKE_C_COMPILER=gcc-16 -DCMAKE_CXX_COMPILER=g++-16 \
-       -DBUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=g++-16 \
+       -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release
 cmake --build build
-ctest --test-dir build/tests
+ctest --test-dir build --output-on-failure --no-tests=error
 ```
+
+Use the native setup instructions in [README.md](README.md) for macOS and Windows.
+The Build workflow can also be run manually on the exact candidate commit before
+creating a release tag. Require all native jobs, installation checks, coverage,
+and documentation checks to pass. Intel macOS may compile GCC from source on a
+cold toolchain cache; that job has a separate four-hour budget.
 
 ## Coding Standards
 

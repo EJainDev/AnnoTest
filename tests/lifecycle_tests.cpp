@@ -50,6 +50,20 @@ struct LifecycleTests {
     std::printf("printf\n");
     std::fprintf(stderr, "fprintf\n");
   }
+  [[= test{}]] void binary_output() {
+    // Includes XML controls, overlong UTF-8, a surrogate, an out-of-range
+    // scalar, stray/truncated bytes, and valid Unicode through U+10FFFF.
+    std::string bytes = "plain < & ]]>\t\r\n";
+    bytes += std::string("\x00\x01\x0b\x1f", 4);
+    bytes += "\x7f\xc2\x80\xc3\xa9\xe4\xb8\xad\xee\x80\x80\xf0\x9f\x99\x82\xf4\x8f\xbf\xbf";
+    bytes += "\xef\xbf\xbe\xef\xbf\xbf\xc0\xaf\xed\xa0\x80\xf4\x90\x80\x80";
+    bytes += "\xe0\x80\x80\xf0\x80\x80\x80\xf5\x80\xff\xe2!\xc2\xf0\x9f";
+    std::cout.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    std::cerr.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+  }
+  [[= test{}]] void binary_failure() {
+    throw std::runtime_error("control \x01 < & ]]> Unicode \xc3\xa9\xf0\x9f\x99\x82");
+  }
   [[= test{}]] void large_output() {
     std::cout << std::string(200000, 'o');
     std::cerr << std::string(200000, 'e');

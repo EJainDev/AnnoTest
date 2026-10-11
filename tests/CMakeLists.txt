@@ -2,7 +2,7 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 # Fixtures intentionally include failing tests. An independent verifier checks
 # their status and report instead of registering those failures directly in CTest.
-foreach(name IN ITEMS Assertion Expectation Parameterization Annotation Lifecycle Contract Utility Behavior Generic)
+foreach(name IN ITEMS Assertion Expectation Parameterization Annotation Lifecycle Contract Utility Behavior Generic Name)
   string(TOLOWER "${name}" source)
   add_executable(${name}Tests ${source}_tests.cpp)
   target_link_libraries(${name}Tests PRIVATE annotest)
@@ -118,4 +118,5 @@ expect_invalid_annotation(empty_parameters "Test parameterization must contain a
 expect_invalid_annotation(empty_template_parameters "Test parameterization must contain at least one case")
 expect_invalid_annotation(empty_dual_parameters "Test parameterization must contain at least one case")
 expect_invalid_annotation(duplicate_names "Duplicate test name")
+expect_invalid_annotation(expanded_duplicate_names "Duplicate expanded test name")
 expect_invalid_annotation(newline_name "Test names must not contain tabs or line breaks")

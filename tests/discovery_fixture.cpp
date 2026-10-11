@@ -5,9 +5,10 @@
 #include <thread>
 
 #ifdef _WIN32
-#include <cstdio>
 #include <fcntl.h>
 #include <io.h>
+
+#include <cstdio>
 #endif
 
 int main(int argc, char** argv) {
@@ -41,14 +42,16 @@ int main(int argc, char** argv) {
       std::cout << "Fixture.\r\n\tok\r\n";
     else if (mode == "special")
       std::cout << "Fixture.\n\tquote \"name\"; $ [=[ ]=] \\ ending.\n\t  padded  \n";
+    else if (mode == "leading")
+      std::cout << "-Fixture.\n\tok\n";
     else
       std::cout << "Fixture.\n\tok\n";
     return 0;
   }
-  if (argc == 3 && std::string_view(argv[1]) == "--test-name") {
-    auto name = std::string_view(argv[2]);
+  if (argc == 2 && std::string_view(argv[1]).starts_with("--test-name=")) {
+    auto name = std::string_view(argv[1]).substr(std::string_view("--test-name=").size());
     return name == "Fixture.ok" || name == "Fixture.quote \"name\"; $ [=[ ]=] \\ ending." ||
-                   name == "Fixture.  padded  "
+                   name == "Fixture.  padded  " || name == "-Fixture.ok"
                ? 0
                : 4;
   }

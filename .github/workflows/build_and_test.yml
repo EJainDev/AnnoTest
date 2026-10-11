@@ -1,9 +1,39 @@
-name: Build
+name: Build and Test
 on:
     push:
         branches: [main]
+        paths:
+            - 'CMakeLists.txt'
+            - 'CMakePresets.json'
+            - 'cmake/**'
+            - '.devcontainer/**'
+            - 'README.md'
+            - 'CONTRIBUTING.md'
+            - 'include/**'
+            - '.github/workflows/**'
+            - 'tests/**'
+            - 'examples/**'
+            - 'benchmarks/**'
+            - 'tools/**'
+            - 'docs/**'
     pull_request:
         branches: [main]
+        paths:
+            - 'CMakeLists.txt'
+            - 'CMakePresets.json'
+            - 'cmake/**'
+            - '.devcontainer/**'
+            - 'README.md'
+            - 'CONTRIBUTING.md'
+            - 'include/**'
+            - '.github/workflows/**'
+            - 'tests/**'
+            - 'examples/**'
+            - 'benchmarks/**'
+            - 'tools/**'
+            - 'docs/**'
+
+    workflow_dispatch:
 
     workflow_call:
         inputs:
@@ -19,54 +49,57 @@ jobs:
     build-and-test:
         timeout-minutes: 45
         runs-on: ubuntu-24.04
-        container:
-            image: gcc@sha256:47c649664b62db94d186b16936e203bb07ab1d10a0ef860cee198e594f636757
         steps:
-            - name: Install CMake
-              run: |
-                  apt update
-                  apt install -y wget tar ninja-build python3
-
-                  wget https://github.com/Kitware/CMake/releases/download/v4.3.3/cmake-4.3.3-linux-x86_64.tar.gz
-
-                  tar -xzf cmake-4.3.3-linux-x86_64.tar.gz -C /opt
-
-                  ln -s /opt/cmake-4.3.3-linux-x86_64/bin/* /usr/local/bin/
-
-            - name: Checkout Project
+            - name: Checkout
               uses: actions/checkout@v6.0.3
 
-            - name: Build and test
-              run: |
-                  cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=g++ \
-                    -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON
-                  cmake --build build --parallel 2
-                  ctest --test-dir build --output-on-failure --no-tests=error --parallel 2
+            - name: Build and test in Dev Container
+              uses: devcontainers/ci@v0.3
+              with:
+                  push: never
+                  env: |
+                      PACKAGE_RELEASE=${{ inputs.package || false }}
+                      RELEASE_TAG=${{ github.ref_name }}
+                  runCmd: |
+                      set -eu
+                      cmake --preset test-release-gcc-16-1 \
+                        -DBUILD_EXAMPLES=ON \
+                        -DCMAKE_INSTALL_INCLUDEDIR=include/annotest-sdk \
+                        -DCMAKE_INSTALL_LIBDIR=lib/annotest-sdk
+                      cmake --build --preset build-test-release --parallel 2
+                      ctest --test-dir build/test-release --output-on-failure --no-tests=error \
+                        --parallel 2 --output-junit test-results.xml
+                      python3 tools/check_installation.py --build-dir build/test-release
 
-            - name: Verify installation and FetchContent consumers
-              run: |
-                  cmake -S . -B build \
-                    -DCMAKE_INSTALL_INCLUDEDIR=include/annotest-sdk \
-                    -DCMAKE_INSTALL_LIBDIR=lib/annotest-sdk
-                  cmake --build build --parallel 2
-                  python3 tools/check_installation.py --build-dir build
+                      cmake -S . -B build/coverage -G Ninja \
+                        -DBUILD_TESTS=ON -DBUILD_EXAMPLES=OFF -DCMAKE_BUILD_TYPE=Debug \
+                        '-DCMAKE_CXX_FLAGS=--coverage -O0 -g' \
+                        -DCMAKE_EXE_LINKER_FLAGS=--coverage
+                      cmake --build build/coverage --parallel 2
+                      find build/coverage -name '*.gcda' -delete
+                      ctest --test-dir build/coverage --output-on-failure --no-tests=error --parallel 2
+                      python3 tools/collect_coverage.py build/coverage build/coverage/gcov-json
+                      python3 tools/coverage_audit.py build/coverage/gcov-json \
+                        --output build/coverage/reachable-source-coverage.json
 
-            - name: Check reachable source branch coverage
-              run: |
-                  cmake -S . -B build/coverage -G Ninja \
-                    -DBUILD_TESTS=ON -DBUILD_EXAMPLES=OFF -DCMAKE_BUILD_TYPE=Debug \
-                    '-DCMAKE_CXX_FLAGS=--coverage -O0 -g' \
-                    -DCMAKE_EXE_LINKER_FLAGS=--coverage
-                  cmake --build build/coverage --parallel 2
-                  find build/coverage -name '*.gcda' -delete
-                  ctest --test-dir build/coverage --output-on-failure --no-tests=error --parallel 2
-                  python3 tools/collect_coverage.py build/coverage build/coverage/gcov-json
-                  python3 tools/coverage_audit.py build/coverage/gcov-json \
-                    --output build/coverage/reachable-source-coverage.json
+                      if [ "$PACKAGE_RELEASE" = "true" ]; then
+                        python3 tools/package_release.py --build-dir build/test-release \
+                          --tag "$RELEASE_TAG" --platform linux-x86_64
+                      fi
 
-            - name: Package Linux library
-              if: inputs.package
-              run: python3 tools/package_release.py --build-dir build --tag "$GITHUB_REF_NAME" --platform linux-x86_64
+            - name: Test Report
+              if: ${{ !cancelled() }}
+              uses: dorny/test-reporter@v3
+              with:
+                  name: C++ Tests
+                  path: build/test-release/test-results.xml
+                  reporter: java-junit
+                  use-actions-summary: true
+                  fail-on-error: true
+                  list-tests: failed
+                  list-suites: failed
+                  max-annotations: 50
+
             - uses: actions/upload-artifact@v4
               if: inputs.package
               with:
@@ -75,23 +108,26 @@ jobs:
                   if-no-files-found: error
 
     native:
-        timeout-minutes: 45
+        timeout-minutes: ${{ matrix.timeout }}
         strategy:
             fail-fast: false
             matrix:
                 include:
                     - os: macos-15
                       platform: macos-arm64
+                      timeout: 45
                       compiler: g++-16
                       shell: bash
                       python: python3
                     - os: macos-15-intel
                       platform: macos-x86_64
+                      timeout: 240
                       compiler: g++-16
                       shell: bash
                       python: python3
                     - os: windows-2025
                       platform: windows-x86_64
+                      timeout: 45
                       compiler: g++
                       shell: msys2 {0}
                       python: python
@@ -101,9 +137,61 @@ jobs:
                 shell: ${{ matrix.shell }}
         steps:
             - uses: actions/checkout@v6.0.3
-            - name: Install macOS toolchain
+            - name: Install macOS build tools
               if: runner.os == 'macOS'
-              run: brew install gcc ninja cmake python
+              run: brew install ninja cmake python
+            - name: Identify Intel macOS compiler cache
+              if: matrix.platform == 'macos-x86_64'
+              id: intel-toolchain
+              env:
+                  HOMEBREW_NO_AUTO_UPDATE: '1'
+              run: |
+                  # Intel GCC 16 has no upstream bottle. Install its dependencies first
+                  # so their versions are part of the compiled-keg cache identity.
+                  brew install --only-dependencies gcc
+                  brew info --json=v2 gcc > "$RUNNER_TEMP/gcc-formula.json"
+                  brew list --versions > "$RUNNER_TEMP/brew-versions.txt"
+                  xcrun --show-sdk-version > "$RUNNER_TEMP/sdk-version.txt"
+                  python3 - <<'PY'
+                  import hashlib, json, os, pathlib
+                  root = pathlib.Path(os.environ["RUNNER_TEMP"])
+                  formula = json.loads((root / "gcc-formula.json").read_text())["formulae"][0]
+                  version = formula["versions"]["stable"]
+                  if not version.startswith("16."):
+                      raise SystemExit(f"Expected Homebrew GCC 16, found {version}; update the toolchain explicitly")
+                  identity = json.dumps({key: formula[key] for key in ("versions", "revision", "urls", "dependencies")}, sort_keys=True)
+                  identity += (root / "brew-versions.txt").read_text()
+                  identity += (root / "sdk-version.txt").read_text()
+                  with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+                      output.write(f"key={hashlib.sha256(identity.encode()).hexdigest()}\n")
+                  PY
+                  echo "cellar=$(brew --cellar gcc)" >> "$GITHUB_OUTPUT"
+            - name: Restore compiled Intel GCC
+              if: matrix.platform == 'macos-x86_64'
+              id: intel-gcc-cache
+              uses: actions/cache/restore@v4
+              with:
+                  path: ${{ steps.intel-toolchain.outputs.cellar }}
+                  key: gcc16-${{ matrix.os }}-${{ runner.arch }}-${{ steps.intel-toolchain.outputs.key }}
+            - name: Build Intel GCC on a cold cache
+              if: matrix.platform == 'macos-x86_64' && steps.intel-gcc-cache.outputs.cache-hit != 'true'
+              env:
+                  HOMEBREW_NO_AUTO_UPDATE: '1'
+              run: brew install --build-from-source gcc
+            - name: Link Intel GCC
+              if: matrix.platform == 'macos-x86_64'
+              run: |
+                  brew link --overwrite gcc
+                  g++-16 --version
+            - name: Save compiled Intel GCC before project validation
+              if: matrix.platform == 'macos-x86_64' && steps.intel-gcc-cache.outputs.cache-hit != 'true'
+              uses: actions/cache/save@v4
+              with:
+                  path: ${{ steps.intel-toolchain.outputs.cellar }}
+                  key: ${{ steps.intel-gcc-cache.outputs.cache-primary-key }}
+            - name: Install ARM macOS compiler
+              if: matrix.platform == 'macos-arm64'
+              run: brew install gcc
             - name: Install Windows toolchain
               if: runner.os == 'Windows'
               uses: msys2/setup-msys2@v2

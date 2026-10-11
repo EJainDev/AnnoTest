@@ -24,8 +24,16 @@ The runner discovers annotated methods at compile time. It supports named and di
 suites/tests, per-test hooks, value and template parameterization, fatal assertions,
 nonfatal expectations, exception checks, process death checks, and XML reports.
 
-The API is under development. This README describes the current source branch;
-published documentation and older release tags may describe an earlier API.
+This README describes the current source branch; published documentation and older
+release tags may describe an earlier API. Starting with v1.0, documented public
+annotations, assertions, expectations, runner options, and CMake targets retain
+source compatibility within v1.x. Correctness fixes can reject previously accepted
+invalid tests. Internal implementation modules and undocumented APIs are excluded.
+
+Compiled libraries and module artifacts must be rebuilt with the consuming compiler
+and compatible settings. GCC reflection and CMake standard-library module support
+are experimental; compiler, module-format, ABI, and experimental CMake-setting
+compatibility across toolchain versions are outside this source API promise.
 
 ## Requirements
 
@@ -33,7 +41,7 @@ AnnoTest implements Linux, macOS, and native Windows backends. Use **GCC 16 or
 newer, CMake 4.3.3 or newer, and Ninja**, with C++26 reflection, annotations,
 standard-library modules, and contracts. CI includes native macOS and Windows
 jobs alongside the pinned Linux GCC container. Tagged releases also build macOS
-ARM64 and Windows x86-64 installation archives after testing each native build.
+ARM64/x86-64 and Windows x86-64 installation archives after testing each native build.
 
 - CMake minimum: 4.3.3. The experimental `import std` setting is version-sensitive.
 - C++ standard: 26, with `-freflection` propagated by the library target.
@@ -57,7 +65,10 @@ On macOS, install [Homebrew GCC](https://formulae.brew.sh/formula/gcc):
 brew install gcc cmake ninja python
 ```
 
-Use `-DCMAKE_CXX_COMPILER=g++-16` in the build command below.
+Use `-DCMAKE_CXX_COMPILER=g++-16` in the build command below. On Intel macOS,
+Homebrew may build GCC 16 from source when no matching bottle is available; allow
+extra time for this installation. CI caches the compiled compiler and gives cold
+Intel builds a separate four-hour budget.
 
 On Windows, install [MSYS2](https://www.msys2.org/) and open its **UCRT64** shell:
 
@@ -139,6 +150,10 @@ hooks with required arguments, tests missing parameterization, empty parameter
 sets, duplicate display names, and names with tabs or line breaks are rejected
 at compile time. Private unannotated helpers and fixture data are allowed.
 
+GCC discovers method-template annotations through a specialization. Template
+tests must accept an empty template argument list, normally using defaults such
+as `template<typename T = int>`. Unannotated helpers without defaults are ignored.
+
 `before_each` and `after_each` run around each executed test, including each
 parameterized instance. One suite object is created per `run_tests` call, so member
 state persists unless setup resets it. Cleanup still runs after setup or body exceptions.
@@ -175,7 +190,9 @@ Death helpers retain their camel-case names. A thrown exception in the child cou
 death; normal return or exit status zero does not. Linux and macOS use `fork` and
 `waitpid`. Windows relaunches the executable, selects the current test, and replays
 its setup and body up to the requested death check. Earlier death callables are
-skipped during replay; multiple checks and parameterized cases are supported.
+skipped during replay; multiple checks, nested checks, and parameterized cases are
+supported. Nested Windows checks replay their enclosing death callables to reach
+the selected inner callable.
 
 On Windows, use death checks inside `run_tests` and forward `argc`/`argv` as shown
 above. Setup and the body before the death check must be deterministic and safe to
@@ -202,8 +219,10 @@ Fully qualified names are `Suite.Test`. Parameterized instances append a one-bas
 index, such as `ParameterizedTests.addition.2`. Selecting the base method name runs
 all its instances. Quote names containing spaces.
 
-Reports include timings, failures, skip totals, and captured stdout/stderr. Test output
-is captured even without an XML file; use `--xml-output` to inspect it. Skipped tests
+Reports include timings, failures, skip totals, and captured stdout/stderr.
+XML preserves valid Unicode; forbidden control bytes and malformed UTF-8 appear as
+visible `\xNN` escapes. Runtime capture and console diagnostics retain the original bytes.
+Test output is captured even without an XML file; use `--xml-output` to inspect it. Skipped tests
 currently contribute to totals without individual `<testcase>` elements. The runner
 uses shared state and process-wide output capture; use separate processes for concurrent
 runs rather than invoking runners concurrently or recursively.

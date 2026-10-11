@@ -88,5 +88,31 @@
             "displayName": "Build Test Release",
             "configurePreset": "test-release-gcc-16-1"
         }
+    ],
+    "testPresets": [
+        {
+            "name": "test-debug",
+            "displayName": "Test Debug",
+            "configurePreset": "test-debug-gcc-16-1",
+            "output": {
+                "outputOnFailure": true
+            },
+            "execution": {
+                "jobs": 2,
+                "noTestsAction": "error"
+            }
+        },
+        {
+            "name": "test-release",
+            "displayName": "Test Release",
+            "configurePreset": "test-release-gcc-16-1",
+            "output": {
+                "outputOnFailure": true
+            },
+            "execution": {
+                "jobs": 2,
+                "noTestsAction": "error"
+            }
+        }
     ]
 }
