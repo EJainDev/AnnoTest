@@ -55,7 +55,7 @@ Section 5 — **Tests use the hook state**
 
    [[= Test{}]] void test_one() {
      ++call_count;
-     assertEqual(1, call_count);
+     assert_equal(1, call_count);
    }
 
 Each test runs with a fresh reset by ``before_each``, so the counter is always 1 at this point.

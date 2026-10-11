@@ -65,7 +65,7 @@ struct LifecycleTests {
    */
   [[= Test{}]] void test_one() {
     ++call_count;
-    assertEqual(1, call_count);
+    assert_equal(1, call_count);
   }
 
   /**
@@ -74,7 +74,7 @@ struct LifecycleTests {
   [[= Test{}]] void test_two() {
     ++call_count;
     ++call_count;
-    assertEqual(2, call_count);
+    assert_equal(2, call_count);
   }
 
   /**
@@ -84,7 +84,7 @@ struct LifecycleTests {
     ++call_count;
     ++call_count;
     ++call_count;
-    assertEqual(3, call_count);
+    assert_equal(3, call_count);
   }
 };
 

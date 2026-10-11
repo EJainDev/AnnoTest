@@ -33,124 +33,124 @@ Assertions
 
 Assertions verify that a condition holds. If an assertion fails, an :cpp:class:`assertion_error` exception is thrown, the test case is marked as failed, and the library continues with the next test.
 
-.. cpp:function:: void assertEqual(auto expected, auto actual)
+.. cpp:function:: void assert_equal(auto expected, auto actual)
 
     Asserts that ``expected`` and ``actual`` are equal (checked via ``!=``).
 
     .. code-block:: cpp
 
-        assertEqual(4, 2 + 2);
-        assertEqual(std::vector{1, 2}, std::vector{1, 2});
+        assert_equal(4, 2 + 2);
+        assert_equal(std::vector{1, 2}, std::vector{1, 2});
 
-.. cpp:function:: void assertNotEqual(auto expected, auto actual)
+.. cpp:function:: void assert_not_equal(auto expected, auto actual)
 
     Asserts that ``expected`` and ``actual`` are not equal (checked via ``==``).
 
     .. code-block:: cpp
 
-        assertNotEqual(3, 4);
+        assert_not_equal(3, 4);
 
-.. cpp:function:: void assertTrue(auto value)
+.. cpp:function:: void assert_true(auto value)
 
     Asserts that ``value`` is truthy.
 
     .. code-block:: cpp
 
-        assertTrue(true);
-        assertTrue(1 == 1);
-        assertTrue(5 > 3);
+        assert_true(true);
+        assert_true(1 == 1);
+        assert_true(5 > 3);
 
-.. cpp:function:: void assertFalse(auto value)
+.. cpp:function:: void assert_false(auto value)
 
     Asserts that ``value`` is falsy.
 
     .. code-block:: cpp
 
-        assertFalse(false);
-        assertFalse(1 == 0);
+        assert_false(false);
+        assert_false(1 == 0);
 
-.. cpp:function:: void assertNear(auto expected, auto actual, auto tol = 0.001)
+.. cpp:function:: void assert_near(auto expected, auto actual, auto tol = 0.001)
 
     Asserts that ``abs(expected - actual) <= tol``. Useful for floating-point comparisons.
 
     .. code-block:: cpp
 
-        assertNear(3.14159, 3.14158, 1e-3);
-        assertNear(5.0, 5.00001, 1e-4);
+        assert_near(3.14159, 3.14158, 1e-3);
+        assert_near(5.0, 5.00001, 1e-4);
 
-.. cpp:function:: void assertLess(auto a, auto b)
+.. cpp:function:: void assert_less(auto a, auto b)
 
     Asserts that ``a < b``.
 
     .. code-block:: cpp
 
-        assertLess(2, 5);
+        assert_less(2, 5);
 
-.. cpp:function:: void assertLessEqual(auto a, auto b)
+.. cpp:function:: void assert_less_equal(auto a, auto b)
 
     Asserts that ``a <= b``.
 
     .. code-block:: cpp
 
-        assertLessEqual(5, 5);
-        assertLessEqual(4, 5);
+        assert_less_equal(5, 5);
+        assert_less_equal(4, 5);
 
-.. cpp:function:: void assertGreater(auto a, auto b)
+.. cpp:function:: void assert_greater(auto a, auto b)
 
     Asserts that ``a > b``.
 
     .. code-block:: cpp
 
-        assertGreater(10, 1);
+        assert_greater(10, 1);
 
-.. cpp:function:: void assertGreaterEqual(auto a, auto b)
+.. cpp:function:: void assert_greater_equal(auto a, auto b)
 
     Asserts that ``a >= b``.
 
     .. code-block:: cpp
 
-        assertGreaterEqual(5, 5);
-        assertGreaterEqual(10, 5);
+        assert_greater_equal(5, 5);
+        assert_greater_equal(10, 5);
 
-.. cpp:function:: void assertContains(auto const& container, auto const& value)
+.. cpp:function:: void assert_contains(auto const& container, auto const& value)
 
     Asserts that ``value`` exists in ``container`` (uses ``std::find``).
 
     .. code-block:: cpp
 
         std::vector<int> nums{1, 2, 3, 4, 5};
-        assertContains(nums, 3);
+        assert_contains(nums, 3);
 
-.. cpp:function:: template <typename E = std::exception> void assertThrows(auto func)
+.. cpp:function:: template <typename E = std::exception> void assert_throws(auto func)
 
     Asserts that ``func`` throws an exception. By default, catches any exception derived from ``std::exception`` (which covers all standard exceptions). For meaningful type-specific checking, always provide an explicit template argument.
 
     .. code-block:: cpp
 
         // Catches any std::exception-derived exception
-        assertThrows([]() { throw std::runtime_error("assertion_error"); });
-        assertThrows([]() { throw std::invalid_argument("bad"); });
+        assert_throws([]() { throw std::runtime_error("assertion_error"); });
+        assert_throws([]() { throw std::invalid_argument("bad"); });
 
         // For type-specific checking, use an explicit type
-        assertThrows<std::runtime_error>([]() { throw std::runtime_error("exact match"); });
+        assert_throws<std::runtime_error>([]() { throw std::runtime_error("exact match"); });
 
-.. cpp:function:: template <typename E> void assertThrowsExact(auto func)
+.. cpp:function:: template <typename E> void assert_throws_exact(auto func)
 
-    Asserts that ``func`` throws **exactly** type ``E`` (checked with ``typeid``). Unlike ``assertThrows``, this rejects derived types — the thrown exception must be precisely ``E``.
+    Asserts that ``func`` throws **exactly** type ``E`` (checked with ``typeid``). Unlike ``assert_throws``, this rejects derived types — the thrown exception must be precisely ``E``.
 
     .. code-block:: cpp
 
-        assertThrowsExact<std::runtime_error>([]() { throw std::runtime_error("exact"); });
+        assert_throws_exact<std::runtime_error>([]() { throw std::runtime_error("exact"); });
         // The following would FAIL (different type, even if derived):
-        // assertThrowsExact<std::exception>([]() { throw std::runtime_error("assertion_error"); });
+        // assert_throws_exact<std::exception>([]() { throw std::runtime_error("assertion_error"); });
 
-.. cpp:function:: void assertNull(auto ptr)
+.. cpp:function:: void assert_null(auto ptr)
 
     Asserts that ``ptr`` equals ``nullptr``.
 
     .. code-block:: cpp
 
-        assertNull(nullptr);
+        assert_null(nullptr);
 
 .. cpp:function:: void assertDeath(auto func)
 
@@ -161,7 +161,7 @@ Assertions verify that a condition holds. If an assertion fails, an :cpp:class:`
         assertDeath([]() { throw std::runtime_error("crash!"); });
         assertDeath([]() { std::abort(); });
 
-.. cpp:function:: void assertContractViolation(Func f)
+.. cpp:function:: void assert_contract_violation(Func f)
 
     Asserts that calling ``f`` triggers a C++26 contract violation.
 
@@ -169,15 +169,15 @@ Assertions verify that a condition holds. If an assertion fails, an :cpp:class:`
 
         int safe_divide(int a, int b) pre(b > 0) { return a / b; }
 
-        assertContractViolation([]() { safe_divide(10, 0); });  // Triggers pre(b > 0)
+        assert_contract_violation([]() { safe_divide(10, 0); });  // Triggers pre(b > 0)
 
-.. cpp:function:: void assertNoContractViolation(Func f)
+.. cpp:function:: void assert_no_contract_violation(Func f)
 
     Asserts that calling ``f`` does **not** trigger a contract violation.
 
     .. code-block:: cpp
 
-        assertNoContractViolation([]() { safe_divide(10, 2); });  // OK
+        assert_no_contract_violation([]() { safe_divide(10, 2); });  // OK
 
 Expectations
 ------------
@@ -210,7 +210,7 @@ Expectations verify conditions that are **not** critical failures — if an expe
 
 .. cpp:function:: void expectNear(auto expected, auto actual, auto tol = 0.001)
 
-    Expects that ``abs(expected - actual) <= tol``. Has the same default tolerance as ``assertNear``.
+    Expects that ``abs(expected - actual) <= tol``. Has the same default tolerance as ``assert_near``.
 
 .. cpp:function:: void expectLess(auto a, auto b)
 

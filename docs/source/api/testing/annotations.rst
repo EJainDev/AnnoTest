@@ -55,9 +55,9 @@ Annotations
     .. code-block:: cpp
 
         struct MyTests {
-            [[= Test{}]] void anonymous_test() { assertEqual(1, 1); }
+            [[= Test{}]] void anonymous_test() { assert_equal(1, 1); }
 
-            [[= Test<"custom name">{}]] void actual_name() { assertTrue(true); }
+            [[= Test<"custom name">{}]] void actual_name() { assert_true(true); }
 
             [[= Test{.disabled = true}]] void skipped() {}
         };
@@ -81,8 +81,8 @@ Annotations
 
             [[= before_each{}]] void reset() { counter = 0; }
 
-            [[= Test{}]] void one() { ++counter; assertTrue(counter == 1); }
-            [[= Test{}]] void two() { ++counter; ++counter; assertTrue(counter == 2); }
+            [[= Test{}]] void one() { ++counter; assert_true(counter == 1); }
+            [[= Test{}]] void two() { ++counter; ++counter; assert_true(counter == 2); }
         };
 
     See also :ref:`lifecycle example <example_gallery>`.
@@ -128,7 +128,7 @@ Utility Annotations
 
         [[= Test{}, = parameterize{tuple(5), tuple(50)} ]]
         void parameterized(int val) {
-            assertTrue(val == 5 || val == 50);
+            assert_true(val == 5 || val == 50);
         }
 
     With multiple parameters:
@@ -137,7 +137,7 @@ Utility Annotations
 
         [[= Test{}, = parameterize{tuple(2, 3), tuple(10, 20)} ]]
         void add(int a, int b) {
-            assertEqual(a + b, a + b);  // parameters injected in order
+            assert_equal(a + b, a + b);  // parameters injected in order
         }
 
     See also :ref:`parameterized example <example_gallery>`.

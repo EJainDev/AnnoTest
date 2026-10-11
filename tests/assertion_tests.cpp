@@ -14,8 +14,8 @@ static constexpr auto parameterization_pair =
 
 struct AssertionTestSuite {
   template <typename A = int, typename B = int>
-  [[ = test{}, = parameterize_dual(parameterization_pair) ]] void AssertEqual(A a, B b) {
-    assertEqual(a, b);
+  [[ = test{}, = parameterize_dual(parameterization_pair) ]] void AssertEqual(A a, B b) const {
+    assert_equal(a, b);
   }
 };
 

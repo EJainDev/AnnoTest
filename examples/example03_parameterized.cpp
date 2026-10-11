@@ -22,14 +22,14 @@ using namespace annotest;
 struct ParameterizeBasic {
   [[ = Test{}, = parameterize{tuple(2, 3), tuple(5, 7), tuple(-1, -3)} ]] void addition(int a,
                                                                                         int b) {
-    assertEqual(a + b, a + b);
-    assertTrue(a != 0 && b != 0);
+    assert_equal(a + b, a + b);
+    assert_true(a != 0 && b != 0);
   }
 
   [[ = Test{},
      = parameterize{tuple(1.0), tuple(2.5), tuple(0.001)} ]] void floating_point(double x) {
-    assertNear(x, x);
-    assertTrue(x >= 0.0);
+    assert_near(x, x);
+    assert_true(x >= 0.0);
   }
 };
 
@@ -44,8 +44,8 @@ struct ParameterizeWithHooks {
 
   [[ = Test{}, = parameterize{tuple(100), tuple(200), tuple(300)} ]] void counting(int val) {
     ++set_count;
-    assertEqual(val, val);
-    assertTrue(val % 100 == 0);
+    assert_equal(val, val);
+    assert_true(val % 100 == 0);
   }
 };
 

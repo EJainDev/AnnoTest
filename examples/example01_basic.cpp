@@ -6,7 +6,8 @@
  * - Calling test<Test::test>() to run the suite
  *
  * Build via CMake using the examples/ target, or for standalone compilation:
- *   g++ -std=c++26 -freflection -fmodules -fmodule-map=. -x c++-module example01_basic.cpp -o example01_basic
+ *   g++ -std=c++26 -freflection -fmodules -fmodule-map=. -x c++-module example01_basic.cpp -o
+ * example01_basic
  *   ./example01_basic
  */
 #include <annotest_contract.h>
@@ -25,22 +26,22 @@ struct BasicTests {
    * The simplest possible test: no arguments, no setup.
    * The name is derived from the function name.
    */
-  [[= Test{}]] void addition() { assertEqual(4, 2 + 2); }
+  [[= Test{}]] void addition() { assert_equal(4, 2 + 2); }
 
   /**
    * Tests can verify any condition using the assert functions.
    */
   [[= Test{}]] void boolean_logic() {
-    assertTrue(true);
-    assertFalse(false);
-    assertTrue(1 == 1);
-    assertFalse(5 < 3);
+    assert_true(true);
+    assert_false(false);
+    assert_true(1 == 1);
+    assert_false(5 < 3);
   }
 
   /**
    * Test with a custom display name via the template parameter.
    */
-  [[= Test<"subtraction works">{}]] void math() { assertEqual(10, 15 - 5); }
+  [[= Test<"subtraction works">{}]] void math() { assert_equal(10, 15 - 5); }
 };
 
 int main(int argc, char** argv) {

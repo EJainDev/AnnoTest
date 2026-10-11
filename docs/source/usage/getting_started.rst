@@ -14,13 +14,13 @@ Testing Framework
 
     struct AddTest {
         [[= Test{}]] void basic() {
-            assertEqual(4, 2 + 2);
+            assert_equal(4, 2 + 2);
         }
 
         [[= Test{.disabled = true}]] void skipped() {}
 
         [[= Test{}, = parameterize{tuple(5), tuple(50)} ]] void parameterized(int val) {
-            assertTrue(val == 5 || val == 50);
+            assert_true(val == 5 || val == 50);
         }
     };
 
@@ -62,7 +62,7 @@ All test suite structs use **public members** by design:
 
         [[= Test{}]] void one() {
             ++counter;  // direct access, no getters/setters
-            assertTrue(counter == 1);
+            assert_true(counter == 1);
         }
     };
 
@@ -109,7 +109,7 @@ Put your test fixtures **inside** the struct, not in ``main()`` or globals:
 
         [[= before_each{}]] void reset() { x = 0; y = 0; }
 
-        [[= Test{}]] void sum() { assertEqual(30, x + y); }
+        [[= Test{}]] void sum() { assert_equal(30, x + y); }
     };
 
 .. code-block:: cpp
@@ -198,7 +198,7 @@ See the complete example gallery in :ref:`Getting Started <testing_example>`:
 * :doc:`/examples/parameterized` — parameterize with tuple
 * :doc:`/examples/os_annotations` — RequiresOS and DisallowOS for platform-specific tests
 * :doc:`/examples/death_tests` — assertDeath and expectDeath for crash-testing
-* :doc:`/examples/contracts` — C++26 contract testing with assertContractViolation
+* :doc:`/examples/contracts` — C++26 contract testing with assert_contract_violation
 * :doc:`/examples/full_suite` — comprehensive demo combining ALL features
 
 .. note:: This library is still under development. Breaking changes may occur.

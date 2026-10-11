@@ -21,17 +21,17 @@ using namespace annotest;
  */
 struct SingleOSRequirement {
   [[ = Test{}, = RequiresOS{OS::Linux} ]] void linux_only() {
-    assertEqual(1, 1);
+    assert_equal(1, 1);
     std::cout << "Running on Linux\n";
   }
 
   [[ = Test{}, = RequiresOS{OS::Mac} ]] void mac_only() {
-    assertEqual(1, 1);
+    assert_equal(1, 1);
     std::cout << "Running on macOS\n";
   }
 
   [[ = Test{}, = RequiresOS{OS::Windows} ]] void windows_only() {
-    assertEqual(1, 1);
+    assert_equal(1, 1);
     std::cout << "Running on Windows\n";
   }
 };
@@ -42,7 +42,7 @@ struct SingleOSRequirement {
  */
 struct MultiOSRequirement {
   [[ = Test{}, = RequiresOS{OS::Linux, OS::Windows} ]] void linux_or_windows() {
-    assertEqual(2, 1 + 1);
+    assert_equal(2, 1 + 1);
   }
 };
 
@@ -51,10 +51,10 @@ struct MultiOSRequirement {
  * Skipped on listed platforms, runs on all others.
  */
 struct DisallowedOS {
-  [[ = Test{}, = DisallowOS{OS::Windows} ]] void not_windows() { assertEqual(1, 1); }
+  [[ = Test{}, = DisallowOS{OS::Windows} ]] void not_windows() { assert_equal(1, 1); }
 
   [[ = Test{}, = DisallowOS{OS::Windows, OS::Mac} ]] void linux_only_by_exclusion() {
-    assertEqual(1, 1);
+    assert_equal(1, 1);
   }
 };
 
@@ -64,12 +64,12 @@ struct DisallowedOS {
 struct MixedFeatures {
   [[ = Test<"cross-platform math">{},
      = RequiresOS{OS::Linux, OS::Mac, OS::Windows} ]] void always_runs() {
-    assertEqual(5, 2 + 3);
+    assert_equal(5, 2 + 3);
   }
 
-  [[ = Test{}, = RequiresOS{OS::Linux} ]] void linux_math() { assertNear(3.14159, 3.14159); }
+  [[ = Test{}, = RequiresOS{OS::Linux} ]] void linux_math() { assert_near(3.14159, 3.14159); }
 
-  [[ = Test{}, = DisallowOS{OS::Unknown} ]] void known_platform() { assertTrue(true); }
+  [[ = Test{}, = DisallowOS{OS::Unknown} ]] void known_platform() { assert_true(true); }
 };
 
 int main(int argc, char** argv) { return test<SingleOSRequirement>(argc, argv); }

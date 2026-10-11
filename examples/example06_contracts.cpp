@@ -2,8 +2,8 @@
  * @example example06_contracts.cpp
  *
  * This example demonstrates AnnoTest's contract testing API:
- * - assertContractViolation / expectContractViolation
- * - assertNoContractViolation / expectNoContractViolation
+ * - assert_contract_violation / expectContractViolation
+ * - assert_no_contract_violation / expectNoContractViolation
  *
  * See :doc:`/api/testing/contracts` for C++26 contract documentation.
  */
@@ -23,31 +23,31 @@ int safe_divide(int a, int b) pre(a > 0) pre(b > 0) post(r : r > 0) {
 
 struct ContractViolationTests {
   /**
-   * Section: assertContractViolation — assert that a contract was triggered.
+   * Section: assert_contract_violation — assert that a contract was triggered.
    * Wraps the violating code in a lambda; if no violation fires, the assertion fails.
    */
   [[= Test<"contract triggered on bad input">{}]] void division_by_zero() {
-    assertContractViolation([]() {
+    assert_contract_violation([]() {
       safe_divide(10, 0);  // Triggers pre(b > 0)
     });
   }
 
   /**
-   * Section: assertContractViolation on a different contract.
+   * Section: assert_contract_violation on a different contract.
    * The pre(a > 0) clause fires when a is negative.
    */
   [[= Test<"contract triggered on negative">{}]] void negative_input() {
-    assertContractViolation([]() {
+    assert_contract_violation([]() {
       safe_divide(-5, 3);  // Triggers pre(a > 0)
     });
   }
 
   /**
-   * Section: assertNoContractViolation — assert that no contract fires.
+   * Section: assert_no_contract_violation — assert that no contract fires.
    * Wraps valid code; if a contract does fire, the assertion fails.
    */
   [[= Test<"no contract on valid input">{}]] void valid_input() {
-    assertNoContractViolation([]() {
+    assert_no_contract_violation([]() {
       safe_divide(10, 2);  // All contracts pass, returns 5
     });
   }
@@ -63,7 +63,7 @@ struct ExpectContractTests {
       safe_divide(10, 0);  // Triggers pre(b > 0)
     });
     // If we reach here, the expectation was met
-    assertEqual(1, 1);
+    assert_equal(1, 1);
   }
 
   /**

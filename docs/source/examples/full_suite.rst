@@ -72,18 +72,18 @@ Section 4 — **Basic tests with named and disabled cases**
 
    [[= Test{"stack is not empty after push"}]]
    void basic_not_empty() {
-     assertFalse(fixture.empty());
-     assertEqual(3, fixture.size());
+     assert_false(fixture.empty());
+     assert_equal(3, fixture.size());
    }
 
    [[= Test<"named test with custom display name">{}]]
    void top_element() {
-     assertEqual(3, fixture.top());
+     assert_equal(3, fixture.top());
    }
 
    [[= Test{.disabled = true}]]
    void skipped_test() {
-     assertEqual(0, 1);  // This never runs
+     assert_equal(0, 1);  // This never runs
    }
 
 Custom names via template, ``.disabled`` flag for skipped tests.
@@ -94,18 +94,18 @@ Section 5 — **All assert functions in one test**
 
    [[= Test{"all assert functions"}]]
    void all_asserts() {
-     assertEqual(3, 3);
-     assertNotEqual(3, 4);
-     assertTrue(true);
-     assertFalse(false);
-     assertNear(3.14159, 3.14158, 1e-3);
-     assertLess(1, 5);
-     assertLessEqual(5, 5);
-     assertGreater(10, 1);
-     assertGreaterEqual(10, 10);
+     assert_equal(3, 3);
+     assert_not_equal(3, 4);
+     assert_true(true);
+     assert_false(false);
+     assert_near(3.14159, 3.14158, 1e-3);
+     assert_less(1, 5);
+     assert_less_equal(5, 5);
+     assert_greater(10, 1);
+     assert_greater_equal(10, 10);
      std::vector<int> nums{1, 2, 3, 4, 5};
-     assertContains(nums, 3);
-     assertNull(nullptr);
+     assert_contains(nums, 3);
+     assert_null(nullptr);
    }
 
 Demonstrates every assert function: equality, boolean, floating point, comparison, container, and null.
@@ -138,15 +138,15 @@ Section 7 — **Exception assertions**
 
    [[= Test{"throws specific exception"}]]
    void throws_runtime_error() {
-     assertThrows<std::runtime_error>([]() { throw std::runtime_error("test"); });
+     assert_throws<std::runtime_error>([]() { throw std::runtime_error("test"); });
    }
 
    [[= Test{"throws exact exception"}]]
    void throws_exact() {
-     assertThrowsExact<std::runtime_error>([]() { throw std::runtime_error("exact"); });
+     assert_throws_exact<std::runtime_error>([]() { throw std::runtime_error("exact"); });
    }
 
-``assertThrows<E>`` catches ``E`` and derived types. ``assertThrowsExact<E>`` requires exact match via ``typeid``.
+``assert_throws<E>`` catches ``E`` and derived types. ``assert_throws_exact<E>`` requires exact match via ``typeid``.
 
 Section 8 — **Parameterized tests**
 
@@ -158,8 +158,8 @@ Section 8 — **Parameterized tests**
    void push_pop(int push_val, int expect_pop) {
      Stack s;
      s.push(push_val);
-     assertEqual(expect_pop, s.pop());
-     assertTrue(s.empty());
+     assert_equal(expect_pop, s.pop());
+     assert_true(s.empty());
    }
 
 Two-parameter tuple sets injected in order. Three sub-runs.
@@ -170,17 +170,17 @@ Section 9 — **OS annotations**
 
    [[= Test{"runs only on Linux"}, = RequiresOS{OS::Linux}]]
    void linux_test() {
-     assertEqual(1, 1);
+     assert_equal(1, 1);
    }
 
    [[= Test{"runs only on Linux or Mac"}, = RequiresOS{OS::Linux, OS::Mac}]]
    void linux_or_mac() {
-     assertEqual(1, 1);
+     assert_equal(1, 1);
    }
 
    [[= Test{"skips on Windows"}, = DisallowOS{OS::Windows}]]
    void not_windows() {
-     assertTrue(true);
+     assert_true(true);
    }
 
 Single and multi-platform OS annotations combined with named tests.
@@ -207,7 +207,7 @@ Section 11 — **Contract testing**
 
    [[= Test{"contract violation on bad input"}]]
    void contract_violation() {
-     assertContractViolation([]() {
+     assert_contract_violation([]() {
        int x = safe_divide(10, 0);
        (void)x;
      });
@@ -215,9 +215,9 @@ Section 11 — **Contract testing**
 
    [[= Test{"no contract violation on valid input"}]]
    void contract_ok() {
-     assertNoContractViolation([]() {
+     assert_no_contract_violation([]() {
        int x = safe_divide(10, 2);
-       assertEqual(5, x);
+       assert_equal(5, x);
      });
    }
 

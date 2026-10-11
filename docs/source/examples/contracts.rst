@@ -10,39 +10,39 @@ Raw Source
 Breaking It Down
 ----------------
 
-Section 1 — **assertContractViolation on division by zero**
+Section 1 — **assert_contract_violation on division by zero**
 
 .. code-block:: cpp
 
    [[= Test{"contract triggered on bad input"}]]
    void division_by_zero() {
-     assertContractViolation([]() {
+     assert_contract_violation([]() {
        safe_divide(10, 0);  // Triggers pre(b > 0)
      });
    }
 
 Wraps the violating code in a lambda. If no contract fires, the assertion fails.
 
-Section 2 — **assertContractViolation on a different contract**
+Section 2 — **assert_contract_violation on a different contract**
 
 .. code-block:: cpp
 
    [[= Test{"contract triggered on negative"}]]
    void negative_input() {
-     assertContractViolation([]() {
+     assert_contract_violation([]() {
        safe_divide(-5, 3);  // Triggers pre(a > 0)
      });
    }
 
 The ``pre(a > 0)`` clause fires when ``a`` is negative.
 
-Section 3 — **assertNoContractViolation**
+Section 3 — **assert_no_contract_violation**
 
 .. code-block:: cpp
 
    [[= Test{"no contract on valid input"}]]
    void valid_input() {
-     assertNoContractViolation([]() {
+     assert_no_contract_violation([]() {
        safe_divide(10, 2);  // All contracts pass, returns 5
      });
    }
@@ -59,10 +59,10 @@ Section 4 — **expectContractViolation**
        safe_divide(10, 0);  // Triggers pre(b > 0)
      });
      // If we reach here, the expectation was met
-     assertEqual(1, 1);
+     assert_equal(1, 1);
    }
 
-Same as ``assertContractViolation`` but uses :cpp:class:`Abort` instead of :cpp:class:`assertion_error`.
+Same as ``assert_contract_violation`` but uses :cpp:class:`Abort` instead of :cpp:class:`assertion_error`.
 
 Section 5 — **expectNoContractViolation**
 
@@ -75,4 +75,4 @@ Section 5 — **expectNoContractViolation**
      });
    }
 
-Same as ``assertNoContractViolation`` but uses :cpp:class:`Abort`.
+Same as ``assert_no_contract_violation`` but uses :cpp:class:`Abort`.

@@ -18,7 +18,7 @@ using namespace annotest;
 
 [Test]
 void adds_two_numbers() {
-    assertEqual(5, 2 + 3);
+    assert_equal(5, 2 + 3);
 }
 ```
 
@@ -45,9 +45,9 @@ using namespace annotest;
 
 [Test<"my first test">]
 void basic_assertion() {
-    assertEqual(42, 6 * 7);
-    assertTrue(42 > 0);
-    assertNear(3.1415, M_PI, 0.001);
+    assert_equal(42, 6 * 7);
+    assert_true(42 > 0);
+    assert_near(3.1415, M_PI, 0.001);
 }
 
 // Optionally pass argc/argv to support --list and --test-name flags
@@ -137,12 +137,12 @@ Mark test functions with `[[=Test{}]]` — no macros, no string-based test names
 Throw `assertion_error` and stop the current test immediately:
 
 ```cpp
-assertEqual(5, 2 + 3);
-assertNotEqual(1, 2);
-assertTrue(result.valid());
-assertNear(3.14, M_PI, 0.01);
-assertThrows<std::out_of_range>([] { vec.at(99); });
-assertContractViolation([] { /* triggers a contract */ });
+assert_equal(5, 2 + 3);
+assert_not_equal(1, 2);
+assert_true(result.valid());
+assert_near(3.14, M_PI, 0.01);
+assert_throws<std::out_of_range>([] { vec.at(99); });
+assert_contract_violation([] { /* triggers a contract */ });
 ```
 
 ### Expectations (continue on failure)
@@ -161,7 +161,7 @@ Run the same logic with different inputs:
 ```cpp
 [parameterize{tuple(1, 2), tuple(10, 20), tuple(100, 200)}]
 void sums_match(int a, int b) {
-    assertEqual(a + b, add(a, b));
+    assert_equal(a + b, add(a, b));
 }
 ```
 
@@ -181,8 +181,8 @@ void crashes_on_null() {
 Assert that C++26 `pre`/`post` contracts fire as expected:
 
 ```cpp
-assertContractViolation([] { /* triggers a pre/post violation */ });
-assertNoContractViolation([] { /* no contract fires */ });
+assert_contract_violation([] { /* triggers a pre/post violation */ });
+assert_no_contract_violation([] { /* no contract fires */ });
 ```
 
 ---
@@ -228,7 +228,7 @@ cmake --build --preset build-release
 | Feature | AnnoTest | GoogleTest |
 |---------|----------|------------|
 | Test definition | `[Test]` annotation | `TEST_F(TestCase, Name)` |
-| Assertions | `assertEqual(5, 2+3)` | `ASSERT_EQ(5, 2+3)` |
+| Assertions | `assert_equal(5, 2+3)` | `ASSERT_EQ(5, 2+3)` |
 | Macros | **None** | Heavy macro usage |
 | C++26 Modules | `import annotest;` | Header-only |
 | Reflection | Compile-time via `std::meta` | Manual registration |
@@ -238,7 +238,7 @@ cmake --build --preset build-release
 | Feature | AnnoTest | Catch2 |
 |---------|----------|--------|
 | Syntax | Annotation-based | `TEST_CASE("name")` |
-| Assertions | `assertEqual` / `expectEqual` | `REQUIRE` / `CHECK` |
+| Assertions | `assert_equal` / `expectEqual` | `REQUIRE` / `CHECK` |
 | Test names | From function names | String literal required |
 | Modern C++ | C++26 modules | C++11+ (headers) |
 
