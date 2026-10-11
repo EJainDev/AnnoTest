@@ -1,0 +1,475 @@
+{
+  "schema_version": 1,
+  "scope": "Warm test translation-unit compilation; framework dependencies prebuilt; no scanner/linker/cache; regular tests only",
+  "before": {
+    "metadata": {
+      "compiler": "/usr/local/bin/g++",
+      "compiler_id": "GNU",
+      "compiler_version": "16.2.0",
+      "build_type": "Debug",
+      "gtest_version": "1.15.0 (installed)",
+      "suites": 3,
+      "annotest_git_head": "43dda1a447171cff97c9641383f83ce104eedfe8",
+      "annotest_git_status": "M CMakeLists.txt\n M include/test.cxx\n?? benchmarks/",
+      "annotest_module_sha256": {
+        "include/CLI11.cxx": "533b9bf97ac34931efe959a1dad9c383107b5ffe2723a82a28609a64bcb53236",
+        "include/asserts.cxx": "a2db8699968f6a7ea789d7e06f2a1263fb8411e8f5f0aa28cd3ac83fa986e198",
+        "include/contracts.cxx": "c30d9acdc85d59eb9c6da882eb3cead50db02b605cd52470400781150e59c9f6",
+        "include/death_test.cxx": "14c2101afe6f7cbef3dab69a6e1548c0a87373f28643c5aa1127db8079b84c59",
+        "include/exceptions.cxx": "07a76b50dbc0d19db5574df221898462f4e65b87dad35f1c01abdade657db609",
+        "include/expects.cxx": "cc24c13285620e7b687554d903d3ac2f36f9b5caa18399b68d53984116138a48",
+        "include/logger.cxx": "c132cdfe1fdd95b91396532bc52993e15091b820f42a7ca5e67867b88531c975",
+        "include/posix.cxx": "ecba3321250bbdb2a1cfd907a710693391d1da4a2cd76a82478eeb8a3055037d",
+        "include/structs.cxx": "89a6b79b5a6f8046670eb0a1d87edf650c7e9622d7921458f4ba48d9e0569d42",
+        "include/test.cxx": "c424c8a988b4947cc2e56608896ce37e2afd5b30763e3545f5fcc3522cececad",
+        "include/utils.cxx": "b348bb6e48bed760e0893184cbad4b538779cd30d69ba717804fd3f0f2bd436a"
+      },
+      "utc": "2026-10-11T03:34:21.404488+00:00",
+      "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.41",
+      "cpu_count": 16,
+      "repetitions": 3,
+      "build_jobs": 1,
+      "warm_scope": "one test translation unit; dependencies prebuilt; no linking or cache",
+      "cold_scope": "clean target build; pre-fetched dependencies; compilation and linking",
+      "git_metadata_origin": "host worktree after measurement; source module hashes captured before measurement"
+    },
+    "workloads": [
+      {
+        "test_count": 1,
+        "frameworks": {
+          "annotest": {
+            "warm_compile": {
+              "samples": [
+                {
+                  "wall_seconds": 4.513280789000419,
+                  "peak_rss_kib": 394064
+                },
+                {
+                  "wall_seconds": 4.132646832998944,
+                  "peak_rss_kib": 394360
+                },
+                {
+                  "wall_seconds": 4.095171864999429,
+                  "peak_rss_kib": 394720
+                }
+              ],
+              "median_wall_seconds": 4.132646832998944,
+              "median_peak_rss_kib": 394360
+            },
+            "object_bytes": 4262960,
+            "source_sha256": "b86962ba494af7a3e5a602a85d12be912b301b3bac969d57bf5c99efbaa70cb9"
+          },
+          "gtest": {
+            "warm_compile": {
+              "samples": [
+                {
+                  "wall_seconds": 2.224459487000786,
+                  "peak_rss_kib": 301296
+                },
+                {
+                  "wall_seconds": 2.1608616070006974,
+                  "peak_rss_kib": 301884
+                },
+                {
+                  "wall_seconds": 2.261191659999895,
+                  "peak_rss_kib": 301432
+                }
+              ],
+              "median_wall_seconds": 2.224459487000786,
+              "median_peak_rss_kib": 301432
+            },
+            "object_bytes": 456440,
+            "source_sha256": "c8757029b6f72a5fa1117827b4c9923964b4feac49781bf38ca33b19857c7c71"
+          }
+        },
+        "annotest_over_gtest_compile_ratio": 1.8578206783037194
+      },
+      {
+        "test_count": 24,
+        "frameworks": {
+          "annotest": {
+            "warm_compile": {
+              "samples": [
+                {
+                  "wall_seconds": 4.2596334959998785,
+                  "peak_rss_kib": 404728
+                },
+                {
+                  "wall_seconds": 4.284891192999567,
+                  "peak_rss_kib": 404792
+                },
+                {
+                  "wall_seconds": 4.359301641999991,
+                  "peak_rss_kib": 404752
+                }
+              ],
+              "median_wall_seconds": 4.284891192999567,
+              "median_peak_rss_kib": 404752
+            },
+            "object_bytes": 4334944,
+            "source_sha256": "0ce71d18da5a456c3b1d27942fd9574a66e1c6b09178c3c08e00d9004782332d"
+          },
+          "gtest": {
+            "warm_compile": {
+              "samples": [
+                {
+                  "wall_seconds": 2.609162271999594,
+                  "peak_rss_kib": 317412
+                },
+                {
+                  "wall_seconds": 2.560769691999667,
+                  "peak_rss_kib": 317616
+                },
+                {
+                  "wall_seconds": 2.5879632770011085,
+                  "peak_rss_kib": 317504
+                }
+              ],
+              "median_wall_seconds": 2.5879632770011085,
+              "median_peak_rss_kib": 317504
+            },
+            "object_bytes": 799152,
+            "source_sha256": "7d7231fa3ed6bc5934614046e772ef7090e1482177b7ee535b296bfbafac9f9a"
+          }
+        },
+        "annotest_over_gtest_compile_ratio": 1.6557001527335549
+      },
+      {
+        "test_count": 72,
+        "frameworks": {
+          "annotest": {
+            "warm_compile": {
+              "samples": [
+                {
+                  "wall_seconds": 5.04647349699917,
+                  "peak_rss_kib": 416280
+                },
+                {
+                  "wall_seconds": 4.68845958699967,
+                  "peak_rss_kib": 416152
+                },
+                {
+                  "wall_seconds": 4.782746920000136,
+                  "peak_rss_kib": 416088
+                }
+              ],
+              "median_wall_seconds": 4.782746920000136,
+              "median_peak_rss_kib": 416152
+            },
+            "object_bytes": 4453112,
+            "source_sha256": "3a1d89e7682ca78738a340a08ba1e3dae995443c555bf633c4085be9d3a2151c"
+          },
+          "gtest": {
+            "warm_compile": {
+              "samples": [
+                {
+                  "wall_seconds": 3.1334187089996703,
+                  "peak_rss_kib": 350224
+                },
+                {
+                  "wall_seconds": 3.0990792450011213,
+                  "peak_rss_kib": 350436
+                },
+                {
+                  "wall_seconds": 3.1767550379991008,
+                  "peak_rss_kib": 350128
+                }
+              ],
+              "median_wall_seconds": 3.1334187089996703,
+              "median_peak_rss_kib": 350224
+            },
+            "object_bytes": 1470576,
+            "source_sha256": "3248f06a3e033d61695f239cc834c48caca713e8ad3ce7603e052b2972117afb"
+          }
+        },
+        "annotest_over_gtest_compile_ratio": 1.5263670017234965
+      },
+      {
+        "test_count": 240,
+        "frameworks": {
+          "annotest": {
+            "warm_compile": {
+              "samples": [
+                {
+                  "wall_seconds": 6.63060136400054,
+                  "peak_rss_kib": 455036
+                },
+                {
+                  "wall_seconds": 6.0285854439989635,
+                  "peak_rss_kib": 454920
+                },
+                {
+                  "wall_seconds": 5.954386421999516,
+                  "peak_rss_kib": 455408
+                }
+              ],
+              "median_wall_seconds": 6.0285854439989635,
+              "median_peak_rss_kib": 455036
+            },
+            "object_bytes": 4871240,
+            "source_sha256": "84bcd5453ac24e202307044d9f92a956c50d48ab9ab45ef720b1540a816aa07e"
+          },
+          "gtest": {
+            "warm_compile": {
+              "samples": [
+                {
+                  "wall_seconds": 5.382947095000418,
+                  "peak_rss_kib": 436168
+                },
+                {
+                  "wall_seconds": 5.132020645000011,
+                  "peak_rss_kib": 436416
+                },
+                {
+                  "wall_seconds": 5.527117686000565,
+                  "peak_rss_kib": 435836
+                }
+              ],
+              "median_wall_seconds": 5.382947095000418,
+              "median_peak_rss_kib": 436168
+            },
+            "object_bytes": 3835416,
+            "source_sha256": "3aa9036cde6a2bf935c55eeca434f7fe5866ec631131b9c12d6c46eed2daf0a4"
+          }
+        },
+        "annotest_over_gtest_compile_ratio": 1.1199414256919231
+      }
+    ]
+  },
+  "after": {
+    "metadata": {
+      "compiler": "/usr/local/bin/g++",
+      "compiler_id": "GNU",
+      "compiler_version": "16.2.0",
+      "build_type": "Debug",
+      "gtest_version": "1.15.0 (installed)",
+      "suites": 3,
+      "annotest_git_head": "43dda1a447171cff97c9641383f83ce104eedfe8",
+      "annotest_git_status": "M CMakeLists.txt\n M include/test.cxx\n?? benchmarks/\n?? include/runner.cxx",
+      "annotest_module_sha256": {
+        "include/CLI11.cxx": "533b9bf97ac34931efe959a1dad9c383107b5ffe2723a82a28609a64bcb53236",
+        "include/asserts.cxx": "a2db8699968f6a7ea789d7e06f2a1263fb8411e8f5f0aa28cd3ac83fa986e198",
+        "include/contracts.cxx": "c30d9acdc85d59eb9c6da882eb3cead50db02b605cd52470400781150e59c9f6",
+        "include/death_test.cxx": "14c2101afe6f7cbef3dab69a6e1548c0a87373f28643c5aa1127db8079b84c59",
+        "include/exceptions.cxx": "07a76b50dbc0d19db5574df221898462f4e65b87dad35f1c01abdade657db609",
+        "include/expects.cxx": "cc24c13285620e7b687554d903d3ac2f36f9b5caa18399b68d53984116138a48",
+        "include/logger.cxx": "c132cdfe1fdd95b91396532bc52993e15091b820f42a7ca5e67867b88531c975",
+        "include/posix.cxx": "ecba3321250bbdb2a1cfd907a710693391d1da4a2cd76a82478eeb8a3055037d",
+        "include/runner.cxx": "5508b22058acc1857f6268d1c42c2d755dae6211eae6115614d4240e8ac36ff6",
+        "include/structs.cxx": "89a6b79b5a6f8046670eb0a1d87edf650c7e9622d7921458f4ba48d9e0569d42",
+        "include/test.cxx": "590e32a5113058af01825a9e3e10d69ec3ea77f0f5a0f67562a70c64a43a331b",
+        "include/utils.cxx": "b348bb6e48bed760e0893184cbad4b538779cd30d69ba717804fd3f0f2bd436a"
+      },
+      "utc": "2026-10-11T03:37:28.182693+00:00",
+      "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.41",
+      "cpu_count": 16,
+      "repetitions": 3,
+      "build_jobs": 1,
+      "warm_scope": "one test translation unit; dependencies prebuilt; no linking or cache",
+      "cold_scope": "clean target build; pre-fetched dependencies; compilation and linking",
+      "git_metadata_origin": "host worktree after measurement; source module hashes captured before measurement"
+    },
+    "workloads": [
+      {
+        "test_count": 1,
+        "frameworks": {
+          "annotest": {
+            "warm_compile": {
+              "samples": [
+                {
+                  "wall_seconds": 1.7843700169996737,
+                  "peak_rss_kib": 292372
+                },
+                {
+                  "wall_seconds": 1.7818868699996528,
+                  "peak_rss_kib": 292356
+                },
+                {
+                  "wall_seconds": 1.8584094569996523,
+                  "peak_rss_kib": 292268
+                }
+              ],
+              "median_wall_seconds": 1.7843700169996737,
+              "median_peak_rss_kib": 292356
+            },
+            "object_bytes": 1835296,
+            "source_sha256": "b86962ba494af7a3e5a602a85d12be912b301b3bac969d57bf5c99efbaa70cb9"
+          },
+          "gtest": {
+            "warm_compile": {
+              "samples": [
+                {
+                  "wall_seconds": 2.2508765290003794,
+                  "peak_rss_kib": 301520
+                },
+                {
+                  "wall_seconds": 2.204407331000766,
+                  "peak_rss_kib": 301768
+                },
+                {
+                  "wall_seconds": 2.1465288079998572,
+                  "peak_rss_kib": 301580
+                }
+              ],
+              "median_wall_seconds": 2.204407331000766,
+              "median_peak_rss_kib": 301580
+            },
+            "object_bytes": 456440,
+            "source_sha256": "c8757029b6f72a5fa1117827b4c9923964b4feac49781bf38ca33b19857c7c71"
+          }
+        },
+        "annotest_over_gtest_compile_ratio": 0.8094556717834892
+      },
+      {
+        "test_count": 24,
+        "frameworks": {
+          "annotest": {
+            "warm_compile": {
+              "samples": [
+                {
+                  "wall_seconds": 1.9787933600000542,
+                  "peak_rss_kib": 299584
+                },
+                {
+                  "wall_seconds": 2.1531847759997618,
+                  "peak_rss_kib": 299336
+                },
+                {
+                  "wall_seconds": 2.036865066000246,
+                  "peak_rss_kib": 299580
+                }
+              ],
+              "median_wall_seconds": 2.036865066000246,
+              "median_peak_rss_kib": 299580
+            },
+            "object_bytes": 1907192,
+            "source_sha256": "0ce71d18da5a456c3b1d27942fd9574a66e1c6b09178c3c08e00d9004782332d"
+          },
+          "gtest": {
+            "warm_compile": {
+              "samples": [
+                {
+                  "wall_seconds": 2.450163778999922,
+                  "peak_rss_kib": 317988
+                },
+                {
+                  "wall_seconds": 2.572382024000035,
+                  "peak_rss_kib": 317620
+                },
+                {
+                  "wall_seconds": 2.5108840859993506,
+                  "peak_rss_kib": 317472
+                }
+              ],
+              "median_wall_seconds": 2.5108840859993506,
+              "median_peak_rss_kib": 317620
+            },
+            "object_bytes": 799152,
+            "source_sha256": "7d7231fa3ed6bc5934614046e772ef7090e1482177b7ee535b296bfbafac9f9a"
+          }
+        },
+        "annotest_over_gtest_compile_ratio": 0.8112142959357513
+      },
+      {
+        "test_count": 72,
+        "frameworks": {
+          "annotest": {
+            "warm_compile": {
+              "samples": [
+                {
+                  "wall_seconds": 2.203872661000787,
+                  "peak_rss_kib": 310820
+                },
+                {
+                  "wall_seconds": 2.3008297350006615,
+                  "peak_rss_kib": 310600
+                },
+                {
+                  "wall_seconds": 2.177388758000234,
+                  "peak_rss_kib": 310820
+                }
+              ],
+              "median_wall_seconds": 2.203872661000787,
+              "median_peak_rss_kib": 310820
+            },
+            "object_bytes": 2025280,
+            "source_sha256": "3a1d89e7682ca78738a340a08ba1e3dae995443c555bf633c4085be9d3a2151c"
+          },
+          "gtest": {
+            "warm_compile": {
+              "samples": [
+                {
+                  "wall_seconds": 3.2242241390013078,
+                  "peak_rss_kib": 349996
+                },
+                {
+                  "wall_seconds": 3.2279334199993173,
+                  "peak_rss_kib": 350300
+                },
+                {
+                  "wall_seconds": 3.2112305919999926,
+                  "peak_rss_kib": 350364
+                }
+              ],
+              "median_wall_seconds": 3.2242241390013078,
+              "median_peak_rss_kib": 350300
+            },
+            "object_bytes": 1470576,
+            "source_sha256": "3248f06a3e033d61695f239cc834c48caca713e8ad3ce7603e052b2972117afb"
+          }
+        },
+        "annotest_over_gtest_compile_ratio": 0.6835358107837468
+      },
+      {
+        "test_count": 240,
+        "frameworks": {
+          "annotest": {
+            "warm_compile": {
+              "samples": [
+                {
+                  "wall_seconds": 3.4413044580014684,
+                  "peak_rss_kib": 325376
+                },
+                {
+                  "wall_seconds": 3.32951831399987,
+                  "peak_rss_kib": 325320
+                },
+                {
+                  "wall_seconds": 3.273888640000223,
+                  "peak_rss_kib": 325388
+                }
+              ],
+              "median_wall_seconds": 3.32951831399987,
+              "median_peak_rss_kib": 325376
+            },
+            "object_bytes": 2443080,
+            "source_sha256": "84bcd5453ac24e202307044d9f92a956c50d48ab9ab45ef720b1540a816aa07e"
+          },
+          "gtest": {
+            "warm_compile": {
+              "samples": [
+                {
+                  "wall_seconds": 5.0800344009985565,
+                  "peak_rss_kib": 436520
+                },
+                {
+                  "wall_seconds": 5.789156186001492,
+                  "peak_rss_kib": 436108
+                },
+                {
+                  "wall_seconds": 5.135642651001035,
+                  "peak_rss_kib": 435940
+                }
+              ],
+              "median_wall_seconds": 5.135642651001035,
+              "median_peak_rss_kib": 436108
+            },
+            "object_bytes": 3835416,
+            "source_sha256": "3aa9036cde6a2bf935c55eeca434f7fe5866ec631131b9c12d6c46eed2daf0a4"
+          }
+        },
+        "annotest_over_gtest_compile_ratio": 0.6483158078280394
+      }
+    ]
+  }
+}

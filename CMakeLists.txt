@@ -18,6 +18,7 @@ include(FetchContent)
 
 option(BUILD_TESTS "Enable building of tests" OFF)
 option(BUILD_EXAMPLES "Enable building of examples" ON)
+option(BUILD_BENCHMARKS "Build compile-time comparisons against GoogleTest" OFF)
 
 # These dependencies use the same option names. Scope their optional targets so
 # fetching libraries does not alter AnnoTest's build choices.
@@ -71,7 +72,6 @@ target_sources(
          BASE_DIRS
          "${CMAKE_CURRENT_SOURCE_DIR}/include"
          FILES
-         "${CMAKE_CURRENT_SOURCE_DIR}/include/CLI11.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/structs.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/exceptions.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/asserts.cxx"
@@ -82,6 +82,7 @@ target_sources(
          "${CMAKE_CURRENT_SOURCE_DIR}/include/utils.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/contracts.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/logger.cxx")
+target_sources(annotest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/runner.cxx")
 target_include_directories(
   annotest PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
                   $<INSTALL_INTERFACE:include>)
@@ -136,4 +137,8 @@ endif()
 
 if(BUILD_TESTS)
   add_subdirectory(tests)
+endif()
+
+if(BUILD_BENCHMARKS)
+  add_subdirectory(benchmarks)
 endif()

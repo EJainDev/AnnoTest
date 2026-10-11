@@ -1,9 +1,3 @@
-module;
-
-#include <unistd.h>
-
-#include <cstdio>
-
 export module annotest;
 
 export import :contracts;
@@ -18,34 +12,26 @@ export import :logger;
 
 import std;
 
-import CLI11;
 import structural_tuple;
 
-template <typename... Ts>
-using tuple = structural_tuple::tuple<Ts...>;
-
 namespace annotest {
-// Helper function to call a test with all the parameters in a tuple
-template <std::size_t N, typename F>
-constexpr auto with_indices(const F f) -> decltype(auto) {
-  return [&]<std::size_t... Is>(std::index_sequence<Is...>) -> decltype(auto) {
-    return f(std::integral_constant<std::size_t, Is>{}...);
-  }(std::make_index_sequence<N>{});
-}
+struct suite_discovery {
+  suite_test suite;
+  std::span<const internal_test> tests;
+};
 
 // Gets all required information from the testing class
 template <std::meta::info Suite>
 consteval auto get_tests() {
   static constexpr auto members = std::define_static_array(
       std::meta::members_of(Suite, std::meta::access_context::unprivileged()));
-  static constexpr auto size = members.size();
 
   suite_test result;
   result.suite = Suite;
 
   std::vector<internal_test> children;
+  children.reserve(members.size());
 
-  std::string test_list = std::string(std::meta::identifier_of(Suite)) + ".\n";
   template for (constexpr auto m : members) {
     bool test_found = false;
     bool lifecycle_found = false;
@@ -78,19 +64,11 @@ consteval auto get_tests() {
                             std::meta::identifier_of(m)));
           }
 
-          static constexpr auto template_args =
-              std::define_static_array(std::meta::template_arguments_of(std::meta::type_of(a)));
-
-          auto test_info =
-              std::meta::extract<typename[:std::meta::substitute(^^test, template_args):]>(a);
+          auto test_info = std::meta::extract<typename[:std::meta::type_of(a):]>(a);
           current_test.disabled = test_info.disabled;
 
-          std::string str_test_name;
-          if (!test_info.is_empty()) {
-            str_test_name = test_info.name;
-          }
           current_test.name = !test_info.is_empty()
-                                  ? std::define_static_string(str_test_name)
+                                  ? std::define_static_string(std::string_view(test_info.name))
                                   : std::define_static_string(std::meta::identifier_of(m));
           test_found = true;
         } else if constexpr (t == ^^before_each) {
@@ -141,166 +119,44 @@ consteval auto get_tests() {
       }
 
       if (test_found) {
-        if (current_test.num_parameterizations > 0) {
-          for (int i = 0; i < current_test.num_parameterizations; ++i) {
-            test_list = test_list + "\n\t" + current_test.name + "." + to_string(i + 1);
-          }
-        } else {
-          test_list = test_list + "\n\t" + current_test.name;
-        }
-
         children.emplace_back(current_test);
       }
     }
   }
 
-  return tuple(result, std::define_static_array(children), std::define_static_string(test_list));
+  return suite_discovery{result, std::define_static_array(children)};
 }
 
 template <std::meta::info func>
 consteval bool not_has_required_parameter() {
-  static constexpr auto args = std::define_static_array(std::meta::parameters_of(func));
-  template for (constexpr auto arg : args) {
-    if constexpr (!std::meta::has_default_argument(arg)) {
-      return false;
-    }
+  for (auto arg : std::meta::parameters_of(func)) {
+    if (!std::meta::has_default_argument(arg)) return false;
   }
 
   return true;
 }
 
-// Temporary files let large writes complete without full pipes or background reader threads.
-class std_streams {
- public:
-  std_streams() {
-    std::cout.flush();
-    std::cerr.flush();
-    std::fflush(nullptr);
-    out = std::tmpfile();
-    err = std::tmpfile();
-    saved_out = dup(STDOUT_FILENO);
-    saved_err = dup(STDERR_FILENO);
-    if (!out || !err || saved_out < 0 || saved_err < 0) {
-      restore();
-      throw std::runtime_error("Cannot capture test output");
-    }
-    if (dup2(fileno(out), STDOUT_FILENO) < 0 || dup2(fileno(err), STDERR_FILENO) < 0) {
-      restore();
-      throw std::runtime_error("Cannot redirect test output");
-    }
-  }
-  std_streams(const std_streams&) = delete;
-  std_streams& operator=(const std_streams&) = delete;
-  ~std_streams() {
-    std::cout.flush();
-    std::cerr.flush();
-    std::fflush(nullptr);
-    if (out) suite_log.testcases.back().sysout = read_file(out);
-    if (err) suite_log.testcases.back().syserr = read_file(err);
-    restore();
-  }
+using test_callback = void (*)(void*);
 
- private:
-  static std::string read_file(std::FILE* file) {
-    std::rewind(file);
-    std::string result;
-    char buffer[4096];
-    while (auto n = std::fread(buffer, 1, sizeof(buffer), file)) result.append(buffer, n);
-    return result;
-  }
-  void restore() {
-    if (saved_out >= 0) {
-      dup2(saved_out, STDOUT_FILENO);
-      close(saved_out);
-      saved_out = -1;
-    }
-    if (saved_err >= 0) {
-      dup2(saved_err, STDERR_FILENO);
-      close(saved_err);
-      saved_err = -1;
-    }
-    if (out) {
-      std::fclose(out);
-      out = nullptr;
-    }
-    if (err) {
-      std::fclose(err);
-      err = nullptr;
-    }
-  }
-  std::FILE* out = nullptr;
-  std::FILE* err = nullptr;
-  int saved_out = -1;
-  int saved_err = -1;
-};
+int execute_test(void* context, std::string_view name, test_callback test, test_callback before,
+                 test_callback after);
 
-void record_exception(const std::string& phase) {
-  try {
-    throw;
-  } catch (const assertion_error& e) {
-    // Assertion helpers have already recorded their failure; manually thrown errors have not.
-    if (!e.recorded()) {
-      suite_log.add_failure({failure_types::assertion, e.message(), {.message = e.message()}});
-    }
-  } catch (const std::exception& e) {
-    auto msg = std::format("{}: {}", phase, e.what());
-    suite_log.add_failure({failure_types::uncaught_exception, msg, {.message = msg}});
-  } catch (...) {
-    auto msg = phase + ": unknown exception";
-    suite_log.add_failure({failure_types::unknown, msg, {.message = msg}});
-  }
+template <auto Method, typename T, auto... Parameters>
+void invoke_test_method(void* context) {
+  static_cast<T*>(context)->[:Method:](Parameters...);
 }
 
-template <auto Suite, auto Test, auto... Parameters>
-int run_test(auto& s, const std::string_view name) {
-  contract_violation_occurred = false;
-  suite_log.testcases.emplace_back(
-      test_xml_log{.test_class = suite_log.name, .name = std::string(name)});
-  auto start = std::chrono::steady_clock::now();
-  {
-    std_streams streams;
-    bool ready = true;
-    if constexpr (Suite.has_before_each) {
-      try {
-        s.[:Suite.before_each:]();
-      } catch (...) {
-        record_exception("before_each");
-        ready = false;
-      }
-    }
-    if (ready) {
-      try {
-        s.[:Test:](Parameters...);
-      } catch (...) {
-        record_exception("test");
-      }
-    }
-    if constexpr (Suite.has_after_each) {
-      try {
-        s.[:Suite.after_each:]();
-      } catch (...) {
-        record_exception("after_each");
-      }
-    }
+template <auto Suite, auto Test, auto... Parameters, typename T>
+int run_test(T& s, std::string_view name) {
+  test_callback before = nullptr;
+  test_callback after = nullptr;
+  if constexpr (Suite.has_before_each) {
+    before = invoke_test_method<Suite.before_each, T>;
   }
-  if (std::exchange(contract_violation_occurred, false)) {
-    suite_log.add_failure({failure_types::contract_violation,
-                           "Unexpected contract violation",
-                           {.message = "Unexpected contract violation"}});
+  if constexpr (Suite.has_after_each) {
+    after = invoke_test_method<Suite.after_each, T>;
   }
-  auto& result = suite_log.testcases.back();
-  result.time = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
-  for (const auto& failure : result.failures) {
-    if (failure.type == failure_types::uncaught_exception ||
-        failure.type == failure_types::unknown || failure.type == failure_types::contract_violation)
-      ++result.errors;
-  }
-  result.failed = !result.failures.empty();
-  suite_log.failed += result.failed;
-  suite_log.errors += result.errors;
-  std::println("{}: {}", name, result.failed ? "Failed" : "Passed");
-  for (const auto& failure : result.failures) std::println(std::cerr, "{}", failure.cdata);
-  return result.failed ? 1 : 0;
+  return execute_test(&s, name, invoke_test_method<Test, T, Parameters...>, before, after);
 }
 
 template <auto test_name, auto i>
@@ -412,223 +268,112 @@ int run_parameterized_dual_test(auto& s, int parameterize_target_idx)
   return status_code;
 }
 
-template <auto Suite, internal_test Test>
-int run_regular_test(auto& s) {
-  static constexpr auto name = Test.name;
+struct runner_options {
+  bool list_tests = false;
+  bool should_exit = false;
+  int exit_code = 0;
+  std::string xml_output;
+  std::vector<std::string> test_names;
+};
 
-  return run_test<Suite, Test.test>(s, name);
+runner_options parse_options(int argc, char** argv);
+
+struct discovered_test {
+  const char* name = nullptr;
+  bool parameterized = false;
+  int parameter_count = 0;
+  bool disabled = false;
+  bool has_required_os = false;
+  std::span<const OS> required_os;
+  std::span<const OS> disallowed_os;
+  test_callback body = nullptr;
+  int (*run)(void*, int) = nullptr;
+};
+
+void list_tests(std::string_view suite_name, std::span<const discovered_test> tests);
+
+template <auto Suite, internal_test Test, typename T>
+int run_discovered_test(void* context, int index) {
+  auto& s = *static_cast<T*>(context);
+  if constexpr (Test.parameterized) {
+    if constexpr (Test.parameterization_type == parameterization_types::Value) {
+      return run_parameterized_test<Suite, Test>(s, index);
+    } else if constexpr (Test.parameterization_type == parameterization_types::Template) {
+      return run_parameterized_template_test<Suite, Test>(s, index);
+    } else {
+      return run_parameterized_dual_test<Suite, Test>(s, index);
+    }
+  }
 }
+
+template <auto Suite, internal_test Test, typename T>
+consteval discovered_test describe_test() {
+  discovered_test entry{.name = Test.name,
+                        .parameterized = Test.parameterized,
+                        .parameter_count = Test.num_parameterizations,
+                        .disabled = Test.disabled,
+                        .has_required_os = Test.has_requires_os};
+  if constexpr (Test.parameterized) {
+    entry.run = run_discovered_test<Suite, Test, T>;
+  } else if constexpr (not_has_required_parameter<Test.test>()) {
+    entry.body = invoke_test_method<Test.test, T>;
+  }
+  if constexpr (Test.has_requires_os) {
+    static constexpr auto annotation =
+        std::meta::extract<typename[:std::meta::type_of(Test.requires_os_annotation):]>(
+            Test.requires_os_annotation);
+    entry.required_os = std::define_static_array(annotation.os);
+  }
+  if constexpr (Test.has_disallows_os) {
+    static constexpr auto annotation =
+        std::meta::extract<typename[:std::meta::type_of(Test.disallows_os_annotation):]>(
+            Test.disallows_os_annotation);
+    entry.disallowed_os = std::define_static_array(annotation.os);
+  }
+  return entry;
+}
+
+std::chrono::steady_clock::time_point begin_suite(std::string_view suite_name, const char* file,
+                                                  bool filtered);
+
+int execute_suite(void* context, std::string_view suite_name,
+                  std::span<const discovered_test> tests, const runner_options& options,
+                  std::vector<std::string>& remaining_names,
+                  std::chrono::steady_clock::time_point suite_start, test_callback before,
+                  test_callback after);
 
 export template <typename T>
   requires std::is_class_v<T>
 int run_tests(int argc, char** argv) {
-  static constexpr auto temp_result = get_tests<^^T>();
-  static constexpr auto Suite = temp_result.template get<0>();
-  static constexpr auto Children = temp_result.template get<1>();
-  static constexpr auto test_list = temp_result.template get<2>();
+  static constexpr auto discovery = get_tests<^^T>();
+  static constexpr auto Suite = discovery.suite;
+  static constexpr auto Children = discovery.tests;
+  static constexpr auto plan = []() consteval {
+    std::array<discovered_test, Children.size()> entries{};
+    std::size_t index = 0;
+    template for (constexpr auto test : Children) {
+      entries[index++] = describe_test<Suite, test, T>();
+    }
+    return entries;
+  }();
 
-  std::string test_name;
-
-  CLI::App app{"AnnoTest Based Tests"};
-
-  bool list_tests = false;
-
-  auto list_opt = app.add_flag("-l, --list", list_tests, "List all available tests");
-
-  std::string xml_output;
-  app.add_option("--xml-output", xml_output, "Write a suite XML report to this file");
-
-  std::vector<std::string> test_names;
-  app.add_option("-t, --test-name", test_names,
-                 "Run a specific test by fully qualified name (can be used multiple times for "
-                 "multiple tests)");
-
-  try {
-    app.parse(argc, argv);
-  } catch (const CLI::ParseError& e) {
-    return app.exit(e);
+  auto options = parse_options(argc, argv);
+  if (options.should_exit) return options.exit_code;
+  if (options.list_tests) {
+    list_tests(std::meta::identifier_of(^^T), plan);
+    return 0;
   }
-
-  if (list_tests) {
-    std::println(test_list);
-    return 0;  // Exit after listing tests
-  }
-
-  auto remaining_names = test_names;
-  suite_log.reset();
-  auto suite_start = std::chrono::steady_clock::now();
-  suite_log.name = std::string(std::meta::identifier_of(^^T));
+  auto remaining_names = options.test_names;
   static constexpr auto source_location = std::meta::source_location_of(^^T);
-  suite_log.file = source_location.file_name();
-  suite_log.total_tests = 0;
-  suite_log.timestamp = std::format(
-      "{:%FT%TZ}", std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now()));
-
-  if (test_names.size() == 0) {
-    std::println("Running tests in suite {}", std::meta::identifier_of(^^T));
-  } else {
-    std::println("Running specified tests in suite {}", std::meta::identifier_of(^^T));
-  }
-
-#if defined(__linux__)
-  static constexpr auto os = OS::Linux;
-#elif defined(_WIN32)
-  static constexpr auto os = OS::Windows;
-#elif defined(__APPLE__)
-  static constexpr auto os = OS::Mac;
-#else
-  static constexpr auto os = OS::Unknown;
-#endif
-
-  int status_code = 0;
-
+  auto start = begin_suite(std::meta::identifier_of(^^T), source_location.file_name(),
+                           !options.test_names.empty());
   typename[:Suite.suite:] s;
-
-  std::string prefix = std::string(std::meta::identifier_of(^^T)) + '.';
-
-  template for (constexpr auto test : Children) {
-    contract_violation_occurred = false;  // Reset contract flag before each test
-
-    static constexpr bool is_parameterized = test.parameterized;
-    static constexpr int parameter_count = test.num_parameterizations;
-    std::vector<int> parameterize_targets;
-    auto full_name = prefix + test.name;
-    if (test_names.empty()) {
-      parameterize_targets.push_back(-1);
-    } else {
-      for (const auto& requested : test_names) {
-        if (requested == full_name) {
-          parameterize_targets = {-1};
-          std::erase(remaining_names, requested);
-        } else if (is_parameterized && requested.starts_with(full_name + ".")) {
-          auto suffix = std::string_view(requested).substr(full_name.size() + 1);
-          int index = 0;
-          auto [end, ec] = std::from_chars(suffix.data(), suffix.data() + suffix.size(), index);
-          if (ec != std::errc{} || end != suffix.data() + suffix.size() || index < 1 ||
-              index > parameter_count) {
-            std::println(std::cerr, "Invalid parameterization: {}", requested);
-            return 1;
-          }
-          if (std::ranges::find(parameterize_targets, -1) == parameterize_targets.end() &&
-              std::ranges::find(parameterize_targets, index - 1) == parameterize_targets.end()) {
-            parameterize_targets.push_back(index - 1);
-          }
-          std::erase(remaining_names, requested);
-        }
-      }
-      if (parameterize_targets.empty()) continue;
-    }
-
-    // Skip disabled tests
-    if constexpr (test.disabled) {
-      suite_log.skipped += is_parameterized && parameterize_targets == std::vector<int>{-1}
-                               ? parameter_count
-                               : parameterize_targets.size();
-      std::println("Skipping disabled test: {}", test.name);
-      continue;
-    }
-
-    // A catch-all flag representing whether to stop the test early for OS requirements
-    bool stop = false;
-
-    // Check for required operating systems
-    if constexpr (test.has_requires_os) {
-      stop = true;
-      static constexpr auto required_os_list = std::meta::extract<
-          typename[:std::meta::substitute(^^requires_os,
-                                          std::meta::template_arguments_of(
-                                              std::meta::type_of(test.requires_os_annotation))):]>(
-          test.requires_os_annotation);
-      template for (constexpr auto required_os : required_os_list.os) {
-        if (required_os == os) {
-          std::println("Current OS {} matches required OS {} for test {}",
-                       enum_to_string(required_os), enum_to_string(os), test.name);
-          stop = false;
-          break;
-        }
-      }
-    }
-
-    if (stop) {
-      suite_log.skipped += is_parameterized && parameterize_targets == std::vector<int>{-1}
-                               ? parameter_count
-                               : parameterize_targets.size();
-      continue;
-    }
-
-    // Check for disallowed operating systems
-    if constexpr (test.has_disallows_os) {
-      static constexpr auto disallowed_os_list = std::meta::extract<
-          typename[:std::meta::substitute(^^disallows_os,
-                                          std::meta::template_arguments_of(
-                                              std::meta::type_of(test.disallows_os_annotation))):]>(
-          test.disallows_os_annotation);
-      template for (constexpr auto disallowed_os : disallowed_os_list.os) {
-        if (disallowed_os == os) {
-          std::println("Current OS {} is disallowed for test {}, skipping",
-                       enum_to_string(disallowed_os), test.name);
-          stop = true;
-          break;
-        }
-      }
-    }
-
-    if (stop) {
-      suite_log.skipped += is_parameterized && parameterize_targets == std::vector<int>{-1}
-                               ? parameter_count
-                               : parameterize_targets.size();
-      continue;
-    }
-
-    for (int parameterize_target_idx : parameterize_targets) {
-      if constexpr (test.parameterized) {
-        if constexpr (test.parameterization_type == parameterization_types::Value) {
-          if (run_parameterized_test<Suite, test>(s, parameterize_target_idx) == 1) {
-            status_code = 1;
-          }
-        } else if constexpr (test.parameterization_type == parameterization_types::Template) {
-          if (run_parameterized_template_test<Suite, test>(s, parameterize_target_idx) == 1) {
-            status_code = 1;
-          }
-        } else {
-          if (run_parameterized_dual_test<Suite, test>(s, parameterize_target_idx) == 1) {
-            status_code = 1;
-          }
-        }
-      } else if constexpr (not_has_required_parameter<test.test>()) {
-        if (run_regular_test<Suite, test>(s) == 1) {
-          status_code = 1;
-        }
-      } else if constexpr (!test.parameterized) {
-        std::println(
-            "Warning: test `{}` did not execute because it has required arguments that were not "
-            "given via a parameterization annotation.",
-            test.name);
-      }
-    }
-  }
-
-  if (!remaining_names.empty()) {
-    status_code = 1;
-    std::println(std::cerr, "Warning: The following test names were not found: {}",
-                 remaining_names);
-  }
-
-  suite_log.total_tests = suite_log.testcases.size() + suite_log.skipped;
-  suite_log.time =
-      std::chrono::duration<double>(std::chrono::steady_clock::now() - suite_start).count();
-  if (!xml_output.empty()) {
-    try {
-      std::ofstream report(xml_output);
-      report << xml_report();
-      report.flush();
-      if (!report) throw std::runtime_error("Cannot write report file");
-    } catch (const std::exception& e) {
-      std::println(std::cerr, "Cannot write XML report {}: {}", xml_output, e.what());
-      return 1;
-    }
-  }
-  return status_code;
+  test_callback before = nullptr;
+  test_callback after = nullptr;
+  if constexpr (Suite.has_before_each) before = invoke_test_method<Suite.before_each, T>;
+  if constexpr (Suite.has_after_each) after = invoke_test_method<Suite.after_each, T>;
+  return execute_suite(&s, std::meta::identifier_of(^^T), plan, options, remaining_names, start,
+                       before, after);
 }
 
 }  // namespace annotest
