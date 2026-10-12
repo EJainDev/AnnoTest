@@ -22,6 +22,24 @@ struct suite_discovery {
   suite_test suite;
   std::span<const internal_test> tests;
 };
+
+// Discovery diagnostics contain only string substitutions. Avoid instantiating
+// the general formatting machinery while checking every reflected method.
+template <typename... Values>
+consteval std::string discovery_format(std::string_view text, const Values&... values) {
+  std::array<std::string_view, sizeof...(Values)> arguments{std::string_view(values)...};
+  std::string result;
+  std::size_t start = 0, argument = 0;
+  for (auto position = text.find("{}"); position != std::string_view::npos;
+       position = text.find("{}", start)) {
+    if (argument == arguments.size()) throw std::logic_error("Invalid discovery diagnostic");
+    result += text.substr(start, position - start);
+    result += arguments[argument++];
+    start = position + 2;
+  }
+  result += text.substr(start);
+  return result;
+}
 template <std::meta::info Annotation>
 consteval void validate_condition() {
   if constexpr (std::meta::has_template_arguments(std::meta::type_of(Annotation))) {
@@ -52,6 +70,7 @@ consteval bool not_has_required_parameter() {
 template <std::meta::info Suite>
 consteval auto get_tests() {
   static constexpr auto members = std::define_static_array(inherited_members(Suite));
+  static constexpr auto suite_annotations = std::define_static_array(expanded_annotations(Suite));
 
   std::vector<std::meta::info> before_hooks, after_hooks, before_all_hooks, after_all_hooks;
   std::vector<const char*> suite_tags;
@@ -60,7 +79,7 @@ consteval auto get_tests() {
   result.name = std::define_static_string(std::meta::has_template_arguments(Suite)
                                               ? std::meta::display_string_of(Suite)
                                               : std::meta::identifier_of(Suite));
-  template for (constexpr auto a : std::define_static_array(expanded_annotations(Suite))) {
+  template for (constexpr auto a : suite_annotations) {
     validate_condition<a>();
     if constexpr (std::meta::has_template_arguments(std::meta::type_of(a)) &&
                   std::meta::template_of(std::meta::type_of(a)) == ^^suite) {
@@ -76,7 +95,7 @@ consteval auto get_tests() {
     if constexpr (std::is_same_v<std::remove_cv_t<typename[:std::meta::type_of(a):]>, timeout>)
       result.timeout_seconds = std::meta::extract<timeout>(a).seconds;
   }
-  template for (constexpr auto a : std::define_static_array(expanded_annotations(Suite))) {
+  template for (constexpr auto a : suite_annotations) {
     if constexpr (std::meta::has_template_arguments(std::meta::type_of(a)) &&
                   std::meta::template_of(std::meta::type_of(a)) == ^^suite_name_generator) {
       using Policy = typename[:std::meta::type_of(a):];
@@ -146,7 +165,7 @@ consteval auto get_tests() {
           if constexpr (t == ^^test) {
             if (lifecycle_found) {
               throw std::logic_error(
-                  std::format("Cannot have a `test` annotation on a lifecycle "
+                  discovery_format("Cannot have a `test` annotation on a lifecycle "
                               "(before_each or after_each) method. Method name: {}",
                               std::meta::identifier_of(m)));
             }
@@ -165,12 +184,12 @@ consteval auto get_tests() {
             if (lifecycle_found && !before_found && !after_found)
               throw std::logic_error("Suite hooks cannot share test or lifecycle annotations");
             if (before_found) {
-              throw std::logic_error(std::format(
+              throw std::logic_error(discovery_format(
                   "Duplicate before_each annotation detected. First one at {} and second one at {}",
                   std::meta::identifier_of(result.before_each), std::meta::identifier_of(m)));
             } else if (test_found) {
               throw std::logic_error(
-                  std::format("before_each cannot be declared on a `test` method or `suite` class. "
+                  discovery_format("before_each cannot be declared on a `test` method or `suite` class. "
                               "Test/Suite name: {}",
                               std::meta::identifier_of(m)));
             }
@@ -184,12 +203,12 @@ consteval auto get_tests() {
             if (lifecycle_found && !before_found && !after_found)
               throw std::logic_error("Suite hooks cannot share test or lifecycle annotations");
             if (after_found) {
-              throw std::logic_error(std::format(
+              throw std::logic_error(discovery_format(
                   "Duplicate after_each annotation detected. First one at {} and second one at {}",
                   std::meta::identifier_of(result.after_each), std::meta::identifier_of(m)));
             } else if (test_found) {
               throw std::logic_error(
-                  std::format("after_each cannot be declared on a `test` method. Method name: {}",
+                  discovery_format("after_each cannot be declared on a `test` method. Method name: {}",
                               std::meta::identifier_of(m)));
             }
             lifecycle_found = true;
@@ -236,7 +255,7 @@ consteval auto get_tests() {
           }
         }
         if (!own_generator) {
-          template for (constexpr auto a : std::define_static_array(expanded_annotations(Suite))) {
+          template for (constexpr auto a : suite_annotations) {
             if constexpr (std::meta::has_template_arguments(std::meta::type_of(a)) &&
                           std::meta::template_of(std::meta::type_of(a)) == ^^name_generator) {
               using Policy = typename[:std::meta::type_of(a):];
@@ -251,26 +270,26 @@ consteval auto get_tests() {
       if (test_found || lifecycle_found) {
         if (!std::meta::is_public(m)) {
           throw std::logic_error(
-              std::format("Annotated test and lifecycle methods must be public: {}",
+              discovery_format("Annotated test and lifecycle methods must be public: {}",
                           std::meta::identifier_of(m)));
         }
         if (std::meta::is_deleted(member)) {
-          throw std::logic_error(std::format("Annotated methods must not be deleted: {}",
+          throw std::logic_error(discovery_format("Annotated methods must not be deleted: {}",
                                              std::meta::identifier_of(m)));
         }
         if (lifecycle_found && !not_has_required_parameter<member>()) {
-          throw std::logic_error(std::format("Lifecycle hooks must not have required arguments: {}",
+          throw std::logic_error(discovery_format("Lifecycle hooks must not have required arguments: {}",
                                              std::meta::identifier_of(m)));
         }
       }
       if (test_found) {
         if (!current_test.parameterized && !current_test.runtime_parameters &&
             !current_test.dynamic && !not_has_required_parameter<member>()) {
-          throw std::logic_error(std::format(
+          throw std::logic_error(discovery_format(
               "Test has required arguments without parameterization: {}", current_test.name));
         }
         if (current_test.parameterized && current_test.num_parameterizations == 0) {
-          throw std::logic_error(std::format(
+          throw std::logic_error(discovery_format(
               "Test parameterization must contain at least one case: {}", current_test.name));
         }
         if (std::string_view(current_test.name).find_first_of("\r\n\t") != std::string_view::npos) {
@@ -278,7 +297,7 @@ consteval auto get_tests() {
         }
         for (const auto& existing : children) {
           if (std::string_view(existing.name) == current_test.name) {
-            throw std::logic_error(std::format("Duplicate test name: {}", current_test.name));
+            throw std::logic_error(discovery_format("Duplicate test name: {}", current_test.name));
           }
         }
         if (current_test.timeout_seconds < 0 || !std::isfinite(current_test.timeout_seconds))
@@ -291,17 +310,38 @@ consteval auto get_tests() {
 
   // Base names are selection aliases for parameterized tests. Reserve them
   // alongside concrete case names so every filter has exactly one meaning.
-  std::vector<std::string> names;
-  for (const auto& child : children) names.emplace_back(child.name);
+  // Two concrete names can coincide only when their bases coincide (already
+  // rejected above). Check base aliases against canonical decimal suffixes
+  // directly, instead of constructing and comparing every expanded name.
   for (const auto& child : children) {
     if (!child.parameterized) continue;
-    for (std::size_t i = 0; i < child.num_parameterizations; ++i) {
-      auto name = std::string(child.name) + "." + to_string(i + 1);
-      if (std::ranges::find(names, name) != names.end()) {
-        throw std::logic_error(std::format("Duplicate expanded test name: {}", name));
+    const auto base = std::string_view(child.name);
+    const auto limit = static_cast<std::size_t>(child.num_parameterizations);
+    std::size_t first_collision = limit + 1;
+    const char* collision = nullptr;
+    for (const auto& alias : children) {
+      auto name = std::string_view(alias.name);
+      if (!name.starts_with(base) || name.size() <= base.size() + 1 ||
+          name[base.size()] != '.') continue;
+      auto suffix = name.substr(base.size() + 1);
+      if (suffix.front() < '1' || suffix.front() > '9') continue;
+      std::size_t index = 0;
+      bool valid = true;
+      for (char digit : suffix) {
+        if (digit < '0' || digit > '9' || index > limit / 10 ||
+            index * 10 + (digit - '0') > limit) {
+          valid = false;
+          break;
+        }
+        index = index * 10 + (digit - '0');
       }
-      names.emplace_back(std::move(name));
+      if (valid && index < first_collision) {
+        first_collision = index;
+        collision = alias.name;
+      }
     }
+    if (collision)
+      throw std::logic_error(discovery_format("Duplicate expanded test name: {}", collision));
   }
 
   result.before_hooks = std::define_static_array(before_hooks);
@@ -318,12 +358,12 @@ int execute_test(void* context, std::string_view name, test_callback test, test_
 void record_exception(const std::string& phase);
 int execute_cleanup(std::string_view name, std::function<void()> cleanup);
 
-template <auto Method, typename T, auto... Parameters>
+template <auto Method, typename T>
 void invoke_test_method(void* context) {
-  if constexpr (sizeof...(Parameters) == 0 && !requires(T& value) { value.[:Method:](); })
+  if constexpr (!requires(T& value) { value.[:Method:](); })
     static_cast<T*>(context)->[:Method:](current_test());
   else
-    static_cast<T*>(context)->[:Method:](Parameters...);
+    static_cast<T*>(context)->[:Method:]();
 }
 
 struct suite_hook_state {
@@ -336,24 +376,22 @@ struct suite_hook_state {
 void ensure_suite_hooks(const std::shared_ptr<suite_hook_state>& state);
 void finish_suite_hooks(const std::shared_ptr<suite_hook_state>& state);
 
+void delete_fixture_context(test_context* context) noexcept;
+using fixture_context = std::unique_ptr<test_context, decltype(&delete_fixture_context)>;
+fixture_context make_fixture_context();
+
 template <typename T>
 struct fixture_state {
   std::shared_ptr<suite_hook_state> suite_hooks;
   std::unique_ptr<T> value;
-  std::unique_ptr<test_context> context;
+  fixture_context context{nullptr, delete_fixture_context};
   std::function<std::unique_ptr<T>(test_context&)> construct;
   std::function<void()> parent_before, parent_after;
   bool parent_entered = false;
   bool retain = false;
 };
 
-inline void copy_context(test_context& target, const test_context& source) {
-  target.suite = source.suite;
-  target.name = source.name;
-  target.parameters = source.parameters;
-  target.tags = source.tags;
-  target.repetition = source.repetition;
-}
+void copy_context(test_context& target, const test_context& source);
 
 template <typename T>
 void destroy_fixture(fixture_state<T>& fixture, bool preserve_context = false) {
@@ -376,7 +414,7 @@ void begin_fixture(fixture_state<T>& fixture) {
     fixture.parent_entered = true;
     fixture.parent_before();
   }
-  if (!fixture.context) fixture.context = std::make_unique<test_context>();
+  if (!fixture.context) fixture.context = make_fixture_context();
   copy_context(*fixture.context, current_test());
   current_phase = "constructor";
   if (!fixture.value) {
@@ -438,16 +476,27 @@ int execute_fixture(fixture_state<T>& fixture, std::string_view name,
       [](void* p) { end_fixture<Suite>(*static_cast<callbacks*>(p)->fixture); });
 }
 
-template <auto Suite, auto Test, auto... Parameters, typename T>
+// Static test bodies need only a function pointer. Keep the fixture callbacks
+// shared per suite instead of instantiating std::function for every method/case.
+template <auto Suite, typename T>
+int execute_static_fixture(fixture_state<T>& fixture, std::string_view name, test_callback body) {
+  struct callbacks {
+    fixture_state<T>* fixture;
+    test_callback body;
+  } actions{&fixture, body};
+  return execute_test(
+      &actions, name,
+      [](void* p) {
+        auto& a = *static_cast<callbacks*>(p);
+        a.body(a.fixture->value.get());
+      },
+      [](void* p) { begin_fixture<Suite>(*static_cast<callbacks*>(p)->fixture); },
+      [](void* p) { end_fixture<Suite>(*static_cast<callbacks*>(p)->fixture); });
+}
+
+template <auto Suite, auto Test, typename T>
 int run_test(fixture_state<T>& fixture, std::string_view name) {
-  return execute_fixture<Suite, T>(fixture, name, [](T& s) {
-    if constexpr (sizeof...(Parameters) > 0) {
-      auto values = std::tuple{Parameters...};
-      current_test().parameters = print_value(values);
-      record_property("parameters", current_test().parameters);
-    }
-    invoke_test_method<Test, T, Parameters...>(&s);
-  });
+  return execute_static_fixture<Suite>(fixture, name, invoke_test_method<Test, T>);
 }
 
 template <auto test_name, auto i>
@@ -455,30 +504,149 @@ consteval auto get_parameterized_test_name() {
   return std::define_static_string(std::string(test_name) + "." + to_string(i + 1));
 }
 
+struct parameter_data {
+  const void* values;
+  std::string (*describe)(const void*);
+};
+
+// An explicit reference also avoids GCC dropping the reference when deducing
+// decltype(auto) directly from a class template parameter object.
+template <auto Parameter>
+inline constexpr const std::remove_cv_t<decltype(Parameter)>& parameter_object = Parameter;
+
+template <auto Parameter>
+consteval decltype(auto) stored_parameter() {
+  if constexpr (std::is_class_v<decltype(Parameter)> || std::is_union_v<decltype(Parameter)>)
+    return (parameter_object<Parameter>);
+  else
+    return Parameter;
+}
+
+template <auto Parameters>
+consteval auto parameter_storage() {
+  constexpr auto scalar_types = []<typename... Values>(std::tuple<Values...>*) {
+    return ((!std::is_class_v<Values> && !std::is_union_v<Values>) && ...);
+  }(static_cast<decltype(as_std_tuple(Parameters))*>(nullptr));
+  if constexpr (scalar_types) {
+    return as_std_tuple(Parameters);
+  } else {
+    // Keep references to class template parameter objects, whose identity can
+    // be observed by const-reference arguments. Scalars are stored by value.
+    return []<std::size_t... Is>(std::index_sequence<Is...>) {
+      return std::tuple<decltype(stored_parameter<Parameters.template get<Is>()>())...>{
+          stored_parameter<Parameters.template get<Is>()>()...};
+    }(std::make_index_sequence<std::remove_cv_t<decltype(Parameters)>::size()>{});
+  }
+}
+
+std::string format_parameter_list(std::span<const std::string> fields);
+
+template <typename Values>
+std::string print_parameters(const Values& values) {
+  // Diagnostics use the same owning tuple types as the original invocation.
+  return std::apply(
+      [](const auto&... args) {
+        // Built-in numeric tuples have no user-defined formatter to preserve.
+        // Keep their default tuple syntax without instantiating tuple parsing.
+        if constexpr (((std::is_arithmetic_v<std::remove_cvref_t<decltype(args)>> &&
+                        std::formattable<std::remove_cvref_t<decltype(args)>, char> &&
+                        !std::same_as<std::remove_cvref_t<decltype(args)>, char>) && ...)) {
+          std::array<std::string, sizeof...(args)> fields{print_value(args)...};
+          return format_parameter_list(fields);
+        } else {
+          return print_value(std::tuple{args...});
+        }
+      },
+      values);
+}
+
+template <typename Values>
+std::string describe_parameters(const void* data) {
+  return print_parameters(*static_cast<const Values*>(data));
+}
+
+// Values specialize only static storage, not executable invocation code.
+template <auto Parameters>
+consteval parameter_data describe_parameter_data() {
+  static constexpr auto values = parameter_storage<Parameters>();
+  using Values = std::remove_cv_t<decltype(values)>;
+  return {&values, describe_parameters<Values>};
+}
+
+template <typename Value>
+decltype(auto) parameter_argument(const Value& value) {
+  // Class NTTPs are const lvalues; scalar NTTPs are prvalues. Preserve those
+  // categories when reading values from storage (including int&& arguments).
+  if constexpr (std::is_class_v<Value> || std::is_union_v<Value>)
+    return (value);
+  else
+    return Value(value);
+}
+
+template <auto Method, typename T, typename Values>
+void invoke_parameter_method(void* object, const void* data) {
+  if constexpr (std::tuple_size_v<Values> == 0) {
+    invoke_test_method<Method, T>(object);
+  } else {
+    const auto& values = *static_cast<const Values*>(data);
+    current_test().parameters = print_parameters(values);
+    record_property("parameters", current_test().parameters);
+    std::apply(
+        [&](const auto&... args) {
+          static_cast<T*>(object)->[:Method:](parameter_argument(args)...);
+        },
+        values);
+  }
+}
+
+struct parameter_invocation {
+  parameter_data parameters;
+  void (*invoke)(void*, const void*);
+};
+
+std::string parameter_case_name(std::string_view base, int index);
+
+template <auto Method, typename T, auto Parameters>
+consteval parameter_invocation describe_parameter_invocation() {
+  using Values = decltype(parameter_storage<Parameters>());
+  return {describe_parameter_data<Parameters>(), invoke_parameter_method<Method, T, Values>};
+}
+
+template <auto Suite, typename T>
+int execute_parameter_fixture(fixture_state<T>& fixture, const parameter_invocation& test,
+                              std::string_view name) {
+  struct callbacks {
+    fixture_state<T>* fixture;
+    const parameter_invocation* test;
+  } actions{&fixture, &test};
+  return execute_test(
+      &actions, name,
+      [](void* p) {
+        auto& a = *static_cast<callbacks*>(p);
+        a.test->invoke(a.fixture->value.get(), a.test->parameters.values);
+      },
+      [](void* p) { begin_fixture<Suite>(*static_cast<callbacks*>(p)->fixture); },
+      [](void* p) { end_fixture<Suite>(*static_cast<callbacks*>(p)->fixture); });
+}
+
 template <auto Suite, internal_test Test>
 int run_parameterized_test(auto& s, int parameterize_target_idx) {
-  int status_code = 0;
-
   using Annotation = typename[:std::meta::type_of(Test.parameterize_annotation):];
   static constexpr auto parameterize_struct =
       std::meta::extract<Annotation>(Test.parameterize_annotation);
   static constexpr auto indices = std::make_index_sequence<Annotation::N>{};
-
-  template for (constexpr auto i : indices) {
-    static constexpr auto args_tuple = parameterize_struct.parameters.template get<i>();
-    static constexpr auto [... args] = args_tuple.params;
-
-    static constexpr auto test_name = Test.name;
-    static constexpr auto current_test_name = get_parameterized_test_name<test_name, i>();
-
-    if (i != parameterize_target_idx) continue;
-
-    status_code |= run_test<Suite, Test.test, args...>(s, current_test_name);
-
-    break;
-  }
-
-  return status_code;
+  using T = std::remove_reference_t<decltype(*s.value)>;
+  static constexpr auto cases = [] {
+    std::array<parameter_invocation, Annotation::N> result{};
+    template for (constexpr auto i : indices) {
+      constexpr auto parameters = parameterize_struct.parameters.template get<i>().params;
+      result[i] = describe_parameter_invocation<Test.test, T, parameters>();
+    }
+    return result;
+  }();
+  if (parameterize_target_idx < 0 || parameterize_target_idx >= cases.size()) return 0;
+  auto name = parameter_case_name(Test.name, parameterize_target_idx);
+  return execute_parameter_fixture<Suite>(s, cases[parameterize_target_idx], name);
 }
 
 template <auto Suite, internal_test Test>
@@ -511,8 +679,6 @@ int run_parameterized_template_test(auto& s, int parameterize_target_idx) {
 
 template <auto Suite, internal_test Test>
 int run_parameterized_dual_test(auto& s, int parameterize_target_idx) {
-  int status_code = 0;
-
   using Annotation = typename[:std::meta::type_of(Test.parameterize_annotation):];
   static constexpr auto parameterize_struct =
       std::meta::extract<Annotation>(Test.parameterize_annotation);
@@ -520,23 +686,21 @@ int run_parameterized_dual_test(auto& s, int parameterize_target_idx) {
   static constexpr auto template_args_list = std::define_static_array(
       std::meta::template_arguments_of(std::meta::type_of(Test.parameterize_annotation)));
   static constexpr auto idx_sequence = std::make_index_sequence<parameterize_struct.N>{};
-
-  template for (constexpr auto i : idx_sequence) {
-    static constexpr auto template_args = std::define_static_array(std::meta::template_arguments_of(
-        std::meta::template_arguments_of(template_args_list[i])[0]));
-    static constexpr auto args_tuple = parameterize_struct.sets.template get<i>().params.params;
-    static constexpr auto [... args] = args_tuple;
-    static constexpr auto test_name = get_parameterized_test_name<Test.name, i>();
-
-    if (i != parameterize_target_idx) continue;
-
-    static constexpr auto specialization = std::meta::substitute(Test.raw_test, template_args);
-    status_code |= run_test<Suite, specialization, args...>(s, test_name);
-
-    break;
-  }
-
-  return status_code;
+  using T = std::remove_reference_t<decltype(*s.value)>;
+  static constexpr auto cases = [] {
+    std::array<parameter_invocation, Annotation::N> result{};
+    template for (constexpr auto i : idx_sequence) {
+      constexpr auto template_args = std::define_static_array(std::meta::template_arguments_of(
+          std::meta::template_arguments_of(template_args_list[i])[0]));
+      constexpr auto parameters = parameterize_struct.sets.template get<i>().params.params;
+      constexpr auto specialization = std::meta::substitute(Test.raw_test, template_args);
+      result[i] = describe_parameter_invocation<specialization, T, parameters>();
+    }
+    return result;
+  }();
+  if (parameterize_target_idx < 0 || parameterize_target_idx >= cases.size()) return 0;
+  auto name = parameter_case_name(Test.name, parameterize_target_idx);
+  return execute_parameter_fixture<Suite>(s, cases[parameterize_target_idx], name);
 }
 
 template <internal_test Test>
@@ -547,14 +711,17 @@ std::string parameter_description(int index) {
                 Test.parameterization_type == parameterization_types::Dual) {
     static constexpr auto source = std::meta::extract<annotation>(Test.parameterize_annotation);
     static constexpr auto indices = std::make_index_sequence<annotation::N>{};
-    template for (constexpr auto i : indices) {
-      if (index == i) {
+    static constexpr auto cases = [] {
+      std::array<parameter_data, annotation::N> output{};
+      template for (constexpr auto i : indices) {
         if constexpr (Test.parameterization_type == parameterization_types::Value)
-          result = print_value(as_std_tuple(source.parameters.template get<i>().params));
+          output[i] = describe_parameter_data<source.parameters.template get<i>().params>();
         else
-          result = print_value(as_std_tuple(source.sets.template get<i>().params.params));
+          output[i] = describe_parameter_data<source.sets.template get<i>().params.params>();
       }
-    }
+      return output;
+    }();
+    if (index >= 0 && index < cases.size()) result = cases[index].describe(cases[index].values);
   }
   if constexpr (Test.parameterization_type == parameterization_types::Template ||
                 Test.parameterization_type == parameterization_types::Dual) {
@@ -677,6 +844,12 @@ struct execution_case {
 using execution_conditions =
     std::vector<std::function<std::optional<std::string>(const test_context&)>>;
 
+execution_case make_execution_case(const discovered_test& description, static_tags tags,
+                                   const std::source_location& location, bool disabled,
+                                   double timeout, unsigned repetitions,
+                                   const std::vector<std::string>& inherited_tags,
+                                   const execution_conditions& conditions);
+
 template <std::meta::info Reflection>
 void append_conditions(execution_conditions& conditions) {
   template for (constexpr auto annotation :
@@ -708,12 +881,9 @@ void append_conditions(execution_conditions& conditions) {
     }
   }
 }
-inline std::optional<std::string> condition_skip(const execution_conditions& conditions,
-                                                 const test_context& context) {
-  for (const auto& condition : conditions)
-    if (auto reason = condition(context)) return reason;
-  return std::nullopt;
-}
+std::optional<std::string> condition_skip(const execution_conditions& conditions,
+                                          const test_context& context);
+
 template <std::meta::info Reflection>
 void append_suite_conditions(execution_conditions& conditions) {
   template for (constexpr auto base : std::define_static_array(
@@ -730,6 +900,54 @@ struct execution_suite {
   std::shared_ptr<suite_hook_state> suite_hooks;
   std::type_index fixture_type = typeid(void);
 };
+
+// Keep aggregate execution_suite available to implementation clients while
+// compiling its construction and destruction once in the runtime module.
+struct suite_builder {
+  execution_suite suite;
+  suite_builder(std::string name, std::string file);
+  ~suite_builder();
+};
+std::string commit_suite(std::vector<execution_suite>& suites, execution_suite& suite);
+struct static_test_description {
+  discovered_test test;
+  static_tags tags;
+  std::source_location location;
+  double timeout_seconds;
+  unsigned repetitions;
+  void (*conditions)(execution_conditions&) = nullptr;
+  std::string (*parameters)(int) = nullptr;
+};
+
+consteval bool has_conditions(std::meta::info reflection) {
+  for (auto annotation : expanded_annotations(reflection)) {
+    auto type = std::meta::type_of(annotation);
+    if (!std::meta::has_template_arguments(type)) continue;
+    auto kind = std::meta::template_of(type);
+    if (kind == ^^enabled_if || kind == ^^disabled_if) return true;
+  }
+  return false;
+}
+
+template <auto Suite, internal_test Test, typename T>
+consteval static_test_description describe_static_test() {
+  static_test_description description{describe_test<Suite, Test, T>(), Test.tags,
+                                      std::meta::source_location_of(Test.test),
+                                      Test.timeout_seconds, Test.repetitions};
+  if constexpr (has_conditions(Test.test)) description.conditions = append_conditions<Test.test>;
+  if constexpr (Test.parameterized) description.parameters = parameter_description<Test>;
+  return description;
+}
+
+void append_static_cases(execution_suite& output, std::shared_ptr<void> fixture,
+                         std::span<const static_test_description> descriptions,
+                         bool parent_disabled, const std::vector<std::string>& inherited_tags,
+                         const execution_conditions& conditions);
+void append_static_case(execution_suite& output, execution_case entry,
+                        std::shared_ptr<void> fixture, int (*run)(void*, int), int index = -1,
+                        std::string parameters = {});
+void validate_case_names(const execution_suite& suite);
+
 int run_plan(std::vector<execution_suite> suites, const runner_options& options, int argc,
              char** argv);
 
@@ -793,30 +1011,24 @@ struct factory_state {
   std::string skip_reason;
 };
 
-inline void check_case_name(std::string_view name) {
-  if (name.empty() || name.find_first_of("\r\n\t") != name.npos)
-    throw std::logic_error("Case names must be nonempty and contain no tabs or line breaks");
-}
+void check_case_name(std::string_view name);
 
 template <typename T>
 void append_suite(std::vector<execution_suite>&, std::string = {}, std::vector<std::string> = {},
                   bool = false, std::function<std::shared_ptr<fixture_state<T>>()> = {},
                   std::function<std::shared_ptr<fixture_state<T>>()> = {},
                   execution_conditions = {});
+
+std::shared_ptr<suite_hook_state> make_suite_hooks_runtime(
+    std::string name, std::vector<std::string> tags, std::shared_ptr<suite_hook_state> parent,
+    static_tags labels, bool has_hooks, void (*before)(), void (*after)());
+
 template <auto Suite, typename T>
 std::shared_ptr<suite_hook_state> make_suite_hooks(std::string name, std::vector<std::string> tags,
                                                    std::shared_ptr<suite_hook_state> parent = {}) {
-  auto hook_state = std::make_shared<suite_hook_state>();
-  hook_state->parent = std::move(parent);
   static constexpr bool has_suite_hooks =
       Suite.before_all_hooks.size > 0 || Suite.after_all_hooks.size > 0;
-  hook_state->has_hooks = has_suite_hooks;
-  hook_state->context.suite = std::move(name);
-  hook_state->context.name = "_suite";
-  hook_state->context.tags = std::move(tags);
-  static constexpr auto hook_tags = Suite.tags;
-  for (auto label : hook_tags) hook_state->context.tags.emplace_back(label);
-  hook_state->before = [] {
+  auto before = +[] {
     static constexpr auto hooks = Suite.before_all_hooks;
     static constexpr auto indices = std::make_index_sequence<hooks.size>{};
     template for (constexpr auto i : indices) {
@@ -824,7 +1036,7 @@ std::shared_ptr<suite_hook_state> make_suite_hooks(std::string name, std::vector
       invoke_test_method<hooks.data[i], T>(nullptr);
     }
   };
-  hook_state->after = [] {
+  auto after = +[] {
     static constexpr auto hooks = Suite.after_all_hooks;
     static constexpr auto indices = std::make_index_sequence<hooks.size>{};
     template for (constexpr auto i : indices) {
@@ -836,7 +1048,9 @@ std::shared_ptr<suite_hook_state> make_suite_hooks(std::string name, std::vector
       }
     }
   };
-  return hook_state;
+  static constexpr auto labels = Suite.tags;
+  return make_suite_hooks_runtime(std::move(name), std::move(tags), std::move(parent), labels,
+                                  has_suite_hooks, before, after);
 }
 
 template <typename T>
@@ -850,17 +1064,36 @@ void append_suite_instance(std::vector<execution_suite>& suites, std::string pre
   static constexpr auto Suite = discovery.suite;
   static constexpr bool suite_disabled = Suite.disabled;
   append_suite_conditions<^^T>(conditions);
-  execution_suite output{.name = prefix + Suite.name + case_name,
-                         .file = std::meta::source_location_of(^^T).file_name()};
+  static constexpr auto suite_name = Suite.name;
+  static constexpr auto location = std::meta::source_location_of(^^T);
+  suite_builder prepared(prefix + suite_name + case_name, location.file_name());
+  auto& output = prepared.suite;
   static constexpr bool retained = Suite.lifecycle == fixture_lifecycle::shared;
-  if (!creator)
-    creator = [] {
-      auto state = std::make_shared<fixture_state<T>>();
-      state->retain = retained;
-      return state;
-    };
-  if (!fresh_creator) fresh_creator = [] { return std::make_shared<fixture_state<T>>(); };
-  auto fixture = creator();
+  static constexpr bool nested_suites = [] {
+    template for (constexpr auto member : std::define_static_array(
+                      std::meta::members_of(^^T, std::meta::access_context::unchecked()))) {
+      if constexpr (std::meta::is_type(member) && std::meta::is_class_type(member)) {
+        template for (constexpr auto annotation :
+                      std::define_static_array(expanded_annotations(member))) {
+          if constexpr (std::is_same_v<std::remove_cv_t<typename[:std::meta::type_of(annotation):]>,
+                                       nested>) return true;
+        }
+      }
+    }
+    return false;
+  }();
+  static constexpr bool dynamic_tests = [] {
+    for (const auto& test : discovery.tests)
+      if (test.dynamic) return true;
+    return false;
+  }();
+  if constexpr (nested_suites || dynamic_tests) {
+    if (!creator) creator = [] { return std::make_shared<fixture_state<T>>(); };
+  }
+  if constexpr (nested_suites) {
+    if (!fresh_creator) fresh_creator = [] { return std::make_shared<fixture_state<T>>(); };
+  }
+  auto fixture = creator ? creator() : std::make_shared<fixture_state<T>>();
   fixture->retain = retained;
   auto hook_state = make_suite_hooks<Suite, T>(output.name, inherited_tags, fixture->suite_hooks);
   output.suite_hooks = hook_state;
@@ -870,192 +1103,181 @@ void append_suite_instance(std::vector<execution_suite>& suites, std::string pre
     if (fixture->value) destroy_fixture(*fixture);
     finish_suite_hooks(hook_state);
   };
-  template for (constexpr auto test : discovery.tests) {
-    static constexpr auto test_labels = test.tags;
-    execution_case entry{.name = test.name,
-                         .base_name = test.name,
-                         .file = std::meta::source_location_of(test.test).file_name(),
-                         .line = std::meta::source_location_of(test.test).line(),
-                         .tags = inherited_tags,
-                         .disabled = test.disabled || parent_disabled,
-                         .timeout_seconds = test.timeout_seconds,
-                         .repetitions = test.repetitions,
-                         .conditions = conditions};
-    append_conditions<test.test>(entry.conditions);
-    for (auto label : test_labels) entry.tags.emplace_back(label);
-    static constexpr auto described = describe_test<Suite, test, T>();
-#if defined(_WIN32)
-    constexpr auto os = operating_system::windows;
-#elif defined(__APPLE__)
-    constexpr auto os = operating_system::macos;
-#else
-    constexpr auto os = operating_system::linux_os;
-#endif
-    if constexpr (described.has_required_os &&
-                  std::ranges::find(described.required_os, os) == described.required_os.end())
-      entry.skip_reason = "Required operating system unavailable";
-    if constexpr (std::ranges::find(described.disallowed_os, os) != described.disallowed_os.end())
-      entry.skip_reason = "Operating system disallowed";
-    if constexpr (test.dynamic) {
-      auto prototype = entry;
-      std::string suite_name = output.name;
-      entry.expand = [creator, prototype, suite_name, hook_state]() mutable {
-        auto group = std::make_shared<factory_state<T>>();
-        group->conditions = prototype.conditions;
-        group->skip_reason = prototype.skip_reason;
-        group->fixture = creator();
-        group->fixture->suite_hooks = hook_state;
-        group->fixture->retain = true;
-        group->fixture->context = std::make_unique<test_context>();
-        group->fixture->context->suite = suite_name;
-        group->fixture->context->name = prototype.name;
-        group->fixture->context->tags = prototype.tags;
-        auto* previous = active_context;
-        active_context = group->fixture->context.get();
-        struct context_guard {
-          test_context* previous;
-          ~context_guard() { active_context = previous; }
-        } restore{previous};
-        execute_test(
-            group.get(), prototype.name,
-            [](void* pointer) {
-              auto& state = *static_cast<factory_state<T>*>(pointer);
-              current_phase = "condition";
-              if (!state.skip_reason.empty()) skip(state.skip_reason);
-              if (auto reason = condition_skip(state.conditions, current_test())) skip(*reason);
-              begin_extensions(state.extensions);
-              begin_fixture<Suite>(*state.fixture);
-              current_phase = "factory";
-              auto produced = invoke_factory<test>(*state.fixture->value);
-              for (auto&& item : produced) state.cases.push_back(std::move(item));
-              if (state.cases.empty()) throw std::logic_error("Test factory returned no cases");
-              std::unordered_set<std::string> names;
-              for (const auto& item : state.cases) {
-                check_case_name(item.name);
-                if (!names.insert(item.name).second)
-                  throw std::logic_error("Duplicate dynamic case name: " + item.name);
-              }
-            },
-            nullptr, nullptr, false);
-        group->preparation = std::move(suite_log.testcases.back());
-        suite_log.testcases.pop_back();
-        auto finish = [group] {
-          if (std::exchange(group->finished, true)) return;
+  static constexpr bool static_cases = [] {
+    for (const auto& test : discovery.tests)
+      if (test.dynamic || test.runtime_parameters) return false;
+    return true;
+  }();
+  if constexpr (static_cases) {
+    static constexpr auto descriptions = [] {
+      std::array<static_test_description, discovery.tests.size()> result{};
+      std::size_t index = 0;
+      template for (constexpr auto test : discovery.tests) {
+        result[index++] = describe_static_test<Suite, test, T>();
+      }
+      return result;
+    }();
+    append_static_cases(output, fixture, descriptions, parent_disabled, inherited_tags, conditions);
+  } else {
+    template for (constexpr auto test : discovery.tests) {
+      static constexpr auto described = describe_test<Suite, test, T>();
+      auto entry = make_execution_case(
+          described, test.tags, std::meta::source_location_of(test.test),
+          test.disabled || parent_disabled, test.timeout_seconds, test.repetitions,
+          inherited_tags, conditions);
+      append_conditions<test.test>(entry.conditions);
+      if constexpr (test.dynamic) {
+        auto prototype = entry;
+        std::string suite_name = output.name;
+        entry.expand = [creator, prototype, suite_name, hook_state]() mutable {
+          auto group = std::make_shared<factory_state<T>>();
+          group->conditions = prototype.conditions;
+          group->skip_reason = prototype.skip_reason;
+          group->fixture = creator();
+          group->fixture->suite_hooks = hook_state;
+          group->fixture->retain = true;
+          group->fixture->context = make_fixture_context();
+          group->fixture->context->suite = suite_name;
+          group->fixture->context->name = prototype.name;
+          group->fixture->context->tags = prototype.tags;
           auto* previous = active_context;
           active_context = group->fixture->context.get();
-          end_fixture<Suite>(*group->fixture, true, true);
-          end_extensions(group->extensions);
-          group->extensions.clear();
-          group->fixture->context.reset();
-          active_context = previous;
-        };
-        std::vector<execution_case> output;
-        if (group->preparation.failed || !group->preparation.skip_entries.empty()) {
-          auto failed = prototype;
-          failed.finish_group = finish;
-          failed.group_name = prototype.name;
-          failed.discovery_failed = group->preparation.failed;
-          failed.run = [group, name = prototype.name] {
-            return execute_test(
-                group.get(), name,
-                [](void* p) {
-                  auto& original = static_cast<factory_state<T>*>(p)->preparation;
-                  auto& entry = suite_log.testcases.back();
-                  entry.failures = original.failures;
-                  entry.skip_entries = original.skip_entries;
-                  std::cout << original.sysout;
-                  std::cerr << original.syserr;
-                },
-                nullptr, nullptr, false);
+          struct context_guard {
+            test_context* previous;
+            ~context_guard() { active_context = previous; }
+          } restore{previous};
+          execute_test(
+              group.get(), prototype.name,
+              [](void* pointer) {
+                auto& state = *static_cast<factory_state<T>*>(pointer);
+                current_phase = "condition";
+                if (!state.skip_reason.empty()) skip(state.skip_reason);
+                if (auto reason = condition_skip(state.conditions, current_test())) skip(*reason);
+                begin_extensions(state.extensions);
+                begin_fixture<Suite>(*state.fixture);
+                current_phase = "factory";
+                auto produced = invoke_factory<test>(*state.fixture->value);
+                for (auto&& item : produced) state.cases.push_back(std::move(item));
+                if (state.cases.empty()) throw std::logic_error("Test factory returned no cases");
+                std::unordered_set<std::string> names;
+                for (const auto& item : state.cases) {
+                  check_case_name(item.name);
+                  if (!names.insert(item.name).second)
+                    throw std::logic_error("Duplicate dynamic case name: " + item.name);
+                }
+              },
+              nullptr, nullptr, false);
+          group->preparation = std::move(suite_log.testcases.back());
+          suite_log.testcases.pop_back();
+          auto finish = [group] {
+            if (std::exchange(group->finished, true)) return;
+            auto* previous = active_context;
+            active_context = group->fixture->context.get();
+            end_fixture<Suite>(*group->fixture, true, true);
+            end_extensions(group->extensions);
+            group->extensions.clear();
+            group->fixture->context.reset();
+            active_context = previous;
           };
-          output.push_back(std::move(failed));
-        } else
-          for (std::size_t index = 0; index < group->cases.size(); ++index) {
-            auto entry = prototype;
-            entry.name += "." + group->cases[index].name;
-            entry.group_name = prototype.name;
-            entry.finish_group = finish;
-            entry.run = [group, index, name = entry.name] {
-              struct action {
-                factory_state<T>* group;
-                std::size_t index;
-              } body{group.get(), index};
+          std::vector<execution_case> output;
+          if (group->preparation.failed || !group->preparation.skip_entries.empty()) {
+            auto failed = prototype;
+            failed.finish_group = finish;
+            failed.group_name = prototype.name;
+            failed.discovery_failed = group->preparation.failed;
+            failed.run = [group, name = prototype.name] {
               return execute_test(
-                  &body, name,
+                  group.get(), name,
                   [](void* p) {
-                    auto& action = *static_cast<struct action*>(p);
-                    if (!std::exchange(action.group->claimed, true)) {
-                      std::cout << action.group->preparation.sysout;
-                      std::cerr << action.group->preparation.syserr;
-                    }
-                    std::invoke(action.group->cases[action.index].body);
+                    auto& original = static_cast<factory_state<T>*>(p)->preparation;
+                    auto& entry = suite_log.testcases.back();
+                    entry.failures = original.failures;
+                    entry.skip_entries = original.skip_entries;
+                    std::cout << original.sysout;
+                    std::cerr << original.syserr;
                   },
                   nullptr, nullptr, false);
             };
-            output.push_back(std::move(entry));
+            output.push_back(std::move(failed));
+          } else
+            for (std::size_t index = 0; index < group->cases.size(); ++index) {
+              auto entry = prototype;
+              entry.name += "." + group->cases[index].name;
+              entry.group_name = prototype.name;
+              entry.finish_group = finish;
+              entry.run = [group, index, name = entry.name] {
+                struct action {
+                  factory_state<T>* group;
+                  std::size_t index;
+                } body{group.get(), index};
+                return execute_test(
+                    &body, name,
+                    [](void* p) {
+                      auto& action = *static_cast<struct action*>(p);
+                      if (!std::exchange(action.group->claimed, true)) {
+                        std::cout << action.group->preparation.sysout;
+                        std::cerr << action.group->preparation.syserr;
+                      }
+                      std::invoke(action.group->cases[action.index].body);
+                    },
+                    nullptr, nullptr, false);
+              };
+              output.push_back(std::move(entry));
+            }
+          return output;
+        };
+        output.cases.push_back(std::move(entry));
+      } else if constexpr (test.runtime_parameters) {
+        constexpr auto provider_info =
+            std::meta::template_arguments_of(std::meta::type_of(test.parameterize_annotation))[0];
+        auto values = std::invoke(
+            std::meta::extract<typename[:std::meta::type_of(provider_info):]>(provider_info));
+        if (std::ranges::empty(values)) throw std::logic_error("Test provider returned no cases");
+        int index = 0;
+        for (auto&& value : values) {
+          auto concrete = entry;
+          ++index;
+          using Value = std::decay_t<decltype(value)>;
+          auto owned = std::make_shared<Value>(std::forward<decltype(value)>(value));
+          if constexpr (requires { owned->name; }) {
+            check_case_name(owned->name);
+            concrete.name += "." + owned->name;
+          } else
+            concrete.name += "." + std::to_string(index);
+          auto name = concrete.name;
+          {
+            auto& arguments = [&]() -> auto& {
+              if constexpr (requires { owned->values; })
+                return owned->values;
+              else
+                return *owned;
+            }();
+            concrete.parameters = print_value(arguments);
+            concrete.run = [fixture, owned, name] {
+              return execute_fixture<Suite, T>(*fixture, name, [owned](T& object) {
+                auto& args = [&]() -> auto& {
+                  if constexpr (requires { owned->values; })
+                    return owned->values;
+                  else
+                    return *owned;
+                }();
+                std::apply([&](auto&&... args) { object.[:test.test:](args...); }, args);
+              });
+            };
           }
-        return output;
-      };
-      output.cases.push_back(std::move(entry));
-    } else if constexpr (test.runtime_parameters) {
-      constexpr auto provider_info =
-          std::meta::template_arguments_of(std::meta::type_of(test.parameterize_annotation))[0];
-      auto values = std::invoke(
-          std::meta::extract<typename[:std::meta::type_of(provider_info):]>(provider_info));
-      if (std::ranges::empty(values)) throw std::logic_error("Test provider returned no cases");
-      int index = 0;
-      for (auto&& value : values) {
-        auto concrete = entry;
-        ++index;
-        using Value = std::decay_t<decltype(value)>;
-        auto owned = std::make_shared<Value>(std::forward<decltype(value)>(value));
-        if constexpr (requires { owned->name; }) {
-          check_case_name(owned->name);
-          concrete.name += "." + owned->name;
-        } else
-          concrete.name += "." + std::to_string(index);
-        auto name = concrete.name;
-        {
-          auto& arguments = [&]() -> auto& {
-            if constexpr (requires { owned->values; })
-              return owned->values;
-            else
-              return *owned;
-          }();
-          concrete.parameters = print_value(arguments);
-          concrete.run = [fixture, owned, name] {
-            return execute_fixture<Suite, T>(*fixture, name, [owned](T& object) {
-              auto& args = [&]() -> auto& {
-                if constexpr (requires { owned->values; })
-                  return owned->values;
-                else
-                  return *owned;
-              }();
-              std::apply([&](auto&&... args) { object.[:test.test:](args...); }, args);
-            });
-          };
+          output.cases.push_back(std::move(concrete));
         }
-        output.cases.push_back(std::move(concrete));
+      } else if constexpr (test.parameterized) {
+        for (int index = 0; index < test.num_parameterizations; ++index) {
+          append_static_case(output, entry, fixture, described.run, index,
+                             parameter_description<test>(index));
+        }
+      } else {
+        append_static_case(output, std::move(entry), fixture, described.run);
       }
-    } else if constexpr (test.parameterized) {
-      for (int index = 0; index < test.num_parameterizations; ++index) {
-        auto concrete = entry;
-        concrete.name += "." + std::to_string(index + 1);
-        concrete.parameters = parameter_description<test>(index);
-        concrete.run = [fixture, index] { return described.run(fixture.get(), index); };
-        output.cases.push_back(std::move(concrete));
-      }
-    } else {
-      entry.run = [fixture] { return described.run(fixture.get(), -1); };
-      output.cases.push_back(std::move(entry));
     }
   }
-  std::unordered_set<std::string> names;
-  for (const auto& entry : output.cases)
-    if (!names.insert(entry.name).second)
-      throw std::logic_error("Duplicate expanded test name: " + entry.name);
-  auto nested_prefix = output.name + ".";
-  suites.push_back(std::move(output));
+  auto nested_prefix = commit_suite(suites, output);
   std::vector<std::string> nested_tags = inherited_tags;
   static constexpr auto suite_labels = Suite.tags;
   for (auto label : suite_labels) nested_tags.emplace_back(label);
@@ -1240,61 +1462,19 @@ void register_test(std::string suite, std::string name, Factory factory, Body bo
        },
        typeid(Fixture)});
 }
-void append_registered_tests(std::vector<execution_suite>& suites) {
-  std::unordered_map<std::string,
-                     std::unordered_map<std::type_index, std::shared_ptr<suite_hook_state>>>
-      hooks;
-  for (const auto& suite : suites)
-    if (suite.suite_hooks) hooks[suite.name][suite.fixture_type] = suite.suite_hooks;
-  for (const auto& test : registered_cases) {
-    auto found =
-        std::ranges::find_if(suites, [&](const auto& suite) { return suite.name == test.suite; });
-    if (found == suites.end()) {
-      suites.push_back({.name = test.suite, .file = test.file});
-      found = std::prev(suites.end());
-    }
-    auto entry = test.create();
-    if (test.create_suite_hooks) {
-      auto& state = hooks[test.suite][test.fixture_type];
-      if (!state) {
-        state = test.create_suite_hooks();
-        auto previous = found->finish_fixture;
-        found->finish_fixture = [state, previous] {
-          finish_suite_hooks(state);
-          if (previous) previous();
-        };
-      }
-      entry.set_suite_hooks(state);
-    }
-    found->cases.push_back(std::move(entry));
-  }
-}
-export inline int run_registered_tests(int argc, char** argv) {
-  auto options = parse_options(argc, argv);
-  if (options.should_exit) return options.exit_code;
-  try {
-    std::vector<execution_suite> suites;
-    append_registered_tests(suites);
-    return run_plan(std::move(suites), options, argc, argv);
-  } catch (const std::exception& error) {
-    std::println(std::cerr, "Cannot run tests: {}", error.what());
-    return 1;
-  }
-}
+void append_registered_tests(std::vector<execution_suite>& suites);
+int report_runner_error(const std::exception& error);
+
+export int run_registered_tests(int argc, char** argv);
+
+int run_with_suites(int argc, char** argv, void (*discover)(std::vector<execution_suite>&));
+
 export template <typename... Ts>
   requires(sizeof...(Ts) > 0 && (std::is_class_v<Ts> && ...))
 int run_tests(int argc, char** argv) {
-  auto options = parse_options(argc, argv);
-  if (options.should_exit) return options.exit_code;
-  try {
-    std::vector<execution_suite> suites;
+  return run_with_suites(argc, argv, [](std::vector<execution_suite>& suites) {
     (append_suite<Ts>(suites), ...);
-    append_registered_tests(suites);
-    return run_plan(std::move(suites), options, argc, argv);
-  } catch (const std::exception& error) {
-    std::println(std::cerr, "Cannot run tests: {}", error.what());
-    return 1;
-  }
+  });
 }
 
 }  // namespace annotest

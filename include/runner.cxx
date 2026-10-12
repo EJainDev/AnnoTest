@@ -9,6 +9,216 @@ module annotest;
 import std;
 
 namespace annotest {
+
+suite_builder::suite_builder(std::string name, std::string file)
+    : suite{.name = std::move(name), .file = std::move(file)} {}
+
+suite_builder::~suite_builder() = default;
+
+std::string commit_suite(std::vector<execution_suite>& suites, execution_suite& suite) {
+  validate_case_names(suite);
+  auto prefix = suite.name + ".";
+  suites.push_back(std::move(suite));
+  return prefix;
+}
+
+std::string format_runtime(std::string_view text, std::format_args values) {
+  return std::vformat(text, values);
+}
+
+int report_runner_error(const std::exception& error) {
+  std::println(std::cerr, "Cannot run tests: {}", error.what());
+  return 1;
+}
+
+void add_failure(std::string_view msg, const std::source_location& loc) {
+  suite_log.add_failure(failure_xml_log{
+      failure_types::assertion, std::string{msg},
+      failure_cdata{std::make_pair(loc.file_name(), loc.line()), std::string{msg}}});
+  throw assertion_error{std::string{msg}, true};
+}
+
+void add_failure_expect(std::string_view msg, const std::source_location& loc) {
+  suite_log.add_failure(failure_xml_log{
+      failure_types::expectation, std::string{msg},
+      failure_cdata{std::make_pair(loc.file_name(), loc.line()), std::string{msg}}});
+}
+
+void numeric_equality_failure(std::format_args values, const std::source_location& location,
+                              bool equal) {
+  add_failure(format_runtime(equal ? "Assertion failed: expected {}, got {}"
+                                   : "Assertion failed: expected not equal to {}, got {}",
+                             values),
+              location);
+}
+
+void record_property(std::string name, std::string value) {
+  if (!active_context || suite_log.testcases.empty()) throw std::logic_error("No active test");
+  suite_log.testcases.back().properties.push_back({std::move(name), std::move(value)});
+}
+
+std::string parameter_case_name(std::string_view base, int index) {
+  return std::string(base) + "." + std::to_string(index + 1);
+}
+
+std::string format_parameter_list(std::span<const std::string> fields) {
+  std::string result = "(";
+  for (std::size_t index = 0; index < fields.size(); ++index) {
+    if (index) result += ", ";
+    result += fields[index];
+  }
+  return result + ")";
+}
+
+void delete_fixture_context(test_context* context) noexcept { delete context; }
+
+fixture_context make_fixture_context() { return {new test_context, delete_fixture_context}; }
+
+std::shared_ptr<suite_hook_state> make_suite_hooks_runtime(
+    std::string name, std::vector<std::string> tags, std::shared_ptr<suite_hook_state> parent,
+    static_tags labels, bool has_hooks, void (*before)(), void (*after)()) {
+  auto state = std::make_shared<suite_hook_state>();
+  state->parent = std::move(parent);
+  state->has_hooks = has_hooks;
+  state->context.suite = std::move(name);
+  state->context.name = "_suite";
+  state->context.tags = std::move(tags);
+  for (auto label : labels) state->context.tags.emplace_back(label);
+  state->before = before;
+  state->after = after;
+  return state;
+}
+
+execution_case make_execution_case(const discovered_test& description, static_tags tags,
+                                   const std::source_location& location, bool disabled,
+                                   double timeout, unsigned repetitions,
+                                   const std::vector<std::string>& inherited_tags,
+                                   const execution_conditions& conditions) {
+  execution_case entry{.name = description.name,
+                       .base_name = description.name,
+                       .file = location.file_name(),
+                       .line = location.line(),
+                       .tags = inherited_tags,
+                       .disabled = disabled,
+                       .timeout_seconds = timeout,
+                       .repetitions = repetitions,
+                       .conditions = conditions};
+  for (auto label : tags) entry.tags.emplace_back(label);
+#if defined(_WIN32)
+  constexpr auto os = operating_system::windows;
+#elif defined(__APPLE__)
+  constexpr auto os = operating_system::macos;
+#else
+  constexpr auto os = operating_system::linux_os;
+#endif
+  if (description.has_required_os &&
+      std::ranges::find(description.required_os, os) == description.required_os.end())
+    entry.skip_reason = "Required operating system unavailable";
+  if (std::ranges::find(description.disallowed_os, os) != description.disallowed_os.end())
+    entry.skip_reason = "Operating system disallowed";
+  return entry;
+}
+
+void append_static_case(execution_suite& output, execution_case entry,
+                        std::shared_ptr<void> fixture, int (*run)(void*, int), int index,
+                        std::string parameters) {
+  if (index >= 0) entry.name += "." + std::to_string(index + 1);
+  entry.parameters = std::move(parameters);
+  entry.run = [fixture = std::move(fixture), run, index] { return run(fixture.get(), index); };
+  output.cases.push_back(std::move(entry));
+}
+
+void append_static_cases(execution_suite& output, std::shared_ptr<void> fixture,
+                         std::span<const static_test_description> descriptions,
+                         bool parent_disabled, const std::vector<std::string>& inherited_tags,
+                         const execution_conditions& conditions) {
+  for (const auto& description : descriptions) {
+    const auto& test = description.test;
+    auto entry = make_execution_case(test, description.tags, description.location,
+                                     test.disabled || parent_disabled, description.timeout_seconds,
+                                     description.repetitions, inherited_tags, conditions);
+    if (description.conditions) description.conditions(entry.conditions);
+    if (test.parameterized) {
+      for (int index = 0; index < test.parameter_count; ++index)
+        append_static_case(output, entry, fixture, test.run, index, description.parameters(index));
+    } else {
+      append_static_case(output, std::move(entry), fixture, test.run);
+    }
+  }
+}
+
+void validate_case_names(const execution_suite& suite) {
+  std::unordered_set<std::string> names;
+  for (const auto& entry : suite.cases)
+    if (!names.insert(entry.name).second)
+      throw std::logic_error("Duplicate expanded test name: " + entry.name);
+}
+
+int run_with_suites(int argc, char** argv, void (*discover)(std::vector<execution_suite>&)) {
+  auto options = parse_options(argc, argv);
+  if (options.should_exit) return options.exit_code;
+  try {
+    std::vector<execution_suite> suites;
+    if (discover) discover(suites);
+    append_registered_tests(suites);
+    return run_plan(std::move(suites), options, argc, argv);
+  } catch (const std::exception& error) {
+    return report_runner_error(error);
+  }
+}
+
+int run_registered_tests(int argc, char** argv) { return run_with_suites(argc, argv, nullptr); }
+
+void append_registered_tests(std::vector<execution_suite>& suites) {
+  std::unordered_map<std::string,
+                     std::unordered_map<std::type_index, std::shared_ptr<suite_hook_state>>>
+      hooks;
+  for (const auto& suite : suites)
+    if (suite.suite_hooks) hooks[suite.name][suite.fixture_type] = suite.suite_hooks;
+  for (const auto& test : registered_cases) {
+    auto found =
+        std::ranges::find_if(suites, [&](const auto& suite) { return suite.name == test.suite; });
+    if (found == suites.end()) {
+      suites.push_back({.name = test.suite, .file = test.file});
+      found = std::prev(suites.end());
+    }
+    auto entry = test.create();
+    if (test.create_suite_hooks) {
+      auto& state = hooks[test.suite][test.fixture_type];
+      if (!state) {
+        state = test.create_suite_hooks();
+        auto previous = found->finish_fixture;
+        found->finish_fixture = [state, previous] {
+          finish_suite_hooks(state);
+          if (previous) previous();
+        };
+      }
+      entry.set_suite_hooks(state);
+    }
+    found->cases.push_back(std::move(entry));
+  }
+}
+
+void check_case_name(std::string_view name) {
+  if (name.empty() || name.find_first_of("\r\n\t") != name.npos)
+    throw std::logic_error("Case names must be nonempty and contain no tabs or line breaks");
+}
+
+std::optional<std::string> condition_skip(const execution_conditions& conditions,
+                                          const test_context& context) {
+  for (const auto& condition : conditions)
+    if (auto reason = condition(context)) return reason;
+  return std::nullopt;
+}
+
+void copy_context(test_context& target, const test_context& source) {
+  target.suite = source.suite;
+  target.name = source.name;
+  target.parameters = source.parameters;
+  target.tags = source.tags;
+  target.repetition = source.repetition;
+}
+
 void debugger_break() { annotest_platform::debugger_break(); }
 inline bool brief_output = false;
 inline bool suite_hook_execution = false;

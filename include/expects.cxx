@@ -8,11 +8,7 @@ import :logger;
 import std;
 
 export namespace annotest {
-inline void add_failure_expect(const std::string_view msg, const std::source_location& loc) {
-  suite_log.add_failure(failure_xml_log{
-      failure_types::expectation, std::string{msg},
-      failure_cdata{std::make_pair(loc.file_name(), loc.line()), std::string{msg}}});
-}
+void add_failure_expect(std::string_view msg, const std::source_location& loc);
 
 template <typename T, typename U>
   requires c_string_pair<T, U>

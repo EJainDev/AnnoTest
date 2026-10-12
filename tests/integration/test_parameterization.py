@@ -2,8 +2,24 @@ from support import RunnerTest
 
 
 class ParameterizationTests(RunnerTest):
+    def test_numeric_aliases_do_not_collide_with_concrete_cases(self):
+        for name in ("canonical.0", "canonical.01", "canonical.3", "canonical.1x",
+                     "canonical.", "canonical.999999999999999999999999"):
+            with self.subTest(name=name):
+                _, _, case = self.single_case("ParameterizationTests", name)
+                self.assertEqual(case.attrib["name"], name)
+        _, root = self.report("ParameterizationTests", ["ParameterizationTests.canonical"])
+        self.assertEqual([case.attrib["name"] for case in root.findall("testcase")],
+                         ["canonical.1", "canonical.2"])
+
     def test_all_parameterization_forms(self):
         groups = {
+            "scalar_rvalues": ["rvalue 7", "rvalue 9"],
+            "class_lvalues": ["class 7", "class 9"],
+            "class_identity": ["class identity 7", "class identity 9"],
+            "mixed_types": ["mixed 3", "mixed 4.5"],
+            "default_arguments": ["default 3", "default 5"],
+            "empty_context": ["empty context", "empty context"],
             "values": ["value 1", "value 2", "value 3"],
             "multiple_arguments": [None, None],
             "cross_values": ["cross 5", "cross 7"],

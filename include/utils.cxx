@@ -3,6 +3,13 @@ export module annotest:utils;
 import std;
 
 namespace annotest {
+std::string format_runtime(std::string_view text, std::format_args values);
+
+template <typename... Values>
+std::string format_values(std::format_string<const Values&...> text, const Values&... values) {
+  return format_runtime(text.get(), std::make_format_args(values...));
+}
+
 template <template <typename...> class Template, typename T>
 struct is_instantiation_of : std::false_type {};
 
@@ -65,7 +72,7 @@ constexpr std::string to_string(T value) {
     result[0] = '-';
   }
 
-  return std::define_static_string(result);
+  return result;
 }
 
 consteval auto get_annotations(std::meta::info member) { return std::meta::annotations_of(member); }
@@ -130,7 +137,7 @@ std::string string_bytes(std::basic_string_view<Char> text) {
         }
       }
       if (code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff))
-        result += std::format("\\u{{{:x}}}", code);
+        result += format_values("\\u{{{:x}}}", code);
       else if (code < 0x80)
         result += static_cast<char>(code);
       else {
@@ -175,7 +182,7 @@ inline std::string quote_string(std::string_view text) {
         break;
       default:
         if (c < 0x20 || c == 0x7f)
-          result += std::format("\\x{:02x}", c);
+          result += format_values("\\x{:02x}", c);
         else
           result += c;
     }
@@ -193,7 +200,7 @@ std::string string_comparison_diagnostic(T first, U second, bool equal, bool ign
   using Char = c_string_char<T, U>;
   const Char* expected = first;
   const Char* actual = second;
-  auto result = std::format(
+  auto result = format_values(
       "Expected strings {}{}: expected {}, got {}", equal ? "equal" : "not equal",
       ignore_case ? " ignoring ASCII case" : "", print_c_string(expected), print_c_string(actual));
   if (equal && expected && actual) {
@@ -202,7 +209,7 @@ std::string string_comparison_diagnostic(T first, U second, bool equal, bool ign
            (ignore_case ? fold_ascii(expected[index]) == fold_ascii(actual[index])
                         : expected[index] == actual[index]))
       ++index;
-    result += std::format("\nFirst difference at index {}", index);
+    result += format_values("\nFirst difference at index {}", index);
   }
   return result;
 }
@@ -228,7 +235,7 @@ std::string print_value(const T& value) {
     return quote_string(string_bytes(std::wstring_view(value)));
   } else if constexpr (std::is_default_constructible_v<
                            std::formatter<std::remove_cvref_t<T>, char>>)
-    return std::format("{}", value);
+    return format_values("{}", value);
   else if constexpr (std::ranges::input_range<T>) {
     std::string text = "[";
     unsigned count = 0;
@@ -253,13 +260,13 @@ template <typename... Ts>
 std::string diagnostic_format(std::string_view text, const Ts&... values) {
   auto strings = std::tuple{print_value(values)...};
   return std::apply(
-      [&](auto&... args) { return std::vformat(text, std::make_format_args(args...)); }, strings);
+      [&](auto&... args) { return format_runtime(text, std::make_format_args(args...)); }, strings);
 }
 
 export template <typename T, typename U>
 std::string difference(const T& expected, const U& actual) {
   if constexpr (c_string_pair<T, U>) {
-    return std::format("\nPointer comparison: expected @ {}, actual @ {}",
+    return format_values("\nPointer comparison: expected @ {}, actual @ {}",
                        static_cast<const void*>(expected), static_cast<const void*>(actual));
   } else if constexpr (std::ranges::input_range<T> && std::ranges::input_range<U>) {
     auto a = std::ranges::begin(expected), b = std::ranges::begin(actual);
@@ -267,7 +274,7 @@ std::string difference(const T& expected, const U& actual) {
     while (a != std::ranges::end(expected) && b != std::ranges::end(actual)) {
       if constexpr (requires { *a == *b; }) {
         if (!(*a == *b))
-          return std::format("\nFirst difference at index {}: expected {}, got {}", index,
+          return format_values("\nFirst difference at index {}: expected {}, got {}", index,
                              print_value(*a), print_value(*b));
       }
       ++a;
@@ -275,7 +282,7 @@ std::string difference(const T& expected, const U& actual) {
       ++index;
     }
     if (a != std::ranges::end(expected) || b != std::ranges::end(actual))
-      return std::format("\nLength differs after {} elements", index);
+      return format_values("\nLength differs after {} elements", index);
   }
   return {};
 }

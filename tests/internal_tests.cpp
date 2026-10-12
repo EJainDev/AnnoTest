@@ -4,8 +4,7 @@ import std;
 
 using namespace annotest;
 
-// to_string uses define_static_string, so verify both specializations during
-// constant evaluation rather than relying on runtime coverage counters.
+// Verify constant evaluation across signed and unsigned conversion limits.
 static_assert(annotest::to_string(0) == "0");
 static_assert(annotest::to_string(42) == "42");
 static_assert(annotest::to_string(-42) == "-42");
@@ -24,6 +23,18 @@ void require(bool result) {
 
 extern "C++" int main(int argc, char** argv) {
   if (argc != 2) return 2;
+  auto check_parameters = [](const auto& values) {
+    require(print_parameters(values) == std::format("{}", values));
+  };
+  check_parameters(std::tuple{});
+  check_parameters(std::tuple{true, false, -42, 42u});
+  check_parameters(std::tuple{std::numeric_limits<std::int64_t>::min(),
+                               std::numeric_limits<std::uint64_t>::max()});
+  check_parameters(std::tuple{static_cast<signed char>(-7), static_cast<unsigned char>(9)});
+  check_parameters(std::tuple{-0.0, 2.5f, 3.25L});
+  check_parameters(std::tuple{std::numeric_limits<double>::infinity(),
+                               std::numeric_limits<double>::quiet_NaN()});
+  check_parameters(std::tuple{'\n', std::string("quoted \"text\"\n")});
   const std::string_view name = argv[1];
   if (name == "logger_without_test") {
     suite_log.reset();

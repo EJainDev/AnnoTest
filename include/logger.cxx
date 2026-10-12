@@ -304,7 +304,7 @@ export inline test_context& current_test() {
   if (!active_context) throw std::logic_error("No active test");
   return *active_context;
 }
-export inline void record_property(std::string name, std::string value);
+export void record_property(std::string name, std::string value);
 
 inline std::mutex failures_mtx;
 
@@ -438,10 +438,6 @@ export inline std::jthread test_thread(std::function<void()> body) {
                              {.message = "Unknown helper-thread exception"}});
     }
   });
-}
-export inline void record_property(std::string name, std::string value) {
-  if (!active_context || suite_log.testcases.empty()) throw std::logic_error("No active test");
-  suite_log.testcases.back().properties.push_back({std::move(name), std::move(value)});
 }
 
 }  // namespace annotest

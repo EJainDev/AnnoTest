@@ -36,7 +36,69 @@ static_assert(std::same_as<no_types, structural_tuple::tuple<>>);
 static_assert(decltype(parameterize_template<>::of<no_types>())::N == 0);
 static_assert(decltype(parameterize_template<>::of<type_product, type_product>())::N == 4);
 
+struct lvalue_parameter {
+  int value;
+  constexpr operator int() const& { return value; }
+  constexpr operator int() const&& = delete;
+};
+
+template <auto Parameter>
+constexpr const auto* parameter_address() {
+  return &Parameter;
+}
+
 struct ParameterizationTests {
+  [[ = test<"canonical">{}, = parameterize{parameters(1), parameters(2)} ]] void
+      canonical_parameters(int n) {
+    assert_true(n == 1 || n == 2);
+  }
+  [[= test<"canonical.0">{}]] void zero_alias() {}
+  [[= test<"canonical.01">{}]] void leading_zero_alias() {}
+  [[= test<"canonical.3">{}]] void out_of_range_alias() {}
+  [[= test<"canonical.1x">{}]] void nonnumeric_alias() {}
+  [[= test<"canonical.">{}]] void empty_suffix_alias() {}
+  [[= test<"canonical.999999999999999999999999">{}]] void overflowing_alias() {}
+
+  [[ = test{}, = parameterize{parameters(7), parameters(9)} ]] void scalar_rvalues(int&& n) {
+    assert_true(n == 7 || n == 9);
+    std::println("rvalue {}", n);
+  }
+
+  [[ = test{}, = parameterize{parameters(lvalue_parameter{7}),
+                              parameters(lvalue_parameter{9})} ]] void class_lvalues(int n) {
+    assert_true(n == 7 || n == 9);
+    std::println("class {}", n);
+  }
+
+  [[ = test{}, = parameterize{parameters(lvalue_parameter{7}, lvalue_parameter{7}),
+                              parameters(lvalue_parameter{9}, lvalue_parameter{9})} ]] void
+      class_identity(const lvalue_parameter& a, const lvalue_parameter& b) {
+    assert_true(&a == &b);
+    if (a.value == 7)
+      assert_true(&a == parameter_address<lvalue_parameter{7}>());
+    else
+      assert_true(&a == parameter_address<lvalue_parameter{9}>());
+    std::println("class identity {}", a.value);
+  }
+
+  [[ = test{}, = parameterize{parameters(3), parameters(4.5)} ]] void mixed_types(double n) {
+    assert_true(n == 3 || n == 4.5);
+    std::println("mixed {}", n);
+  }
+
+  [[ = test{}, = parameterize{parameters(2), parameters(2, 3)} ]] void default_arguments(
+      int a, int b = 1) {
+    assert_equal(2, a);
+    assert_true(b == 1 || b == 3);
+    std::println("default {}", a + b);
+  }
+
+  [[ = test{}, = parameterize{parameters(), parameters()} ]] void empty_context(
+      test_context& context) {
+    assert_true(&context == &current_test());
+    std::println("empty context");
+  }
+
   [[
     = test{},
     = parameterize<parameters<int>, parameters<int>, parameters<int>>{values_tuple, single_value}

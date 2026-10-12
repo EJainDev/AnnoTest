@@ -7,14 +7,13 @@ import :logger;
 
 import std;
 
-export namespace annotest {
-inline void add_failure(const std::string_view msg, const std::source_location& loc) {
-  suite_log.add_failure(failure_xml_log{
-      failure_types::assertion, std::string{msg},
-      failure_cdata{std::make_pair(loc.file_name(), loc.line()), std::string{msg}}});
-
-  throw assertion_error{std::string{msg}, true};
+namespace annotest {
+void numeric_equality_failure(std::format_args values, const std::source_location& location,
+                              bool equal);
 }
+
+export namespace annotest {
+void add_failure(std::string_view msg, const std::source_location& loc);
 
 template <typename T, typename U>
   requires c_string_pair<T, U>
@@ -68,18 +67,32 @@ void assert_strcasene(T expected, U actual, std::string_view message = {},
 void assert_equal(auto expected, auto actual,
                   const std::source_location& loc = std::source_location::current()) {
   if (expected != actual) {
-    add_failure(diagnostic_format("Assertion failed: expected {}, got {}", expected, actual) +
-                    difference(expected, actual),
-                loc);
+    if constexpr (std::is_arithmetic_v<decltype(expected)> &&
+                  std::is_arithmetic_v<decltype(actual)> &&
+                  std::formattable<decltype(expected), char> &&
+                  std::formattable<decltype(actual), char>) {
+      numeric_equality_failure(std::make_format_args(expected, actual), loc, true);
+    } else {
+      add_failure(diagnostic_format("Assertion failed: expected {}, got {}", expected, actual) +
+                      difference(expected, actual),
+                  loc);
+    }
   }
 }
 
 void assert_not_equal(auto expected, auto actual,
                       const std::source_location& loc = std::source_location::current()) {
   if (expected == actual) {
-    add_failure(
-        diagnostic_format("Assertion failed: expected not equal to {}, got {}", expected, actual),
-        loc);
+    if constexpr (std::is_arithmetic_v<decltype(expected)> &&
+                  std::is_arithmetic_v<decltype(actual)> &&
+                  std::formattable<decltype(expected), char> &&
+                  std::formattable<decltype(actual), char>) {
+      numeric_equality_failure(std::make_format_args(expected, actual), loc, false);
+    } else {
+      add_failure(
+          diagnostic_format("Assertion failed: expected not equal to {}, got {}", expected, actual),
+          loc);
+    }
   }
 }
 
