@@ -16,11 +16,13 @@ class ReportingTests(RunnerTest):
         self.assertEqual(attributes, {"name": "BehaviorTests", "tests": "1",
                                      "failures": "1", "skipped": "0", "errors": "0"})
         attributes = dict(case.attrib)
+        self.assertTrue(attributes.pop("file").replace("\\", "/").endswith("/tests/behavior_tests.cpp"))
+        self.assertGreater(int(attributes.pop("line")), 0)
         attributes.pop("time")
         self.assertEqual(attributes, {"classname": "BehaviorTests",
                                      "name": "explicit_source_location", "errors": "0"})
         self.assertEqual([child.tag for child in case],
-                         ["system-out", "system-err", "failure", "failure"])
+                         ["system-out", "system-err", "failure", "failure", "properties"])
         self.assertEqual(case[0].attrib, {})
         self.assertEqual(case[1].attrib, {})
         self.assertFalse(case[0].text)
@@ -29,7 +31,7 @@ class ReportingTests(RunnerTest):
                                          ("expectation", "assertion"),
                                          ("Expectation failed: expected 17, got 29",
                                           "Assertion failed: expected 31, got 43")):
-            self.assertEqual(failure.attrib, {"type": kind, "message": message})
+            self.assertEqual(failure.attrib, {"type": kind, "message": message, "phase": "test"})
             self.assertEqual(failure.text.split("Stacktrace:")[0],
                              f"Location: explicit_location.cpp:400\nMessage: {message}\n")
             self.assertEqual(list(failure), [])
@@ -80,7 +82,7 @@ class ReportingTests(RunnerTest):
     def test_capture_does_not_leak_between_cases(self):
         _, root = self.report("LifecycleTests", ["LifecycleTests.output", "LifecycleTests.last"])
         cases = root.findall("testcase")
-        self.assertEqual(cases[1].findtext("system-out"), "setup 2\nlast 2\ncleanup 2\n")
+        self.assertEqual(cases[1].findtext("system-out"), "setup 1\nlast 1\ncleanup 1\n")
         self.assertFalse(cases[1].findtext("system-err"))
 
     def test_xml_output_attached_path_spaces_and_overwrite(self):

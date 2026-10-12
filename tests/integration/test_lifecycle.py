@@ -2,10 +2,10 @@ from support import RunnerTest
 
 
 class LifecycleTests(RunnerTest):
-    def test_shared_instance_and_hook_order(self):
+    def test_fresh_instance_and_hook_order(self):
         _, root = self.report("LifecycleTests", ["LifecycleTests.passing", "LifecycleTests.second"])
         self.assertEqual([c.findtext("system-out") for c in root.findall("testcase")],
-                         ["setup 1\nbody 1\ncleanup 1\n", "setup 2\nsecond 2\ncleanup 2\n"])
+                         ["setup 1\nbody 1\ncleanup 1\n", "setup 1\nsecond 1\ncleanup 1\n"])
 
     def test_setup_failures_skip_body_and_run_cleanup(self):
         for mode, kind, body in (("setup_exception", "uncaught_exception", False),
@@ -58,13 +58,13 @@ class LifecycleTests(RunnerTest):
         _, root = self.report("LifecycleTests", ["LifecycleTests.assertion_fail", "LifecycleTests.last"], 1)
         cases = root.findall("testcase")
         self.assertEqual(len(cases), 2)
-        self.assertIn("last 2", cases[1].findtext("system-out"))
+        self.assertIn("last 1", cases[1].findtext("system-out"))
         self.assertEqual(cases[1].findall("failure"), [])
 
     def test_disabled_test_has_no_hooks(self):
         _, root = self.report("LifecycleTests", ["LifecycleTests.disabled", "LifecycleTests.second"])
         self.assertEqual(root.attrib["skipped"], "1")
-        self.assertEqual(root.find("testcase").findtext("system-out"), "setup 1\nsecond 1\ncleanup 1\n")
+        self.assertEqual(root.find("testcase[@name='second']").findtext("system-out"), "setup 1\nsecond 1\ncleanup 1\n")
 
     def test_contract_flag_is_reset_between_tests(self):
         _, root = self.report("LifecycleTests", ["LifecycleTests.unexpected_contract", "LifecycleTests.last"], 1)

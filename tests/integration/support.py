@@ -34,9 +34,10 @@ class RunnerTest(unittest.TestCase):
         self.assertGreaterEqual(float(root.attrib["time"]), 0)
         self.assertRegex(root.attrib["timestamp"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
         cases = root.findall("testcase")
-        self.assertEqual(int(root.attrib["tests"]), len(cases) + int(root.attrib["skipped"]))
+        self.assertEqual(int(root.attrib["tests"]), len(cases))
         self.assertEqual(int(root.attrib["failures"]), sum(bool(c.findall("failure")) for c in cases))
         self.assertEqual(int(root.attrib["errors"]), sum(int(c.attrib["errors"]) for c in cases))
+        self.assertEqual(int(root.attrib["skipped"]), sum(c.find("skipped") is not None for c in cases))
         for case in cases:
             self.assertEqual(case.attrib["classname"], root.attrib["name"])
             self.assertGreaterEqual(float(case.attrib["time"]), 0)

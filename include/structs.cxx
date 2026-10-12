@@ -18,6 +18,36 @@ export enum class OS {
   Unknown,
 };
 
+export enum class fixture_lifecycle { per_test, shared };
+export struct nested {};
+export struct timeout {
+  double seconds;
+};
+struct condition_reason {
+  char reason[256]{};
+  constexpr explicit condition_reason(const char* message) {
+    if (!message) return;
+    std::size_t index = 0;
+    for (; message[index]; ++index) {
+      if (index == 255)
+        throw std::logic_error("Execution condition reasons must not exceed 255 bytes");
+      reason[index] = message[index];
+    }
+  }
+};
+export template <auto Predicate>
+struct enabled_if : condition_reason {
+  static constexpr auto predicate = Predicate;
+  constexpr enabled_if(const char* reason = "Execution condition not met")
+      : condition_reason(reason) {}
+};
+export template <auto Predicate>
+struct disabled_if : condition_reason {
+  static constexpr auto predicate = Predicate;
+  constexpr disabled_if(const char* reason = "Execution condition matched")
+      : condition_reason(reason) {}
+};
+
 export template <typename T = int>
 struct before_each {};
 
@@ -32,9 +62,43 @@ struct fixed_string {
   static constexpr bool is_empty() { return N == 1; }
 };
 
+export template <fixed_string Name>
+struct tag {
+  static constexpr auto name = Name.value;
+};
+export template <auto Generator>
+struct name_generator {
+  static constexpr auto generate = Generator;
+};
+export template <auto Generator>
+struct suite_name_generator {
+  static constexpr auto generate = Generator;
+};
+export constexpr std::string readable_name(std::string_view name) {
+  std::string result;
+  for (char c : name) result += c == '_' ? ' ' : c;
+  return result;
+}
+export template <auto Provider>
+struct parameter_source {
+  static constexpr auto provider = Provider;
+};
+export template <auto Provider = nullptr>
+struct test_factory {};
+export template <typename... Ts>
+struct named_case {
+  std::string name;
+  std::tuple<Ts...> values;
+};
+export template <typename... Ts>
+auto case_of(std::string name, Ts&&... values) {
+  return named_case<std::decay_t<Ts>...>{std::move(name), {std::forward<Ts>(values)...}};
+}
+
 export template <fixed_string Name = "">
 struct test {
   bool disabled = false;
+  unsigned repetitions = 1;
   static constexpr auto name = Name.value;
 
   constexpr auto is_empty() const { return Name.is_empty(); }
@@ -43,6 +107,7 @@ struct test {
 export template <fixed_string Name = "">
 struct suite {
   bool disabled = false;
+  fixture_lifecycle lifecycle = fixture_lifecycle::per_test;
   static constexpr auto name = Name.value;
 
   constexpr auto is_empty() const { return Name.is_empty(); }
@@ -173,6 +238,16 @@ struct disallows_os {
 template <typename... Ts>
 disallows_os(Ts...) -> disallows_os<sizeof...(Ts)>;
 
+struct static_tags {
+  const char* const* data = nullptr;
+  std::size_t size = 0;
+  constexpr static_tags() = default;
+  constexpr static_tags(std::span<const char* const> labels)
+      : data(labels.data()), size(labels.size()) {}
+  constexpr auto begin() const { return data; }
+  constexpr auto end() const { return data ? data + size : data; }
+};
+
 enum class parameterization_types {
   None,
   Value,
@@ -196,9 +271,22 @@ struct internal_test {
 
   const char* name;
 
+  static_tags tags;
+  double timeout_seconds = 0;
+  bool runtime_parameters = false;
+  bool dynamic = false;
   bool disabled = false;
   int num_parameterizations = 0;
   bool parameterized = false;
+  unsigned repetitions = 1;
+};
+
+struct static_hooks {
+  const std::meta::info* data = nullptr;
+  std::size_t size = 0;
+  consteval static_hooks() = default;
+  consteval static_hooks(std::span<const std::meta::info> hooks)
+      : data(hooks.data()), size(hooks.size()) {}
 };
 
 struct suite_test {
@@ -206,6 +294,11 @@ struct suite_test {
   const char* name = nullptr;
   bool disabled = false;
 
+  fixture_lifecycle lifecycle = fixture_lifecycle::per_test;
+  static_tags tags;
+  double timeout_seconds = 0;
+
+  static_hooks before_hooks, after_hooks;
   bool has_before_each = false;
   std::meta::info before_each = ^^int;
 

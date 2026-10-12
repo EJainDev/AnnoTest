@@ -25,7 +25,7 @@ class DeathTests(RunnerTest):
                 else:
                     self.assertEqual(case.findall("failure"), [])
                     if name == "nested_pass":
-                        output = case.findtext("system-out", "")
+                        output = case.findtext("system-out", "").replace("\r\n", "\n")
                         self.assertIn("nested child\n", output)
                         self.assertIn("second nested child\n", output)
                         self.assertIn("outer survived\n", output)

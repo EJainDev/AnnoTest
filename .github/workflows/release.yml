@@ -28,9 +28,6 @@ jobs:
             - name: Verify the complete release artifact set
               run: |
                   test -f "dist/annotest-${GITHUB_REF_NAME}-linux-x86_64.tar.gz"
-                  test -f "dist/annotest-${GITHUB_REF_NAME}-macos-arm64.tar.gz"
-                  test -f "dist/annotest-${GITHUB_REF_NAME}-macos-x86_64.tar.gz"
-                  test -f "dist/annotest-${GITHUB_REF_NAME}-windows-x86_64.zip"
             - name: Publish validated packages together
               uses: softprops/action-gh-release@v2
               with:

@@ -4,6 +4,18 @@ import std;
 import :diagnostics;
 
 namespace annotest {
+class skip_error {
+ public:
+  std::string reason;
+};
+
+export [[noreturn]] inline void skip(std::string reason = "Assumption not met") {
+  throw skip_error{std::move(reason)};
+}
+export inline void assume(bool condition, std::string reason = "Assumption not met") {
+  if (!condition) skip(std::move(reason));
+}
+
 // An exception class for test failures, to distinguish from other exceptions. It does not inherit
 // std::exception to prevent the user from catching it as frequently
 class assertion_error {

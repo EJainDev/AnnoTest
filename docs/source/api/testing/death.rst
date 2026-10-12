@@ -40,3 +40,17 @@ Example
 
 .. literalinclude:: ../../../../examples/example05_death_tests.cpp
    :language: cpp
+
+Exit status and stderr
+----------------------
+
+``assert_exit(callable, exited_with_code(7), "message.*")`` checks the child's
+exit code and searches its captured stderr with a regular expression.
+``expect_exit`` records a nonfatal failure on mismatch. ``exited_with_code(0)``
+accepts a callable returning normally. On POSIX systems,
+``killed_by_signal(signal_number)`` checks signal termination. Custom predicates
+receive ``exit_status{code, signal}``.
+
+``assertDeath(callable, "message.*")`` and ``expectDeath`` combine nonzero exit
+or signal termination with a stderr match. Exceptions continue to count as
+process death. Invalid regular expressions raise ``std::regex_error``.

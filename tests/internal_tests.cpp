@@ -80,12 +80,9 @@ extern "C++" int main(int argc, char** argv) {
     require(suite_log.testcases.back().failures[0].message ==
             "Assertion failed with message \"manual\"");
   } else if (name == "unrunnable_plan") {
-    const discovered_test broken{.name = "broken"};
-    runner_options options;
-    std::vector<std::string> remaining;
-    auto start = begin_suite("InternalTests", "internal_tests.cpp", false);
-    require(execute_suite(nullptr, "InternalTests", std::span(&broken, 1), options, remaining,
-                          start, nullptr, nullptr) == 1);
+    execution_suite broken{.name = "InternalTests", .file = "internal_tests.cpp"};
+    broken.cases.push_back({.name = "broken", .base_name = "broken"});
+    require(run_plan({broken}, runner_options{}, 0, nullptr) == 1);
   } else if (name == "null_argv") {
     const auto options = parse_options(2, nullptr);
     require(options.should_exit && options.exit_code == 1);

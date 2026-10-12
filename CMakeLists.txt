@@ -106,6 +106,8 @@ target_sources(
          BASE_DIRS
          "${CMAKE_CURRENT_SOURCE_DIR}/include"
          FILES
+         "${CMAKE_CURRENT_SOURCE_DIR}/include/sources.cxx"
+         "${CMAKE_CURRENT_SOURCE_DIR}/include/matchers.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/diagnostics.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/structs.cxx"
          "${CMAKE_CURRENT_SOURCE_DIR}/include/exceptions.cxx"

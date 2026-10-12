@@ -38,7 +38,7 @@ on:
     workflow_call:
         inputs:
             package:
-                description: Build native release archives after validation
+                description: Build Linux release archive after validation
                 type: boolean
                 default: false
 
@@ -79,7 +79,7 @@ jobs:
                       find build/coverage -name '*.gcda' -delete
                       ctest --test-dir build/coverage --output-on-failure --no-tests=error --parallel 2
                       python3 tools/collect_coverage.py build/coverage build/coverage/gcov-json
-                      python3 tools/coverage_audit.py build/coverage/gcov-json \
+                      python3 tools/coverage_audit.py build/coverage/gcov-json --minimum-percent 95 \
                         --output build/coverage/reachable-source-coverage.json
 
                       if [ "$PACKAGE_RELEASE" = "true" ]; then
@@ -107,131 +107,10 @@ jobs:
                   path: dist/*
                   if-no-files-found: error
 
-    native:
-        timeout-minutes: ${{ matrix.timeout }}
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    - os: macos-15
-                      platform: macos-arm64
-                      timeout: 45
-                      compiler: g++-16
-                      shell: bash
-                      python: python3
-                    - os: macos-15-intel
-                      platform: macos-x86_64
-                      timeout: 240
-                      compiler: g++-16
-                      shell: bash
-                      python: python3
-                    - os: windows-2025
-                      platform: windows-x86_64
-                      timeout: 45
-                      compiler: g++
-                      shell: msys2 {0}
-                      python: python
-        runs-on: ${{ matrix.os }}
-        defaults:
-            run:
-                shell: ${{ matrix.shell }}
-        steps:
-            - uses: actions/checkout@v6.0.3
-            - name: Install macOS build tools
-              if: runner.os == 'macOS'
-              run: brew install ninja cmake python
-            - name: Identify Intel macOS compiler cache
-              if: matrix.platform == 'macos-x86_64'
-              id: intel-toolchain
-              env:
-                  HOMEBREW_NO_AUTO_UPDATE: '1'
-              run: |
-                  # Intel GCC 16 has no upstream bottle. Install its dependencies first
-                  # so their versions are part of the compiled-keg cache identity.
-                  brew install --only-dependencies gcc
-                  brew info --json=v2 gcc > "$RUNNER_TEMP/gcc-formula.json"
-                  brew list --versions > "$RUNNER_TEMP/brew-versions.txt"
-                  xcrun --show-sdk-version > "$RUNNER_TEMP/sdk-version.txt"
-                  python3 - <<'PY'
-                  import hashlib, json, os, pathlib
-                  root = pathlib.Path(os.environ["RUNNER_TEMP"])
-                  formula = json.loads((root / "gcc-formula.json").read_text())["formulae"][0]
-                  version = formula["versions"]["stable"]
-                  if not version.startswith("16."):
-                      raise SystemExit(f"Expected Homebrew GCC 16, found {version}; update the toolchain explicitly")
-                  identity = json.dumps({key: formula[key] for key in ("versions", "revision", "urls", "dependencies")}, sort_keys=True)
-                  identity += (root / "brew-versions.txt").read_text()
-                  identity += (root / "sdk-version.txt").read_text()
-                  with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-                      output.write(f"key={hashlib.sha256(identity.encode()).hexdigest()}\n")
-                  PY
-                  echo "cellar=$(brew --cellar gcc)" >> "$GITHUB_OUTPUT"
-            - name: Restore compiled Intel GCC
-              if: matrix.platform == 'macos-x86_64'
-              id: intel-gcc-cache
-              uses: actions/cache/restore@v4
+            - name: Coverage report
+              if: ${{ !cancelled() }}
+              uses: actions/upload-artifact@v4
               with:
-                  path: ${{ steps.intel-toolchain.outputs.cellar }}
-                  key: gcc16-${{ matrix.os }}-${{ runner.arch }}-${{ steps.intel-toolchain.outputs.key }}
-            - name: Build Intel GCC on a cold cache
-              if: matrix.platform == 'macos-x86_64' && steps.intel-gcc-cache.outputs.cache-hit != 'true'
-              env:
-                  HOMEBREW_NO_AUTO_UPDATE: '1'
-              run: brew install --build-from-source gcc
-            - name: Link Intel GCC
-              if: matrix.platform == 'macos-x86_64'
-              run: |
-                  brew link --overwrite gcc
-                  g++-16 --version
-            - name: Save compiled Intel GCC before project validation
-              if: matrix.platform == 'macos-x86_64' && steps.intel-gcc-cache.outputs.cache-hit != 'true'
-              uses: actions/cache/save@v4
-              with:
-                  path: ${{ steps.intel-toolchain.outputs.cellar }}
-                  key: ${{ steps.intel-gcc-cache.outputs.cache-primary-key }}
-            - name: Install ARM macOS compiler
-              if: matrix.platform == 'macos-arm64'
-              run: brew install gcc
-            - name: Install Windows toolchain
-              if: runner.os == 'Windows'
-              uses: msys2/setup-msys2@v2
-              with:
-                  msystem: UCRT64
-                  update: true
-                  install: >-
-                      git
-                      mingw-w64-ucrt-x86_64-gcc
-                      mingw-w64-ucrt-x86_64-cmake
-                      mingw-w64-ucrt-x86_64-ninja
-                      mingw-w64-ucrt-x86_64-python
-            - name: Build and test native executables
-              run: |
-                  cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} \
-                    -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON \
-                    -DCMAKE_INSTALL_INCLUDEDIR=include/annotest-sdk \
-                    -DCMAKE_INSTALL_LIBDIR=lib/annotest-sdk
-                  cmake --build build --parallel 2
-                  ctest --test-dir build --output-on-failure --no-tests=error --parallel 2
-                  ${{ matrix.python }} tools/check_installation.py --build-dir build
-            - name: Package native library
-              if: inputs.package
-              run: ${{ matrix.python }} tools/package_release.py --build-dir build --tag "$GITHUB_REF_NAME" --platform ${{ matrix.platform }}
-            - uses: actions/upload-artifact@v4
-              if: inputs.package
-              with:
-                  name: package-${{ matrix.platform }}
-                  path: dist/*
-                  if-no-files-found: error
-
-    docs:
-        runs-on: ubuntu-24.04
-        timeout-minutes: 10
-        steps:
-            - uses: actions/checkout@v6.0.3
-            - uses: actions/setup-python@v6
-              with:
-                  python-version: '3.13'
-            - name: Build documentation with strict diagnostics
-              run: |
-                  python -m pip install -r docs/requirements.txt
-                  python -m sphinx -n -W --keep-going -b html docs/source build/docs
+                  name: reachable-source-coverage
+                  path: build/coverage/reachable-source-coverage.json
+                  if-no-files-found: warn

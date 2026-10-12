@@ -49,10 +49,14 @@ for operation, operands in enumerate(((7, 9), (7, 7), (7, 7), (7, 6), (9, 9), (7
         prefix = "Expectation" if nonfatal else "Assertion"
         left, right = operands
         unequal = "not equal to " if operation == 1 else ""
+        diagnostic = f"expected {unequal}Value({left}), got Value({right})"
+        if operation >= 2:
+            operator = ('<', '<=', '>', '>=')[operation - 2]
+            diagnostic = f"expected Value({left}) {operator} Value({right}), relation was false"
         scenarios = (
             ("comparisons_pass", 0, "1:1:0", None, None),
             ("comparisons_fail", 1, "1:1:2",
-             f"{prefix} failed: expected {unequal}Value({left}), got Value({right})", kind),
+             f"{prefix} failed: {diagnostic}", kind),
             ("throwing_comparison", 1, "1:0:0", "test: comparison threw", "uncaught_exception"),
             ("throwing_conversion", 1, "1:1:0", "test: proxy conversion threw", "uncaught_exception"),
             ("throwing_formatter", 1, "1:1:1", "test: formatter threw", "uncaught_exception"),

@@ -27,22 +27,23 @@ public methods with ``test``, and forward the command line to ``run_tests``:
         return run_tests<AddTests>(argc, argv);
     }
 
-``run_tests`` constructs one suite instance per call. Public static and const
-methods are supported too. Test methods with required arguments need a
-parameterization annotation. Inaccessible or deleted annotated methods, missing
+``run_tests`` constructs a fresh fixture for each test invocation by default.
+Public static and const methods are supported too. Test methods may receive
+``test_context&``; other required arguments need a parameterization annotation.
+Inaccessible or deleted annotated methods, missing
 arguments, empty parameterizations, duplicate names, and names with tabs or line
 breaks are compile-time errors. Private unannotated helpers remain allowed.
 Named tests use ``test<"custom name">{}``; suites
 can use ``suite<"custom suite">{}`` and can be disabled.
 
-.. _design_decisions:
-
 Fixture lifecycle
 -----------------
 
-A suite must be default-constructible. Constructors are allowed; public
-aggregates with member initializers are often convenient. State persists
-between tests unless the setup hook resets it:
+A suite must be default-constructible or accept ``test_context&``. A fresh
+instance is constructed for every test and parameterized invocation. Constructors
+and destructors manage fixture resources. Use
+``suite{.lifecycle = fixture_lifecycle::shared}`` to retain state explicitly.
+This example uses the default fresh fixture:
 
 .. code-block:: cpp
 
@@ -53,11 +54,13 @@ between tests unless the setup hook resets it:
         [[= test{}]] void increment() { assert_equal(11, ++value); }
     };
 
-Only one hook of each kind is allowed. Duplicate hooks and combining a hook with
-``test`` on the same method are compile-time errors. Setup failure prevents the
+Multiple hooks are allowed: setup runs base-first and cleanup runs in reverse
+order. Duplicate annotations and combining a hook with ``test`` on the same
+method are compile-time errors. Setup failure prevents the
 body from running; cleanup still runs after setup or body failure. Hook exceptions
-fail the test. Skipped tests do not run hooks. There are no suite-wide lifecycle
-hooks. Data members may be private; annotated test and hook methods must be public.
+fail the test, and later cleanup hooks still run. Tests disabled or excluded by
+OS requirements do not run hooks; runtime skips still run cleanup.
+Data members may be private; annotated test and hook methods must be public.
 
 A failed assertion records a failure and unwinds the current test body. A failed
 expectation records a failure and continues. Both make the run return 1, and later
@@ -116,5 +119,6 @@ native backtraces are used, with raw frame addresses on Windows.
 More examples
 -------------
 
-All ten runnable examples are in :doc:`/examples/index`, including typed and dual
-parameterization, OS filtering, death checks, contracts, and reports.
+Runnable examples are in :doc:`/examples/index`, including typed and dual
+parameterization, named and parameterized suites, OS filtering, death checks,
+contracts, and reports.

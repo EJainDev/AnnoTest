@@ -12,6 +12,16 @@ class FaultTests(RunnerTest):
     def test_child_exception_is_death(self):
         self.single_case("FaultTests", "child_exception")
 
+    def test_exit_capture_failure_restores_descriptors(self):
+        for mode,message in (('exit_tmp','Cannot capture child stderr'),('exit_dup','Cannot save stderr'),('exit_redirect','Cannot redirect child stderr')):
+            with self.subTest(mode=mode):
+                _,_,case=self.single_case('FaultTests','exit_pattern',0,mode)
+                self.assertIn(message,self.failure(case,'assertion')[0].attrib['message'])
+    def test_exit_process_failures(self):
+        for mode in ('fork','wait'):
+            with self.subTest(mode=mode):
+                self.single_case('FaultTests','exit_pattern',1,mode)
+
 
 def capture_failure(mode):
     def check(self):

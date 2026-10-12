@@ -1,7 +1,7 @@
 Example Gallery
 ===============
 
-All ten examples have runnable main functions and are registered in CTest when
+The examples have runnable main functions and are registered in CTest when
 both ``BUILD_EXAMPLES=ON`` and ``BUILD_TESTS=ON`` are enabled. The reporting example passes by default; set
 ``ANNOTEST_DEMONSTRATE_FAILURE=1`` to produce deliberate failures and XML output.
 
@@ -18,3 +18,4 @@ both ``BUILD_EXAMPLES=ON`` and ``BUILD_TESTS=ON`` are enabled. The reporting exa
    typed
    dual_parameters
    reporting
+   named_suites

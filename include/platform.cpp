@@ -1,6 +1,9 @@
 #include <charconv>
+#include <chrono>
 #include <cstdlib>
 #include <cstring>
+#include <stdexcept>
+#include <thread>
 #include <vector>
 
 #include "annotest_platform.h"
@@ -18,10 +21,24 @@
 // clang-format on
 #else
 #include <execinfo.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <spawn.h>
+#include <sys/wait.h>
+
+#include <cerrno>
+extern char** environ;
 #include <unistd.h>
 #endif
 
 namespace annotest_platform {
+void debugger_break() {
+#ifdef _WIN32
+  DebugBreak();
+#else
+  ::raise(SIGTRAP);
+#endif
+}
 #ifdef _WIN32
 namespace {
 struct handle {
@@ -160,8 +177,7 @@ bool configure_death_child(std::string_view path, std::uintptr_t ready) {
     auto part = path.substr(0, dot);
     unsigned value = 0;
     auto result = std::from_chars(part.data(), part.data() + part.size(), value);
-    if (result.ec != std::errc{} || result.ptr != part.data() + part.size() || !value)
-      return false;
+    if (result.ec != std::errc{} || result.ptr != part.data() + part.size() || !value) return false;
     parsed.push_back(value);
     if (dot == std::string_view::npos) break;
     path.remove_prefix(dot + 1);
@@ -260,8 +276,8 @@ death_result spawn_death_child(std::string_view name) {
   if (!PeekNamedPipe(read.value, nullptr, 0, nullptr, &available, nullptr) || !available ||
       !ReadFile(read.value, &marker, 1, &received, nullptr) || received != 1 || marker != 'R')
     return {false, "Child did not reach the death-test callable"};
-  if (!code) return {false, "exited normally with status 0"};
-  return {true, "exited with status " + std::to_string(code)};
+  if (!code) return {false, "exited normally with status 0", 0, 0, true};
+  return {true, "exited with status " + std::to_string(code), static_cast<int>(code), 0, true};
 }
 #else
 std::FILE* temporary_file() { return std::tmpfile(); }
@@ -295,4 +311,124 @@ void reset_death_ordinal() {}
 bool enter_death_child() { return false; }
 death_result spawn_death_child(std::string_view) { return {false, "Not a Windows backend"}; }
 #endif
+}  // namespace annotest_platform
+
+namespace annotest_platform {
+process_result run_process(const std::vector<std::string>& arguments, const std::string& output,
+                           const std::string& error, double timeout_seconds) {
+  if (arguments.empty()) return {-1, false, "Missing executable"};
+#ifdef _WIN32
+  auto wide = [](std::string_view text) {
+    int count =
+        MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text.data(), text.size(), nullptr, 0);
+    if (!count) throw std::runtime_error("Invalid UTF-8 process argument");
+    std::wstring result(count, L'\0');
+    MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text.data(), text.size(), result.data(),
+                        count);
+    return result;
+  };
+  SECURITY_ATTRIBUTES security{sizeof(security), nullptr, TRUE};
+  handle out{CreateFileW(wide(output).c_str(), GENERIC_WRITE, FILE_SHARE_READ, &security,
+                         CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr)};
+  handle err{CreateFileW(wide(error).c_str(), GENERIC_WRITE, FILE_SHARE_READ, &security,
+                         CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr)};
+  handle input{inherit_standard(STD_INPUT_HANDLE, GENERIC_READ)};
+  if (out.value == INVALID_HANDLE_VALUE || err.value == INVALID_HANDLE_VALUE)
+    return {-1, false, "Cannot open worker output"};
+  std::wstring command;
+  for (const auto& argument : arguments) {
+    if (!command.empty()) command += L' ';
+    command += quote(wide(argument));
+  }
+  STARTUPINFOW startup{};
+  startup.cb = sizeof(startup);
+  startup.dwFlags = STARTF_USESTDHANDLES;
+  startup.hStdInput = input.value;
+  startup.hStdOutput = out.value;
+  startup.hStdError = err.value;
+  PROCESS_INFORMATION process{};
+  if (!CreateProcessW(nullptr, command.data(), nullptr, nullptr, TRUE,
+                      CREATE_SUSPENDED | CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process))
+    return {-1, false, "Cannot create test worker: " + std::to_string(GetLastError())};
+  handle child{process.hProcess}, thread{process.hThread}, job{CreateJobObjectW(nullptr, nullptr)};
+  JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
+  limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+  if (!job.value ||
+      !SetInformationJobObject(job.value, JobObjectExtendedLimitInformation, &limits,
+                               sizeof(limits)) ||
+      !AssignProcessToJobObject(job.value, child.value)) {
+    TerminateProcess(child.value, 1);
+    WaitForSingleObject(child.value, INFINITE);
+    return {-1, false, "Cannot isolate test worker process tree"};
+  }
+  ResumeThread(thread.value);
+  auto millis = timeout_seconds > 0
+                    ? static_cast<DWORD>(std::min(timeout_seconds * 1000, 4294967294.0))
+                    : INFINITE;
+  auto waited = WaitForSingleObject(child.value, millis);
+  if (waited == WAIT_TIMEOUT) {
+    TerminateJobObject(job.value, 1);
+    WaitForSingleObject(child.value, INFINITE);
+    return {1, true, "Test deadline exceeded"};
+  }
+  DWORD code = 0;
+  if (waited != WAIT_OBJECT_0 || !GetExitCodeProcess(child.value, &code))
+    return {-1, false, "Cannot wait for test worker"};
+  return {static_cast<int>(code), false, {}};
+#else
+  std::vector<char*> argv;
+  for (const auto& argument : arguments) argv.push_back(const_cast<char*>(argument.c_str()));
+  argv.push_back(nullptr);
+  posix_spawn_file_actions_t files;
+  if (posix_spawn_file_actions_init(&files)) return {-1, false, "Cannot configure worker output"};
+  struct files_guard {
+    posix_spawn_file_actions_t* p;
+    ~files_guard() { posix_spawn_file_actions_destroy(p); }
+  } clean_files{&files};
+  if (posix_spawn_file_actions_addopen(&files, STDOUT_FILENO, output.c_str(),
+                                       O_WRONLY | O_CREAT | O_TRUNC, 0600) ||
+      posix_spawn_file_actions_addopen(&files, STDERR_FILENO, error.c_str(),
+                                       O_WRONLY | O_CREAT | O_TRUNC, 0600))
+    return {-1, false, "Cannot redirect worker output"};
+  posix_spawnattr_t attributes;
+  if (posix_spawnattr_init(&attributes)) return {-1, false, "Cannot configure worker process"};
+  struct attr_guard {
+    posix_spawnattr_t* p;
+    ~attr_guard() { posix_spawnattr_destroy(p); }
+  } clean_attr{&attributes};
+  posix_spawnattr_setflags(&attributes, POSIX_SPAWN_SETPGROUP);
+  posix_spawnattr_setpgroup(&attributes, 0);
+  pid_t child;
+  int error_code = posix_spawnp(&child, argv[0], &files, &attributes, argv.data(), environ);
+  if (error_code)
+    return {-1, false, std::string("Cannot start test worker: ") + std::strerror(error_code)};
+  auto started = std::chrono::steady_clock::now();
+  int status = 0;
+  for (;;) {
+    auto waited = ::waitpid(child, &status, WNOHANG);
+    if (waited == child) break;
+    if (waited < 0 && errno != EINTR) {
+      ::kill(-child, SIGKILL);
+      while (::waitpid(child, &status, 0) < 0 && errno == EINTR) {
+      }
+      return {-1, false, "Cannot wait for test worker"};
+    }
+    if (timeout_seconds > 0 &&
+        std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count() >=
+            timeout_seconds) {
+      ::kill(-child, SIGKILL);
+      while (::waitpid(child, &status, 0) < 0 && errno == EINTR) {
+      }
+      return {1, true, "Test deadline exceeded"};
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+  // Also clean up descendants left behind by a completed worker.
+  ::kill(-child, SIGKILL);
+  if (WIFSIGNALED(status))
+    return {128 + WTERMSIG(status), false,
+            "Test worker terminated by signal " + std::to_string(WTERMSIG(status))};
+  return {WEXITSTATUS(status), false, {}};
+#endif
+}
 }  // namespace annotest_platform

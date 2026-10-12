@@ -34,7 +34,7 @@ class AnnotationTests(RunnerTest):
             with self.subTest(name=name):
                 _, root = self.report("AnnotationTests", [f"AnnotationTests.{name}"])
                 self.assertEqual(root.attrib["skipped"], str(count))
-                self.assertEqual(root.findall("testcase"), [])
+                self.assertTrue(all(case.find("skipped") is not None for case in root.findall("testcase")))
 
     def test_empty_suite(self):
         self.assertEqual(self.listed_names("AnnotationTests", "empty"), ("EmptySuite", []))
@@ -51,7 +51,7 @@ class AnnotationTests(RunnerTest):
         _, root = self.report("AnnotationTests", scenario="disabled")
         self.assertEqual(root.attrib["tests"], "3")
         self.assertEqual(root.attrib["skipped"], "3")
-        self.assertEqual(root.findall("testcase"), [])
+        self.assertTrue(all(case.find("skipped") is not None for case in root.findall("testcase")))
         _, root = self.report("AnnotationTests", ["DisabledSuite.values.2"], scenario="disabled")
         self.assertEqual(root.attrib["skipped"], "1")
 
@@ -59,7 +59,7 @@ class AnnotationTests(RunnerTest):
         _, root = self.report("AnnotationTests", ["DisabledSuite.values.1", "DisabledSuite.values.2"],
                               scenario="disabled")
         self.assertEqual(root.attrib["skipped"], "2")
-        self.assertEqual(root.findall("testcase"), [])
+        self.assertTrue(all(case.find("skipped") is not None for case in root.findall("testcase")))
 
     def test_selected_os_skips_count_only_requested_instances(self):
         for name in ("required_values", "os_values"):
@@ -67,4 +67,4 @@ class AnnotationTests(RunnerTest):
                 with self.subTest(name=name, indices=indices):
                     _, root = self.report("AnnotationTests", [f"AnnotationTests.{name}.{i}" for i in indices])
                     self.assertEqual(root.attrib["skipped"], str(len(indices)))
-                    self.assertEqual(root.findall("testcase"), [])
+                    self.assertTrue(all(case.find("skipped") is not None for case in root.findall("testcase")))

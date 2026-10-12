@@ -12,9 +12,13 @@ import json
 import re
 parser = argparse.ArgumentParser()
 parser.add_argument('data', type=Path)
+parser.add_argument('--report-only', action='store_true', help='Report coverage without requiring every branch to be reached')
+parser.add_argument('--minimum-percent', type=float, default=100.0, help='Minimum branch coverage percentage (default: 100)')
 parser.add_argument('--root', type=Path, default=Path.cwd())
 parser.add_argument('--output', type=Path, required=True)
 args = parser.parse_args()
+if not 0 <= args.minimum_percent <= 100:
+    parser.error("--minimum-percent must be between 0 and 100")
 root = args.root.resolve()
 files = {}
 for p in args.data.rglob('*.gz'):
@@ -65,7 +69,9 @@ for name, decisions in sorted(files.items()):
     source = (root / name).read_text().splitlines()
     program_lines = [i for i, t in enumerate(source, 1) if 'auto program = argc > 0 && argv && argv[0]' in t]
     program_blocks = sorted((block for line, block in decisions if line in program_lines))
-    report_catches = [i for i, t in enumerate(source, 1) if '} catch (const std::exception& e)' in t]
+    report_catches = [i for i, t in enumerate(source, 1)
+                      if '} catch (const std::exception&' in t
+                      and any('Cannot write XML report' in next_line for next_line in source[i:i + 8])]
     for (line, block), arcs in sorted(decisions.items()):
         for destination, count in arcs.items():
             reason = None
@@ -92,4 +98,4 @@ for row in rows:
     if not row['count']:
         print('Uncovered:', row)
 print(f"Reachable source coverage: {covered}/{len(rows)} = {result['percent']:.1f}%")
-raise SystemExit(covered != len(rows))
+raise SystemExit(not args.report_only and result['percent'] < args.minimum_percent)

@@ -93,19 +93,12 @@ The package installs its module sources and contract-handler header, and exports
 the reflection flags and required link libraries. Prefixes can be relocated.
 The same target and discovery helper are available with ``FetchContent``.
 
-Validation and release packages
--------------------------------
+Release packages
+----------------
 
-.. code-block:: sh
-
-    python3 tools/check_installation.py --build-dir build
-
-This verifies installed and FetchContent consumers, relocates the prefix to a
-path containing spaces, and checks exported paths. Native CI jobs cover Linux,
-macOS, and Windows; tagged release workflows package each native build. Archives
-contain platform-specific libraries and module sources, and still require the
-corresponding GCC toolchain and runtime. Native Windows and macOS CI results are
-the validation of those full toolchains; Linux and the Windows backend under
-Wine have also been exercised locally.
+Release archives target Linux x86-64 and contain compiled libraries, module
+sources, and CMake package configuration. Use the corresponding GCC toolchain
+and runtime to build consumers. Linux, macOS, and Windows are supported by
+source builds.
 
 See :ref:`getting_started` for the public API.
