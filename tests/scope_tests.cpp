@@ -69,6 +69,19 @@ struct OuterSuite {
     };
   };
 };
+template <fixture_lifecycle Lifecycle>
+struct[[= suite{.lifecycle = Lifecycle}]] NestedLifetime {
+  int value = 10;
+  NestedLifetime() { std::println("parent constructor"); }
+  ~NestedLifetime() { std::println("parent destructor"); }
+  struct[[= nested{}, = suite{.lifecycle = fixture_lifecycle::shared}]] Child {
+    NestedLifetime& parent;
+    Child(NestedLifetime& parent) : parent(parent) { std::println("child constructor"); }
+    ~Child() { std::println("child destructor {}", parent.value); }
+    [[= test{}]] void first() { assert_equal(10, parent.value++); }
+    [[= test{}]] void second() { assert_equal(11, parent.value++); }
+  };
+};
 struct Resource {
   std::filesystem::path file;
   explicit Resource(std::filesystem::path file) : file(std::move(file)) {}
@@ -196,6 +209,10 @@ struct TeardownObserver : test_listener {
 };
 int main(int argc, char** argv) {
   auto mode = scenario();
+  if (mode == "nested-shared-parent")
+    return run_tests<NestedLifetime<fixture_lifecycle::shared>>(argc, argv);
+  if (mode == "nested-per-test-parent")
+    return run_tests<NestedLifetime<fixture_lifecycle::per_test>>(argc, argv);
   if (mode == "outside") {
     assert_throws<std::logic_error>([] { current_test(); });
     assert_throws<std::logic_error>([] { record_property("key", "value"); });

@@ -288,9 +288,10 @@ auto near(T expected, T absolute, T relative = T{}) {
   if (absolute < T{} || relative < T{}) throw std::invalid_argument("Negative numeric tolerance");
   return satisfies(
       [=](auto value) {
-        return value == expected ||
-               std::abs(value - expected) <=
-                   std::max(absolute, relative * std::max(std::abs(value), std::abs(expected)));
+        if (value == expected) return true;
+        if (!std::isfinite(value) || !std::isfinite(expected)) return false;
+        return std::abs(value - expected) <=
+               std::max(absolute, relative * std::max(std::abs(value), std::abs(expected)));
       },
       "within numeric tolerance");
 }

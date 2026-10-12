@@ -659,6 +659,12 @@ int run_plan(std::vector<execution_suite> suites, const runner_options& options,
 template <typename Child, typename Parent, auto ParentSuite>
 std::shared_ptr<fixture_state<Child>> nested_fixture(
     std::shared_ptr<fixture_state<Parent>> parent) {
+  static constexpr auto child_suite = get_tests<^^Child>().suite;
+  // A retained child may keep Parent& (including through its destructor).
+  // Keeping the parent's state alive does not keep its per-test value alive.
+  if constexpr (child_suite.lifecycle == fixture_lifecycle::shared &&
+                ParentSuite.lifecycle != fixture_lifecycle::shared)
+    throw std::logic_error("Shared nested fixtures require a shared enclosing fixture");
   auto child = std::make_shared<fixture_state<Child>>();
   child->parent_before = [parent] { begin_fixture<ParentSuite>(*parent); };
   child->parent_after = [parent] { end_fixture<ParentSuite>(*parent); };

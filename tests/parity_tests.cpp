@@ -137,6 +137,18 @@ struct[[= tag<"unit">{}]] ParityTests : Base {
     assert_true(near(1.0, 0.0)(1.0).matched);
     assert_true(near(100.0, 0.0, 0.1)(105.0).matched);
     assert_false(near(1.0, 0.1)(2.0).matched);
+    const auto infinity = std::numeric_limits<double>::infinity();
+    const auto nan = std::numeric_limits<double>::quiet_NaN();
+    for (auto nonfinite : {infinity, -infinity, nan}) {
+      assert_false(near(1.0, 0.001, 0.01)(nonfinite).matched);
+      assert_false(near(nonfinite, 0.001, 0.01)(1.0).matched);
+    }
+    assert_false(near(infinity, 0.001, 0.01)(-infinity).matched);
+    assert_false(near(-infinity, 0.001, 0.01)(infinity).matched);
+    assert_false(near(nan, 0.001, 0.01)(nan).matched);
+    assert_true(near(infinity, 0.001, 0.01)(infinity).matched);
+    assert_true(near(-infinity, 0.001, 0.01)(-infinity).matched);
+    assert_true(near(0.0, 0.0, 0.01)(-0.0).matched);
     assert_throws<std::invalid_argument>([] { near(1.0, -0.1); });
     assert_throws<std::invalid_argument>([] { near(1.0, 0.1, -0.1); });
     assert_true(ulp_near(1.0)(1.0).matched);

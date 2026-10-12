@@ -41,6 +41,23 @@ class ScopeTests(RunnerTest):
                 self.assertIn('outer destructor',output)
                 self.assertNotIn('inner setup',output)
                 self.assertEqual(cases[0].find('failure').attrib['phase'],phase)
+    def test_shared_nested_fixture_rejects_per_test_parent_before_construction(self):
+        for args in ([], ['--list'], ['--filter', '*.first'], ['--repeat', '2']):
+            with self.subTest(args=args):
+                result = self.run_binary('ScopeTests', args, 'nested-per-test-parent')
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn('Shared nested fixtures require a shared enclosing fixture',
+                              result.stderr)
+                self.assertNotIn('constructor', result.stdout)
+                self.assertNotIn('destructor', result.stdout)
+
+    def test_shared_nested_fixture_keeps_shared_parent_through_child_destruction(self):
+        _, _, cases = self.invoke('nested-shared-parent')
+        self.assertEqual([c.attrib['name'] for c in cases], ['first', 'second'])
+        output = ''.join(c.findtext('system-out', '') for c in cases)
+        self.assertEqual(output.splitlines(), ['parent constructor', 'child constructor',
+                                              'child destructor 12'])
+
     def test_shared_context_is_stable_until_destructor(self):
         _,_,cases=self.invoke('shared')
         self.assertEqual(len(cases),2)

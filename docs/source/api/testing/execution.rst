@@ -14,6 +14,8 @@ manage fixture resources.
 fixtures are constructed and their setup hooks run before inner fixtures, even
 when only one inner case is selected. An inner constructor may accept ``Parent&``
 or ``Parent&, test_context&``. Teardown unwinds the chain in reverse order.
+A shared nested fixture requires its enclosing fixture to be shared; discovery
+rejects a shared child under a ``per_test`` parent before constructing fixtures.
 Public annotated base methods are inherited unless hidden by derived methods.
 Multiple hooks run base-first for setup and in reverse order for cleanup;
 cleanup continues after a hook fails. Duplicate annotations on one method are rejected. Composed annotations
