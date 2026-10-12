@@ -46,11 +46,10 @@ value combinations. See :doc:`/examples/parameterized`.
 method template. ``parameterize_template::of`` and ``template_params::cross_t``
 support type products. See :doc:`/examples/typed`.
 
-GCC exposes method-template annotations through a specialization. Annotated
-template methods must accept an empty template argument list, typically by
-giving their template parameters defaults, such as ``template<typename T = int>``.
-The defaults enable discovery; each parameterized case still uses its specified
-types. Unannotated helper templates without defaults are ignored.
+Annotated template methods must accept an empty template argument list. Supply
+default template arguments, such as ``template<typename T = int>``, as needed.
+Each parameterized case uses its specified types. Unannotated helper templates
+without defaults are ignored.
 
 ``parameterize_pair<template_params<...>, parameters<...>>`` couples template
 and function arguments. ``parameterize_dual`` expands those pairs into cases.
@@ -78,8 +77,8 @@ evaluated before method conditions.
 Predicates accept no arguments or ``const test_context&`` and return a value
 convertible to bool. They run before fixture construction and extension setup,
 once per executed repetition. Disabled and OS-skipped tests bypass conditions;
-``--run-disabled`` still honors conditions. A false condition produces a normal
-skipped result with its reason. An exception produces a failure in the
+``--run-disabled`` still honors conditions. A condition that disables execution
+produces a skipped result with its reason. An exception produces a failure in the
 ``condition`` phase; ``skip(reason)`` propagates as a skip. Reason strings may
 contain up to 255 bytes; an empty reason uses the runner's default message.
 

@@ -78,7 +78,7 @@ CMake's experimental import-std UUID depends on the CMake version:
     endif()
     set(CMAKE_CXX_MODULE_STD ON)
     project(MyTests LANGUAGES CXX)
-    # CMake 4.3 shares a std BMI that must also enable reflection.
+    # Enable reflection when using CMake 4.3.
     if(CMAKE_VERSION VERSION_LESS 4.4)
       string(APPEND CMAKE_CXX_FLAGS " -freflection")
     endif()

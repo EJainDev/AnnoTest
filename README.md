@@ -24,16 +24,6 @@ The runner discovers annotated methods at compile time. It supports named and di
 suites/tests, per-test hooks, value and template parameterization, fatal assertions,
 nonfatal expectations, exception checks, process death checks, and XML reports.
 
-Starting with v1.0, documented public
-annotations, assertions, expectations, runner options, and CMake targets retain
-source compatibility within v1.x. Correctness fixes can reject previously accepted
-invalid tests. Internal implementation modules and undocumented APIs are excluded.
-
-Compiled libraries and module artifacts must be rebuilt with the consuming compiler
-and compatible settings. GCC reflection and CMake standard-library module support
-are experimental; compiler, module-format, ABI, and experimental CMake-setting
-compatibility across toolchain versions are outside this source API promise.
-
 ## Requirements
 
 AnnoTest implements Linux, macOS, and native Windows backends. Use **GCC 16 or
@@ -111,7 +101,7 @@ use CTest to run the self-test suite.
 
 ## Examples
 
-Each example has a runnable `main`. With both build options enabled, CTest runs all ten
+Each example has a runnable `main`. With both build options enabled, CTest runs all eleven
 examples in addition to the library's self-tests.
 
 | Source | Executable | Demonstrates |
@@ -149,13 +139,14 @@ sets, duplicate display names, and names with tabs or line breaks are rejected
 at compile time. Tests and hooks may receive `test_context&`. Private unannotated
 helpers and fixture data are allowed.
 
-GCC discovers method-template annotations through a specialization. Template
-tests must accept an empty template argument list, normally using defaults such
-as `template<typename T = int>`. Unannotated helpers without defaults are ignored.
+Template tests must accept an empty template argument list. Supply default template
+arguments, such as `template<typename T = int>`, as needed. Unannotated helpers
+without defaults are ignored.
 
 `before_each` and `after_each` run around each executed test, including each
-parameterized instance. A fresh fixture is constructed for each test and parameterized case. Use
-`suite{.lifecycle = fixture_lifecycle::shared}` to explicitly retain member state. Cleanup still runs after setup or body exceptions.
+parameterized instance. By default, a fresh fixture is constructed for each test
+and parameterized case. `suite{.lifecycle = fixture_lifecycle::shared}` retains
+the fixture across cases. Cleanup runs after setup or body exceptions.
 Constructors and destructors manage fixture resources.
 
 ```cpp
@@ -185,9 +176,9 @@ also fail the test. Disabled or OS-filtered tests do not run their hooks.
 | Contract | `assert_contract_violation`, `assert_no_contract_violation` | Corresponding `expect_*` functions |
 | Process death | `assertDeath(callable)` | `expectDeath(callable)` |
 
-Death helpers retain their camel-case names. A thrown exception in the child counts as
-death; normal return or exit status zero does not. Linux and macOS use `fork` and
-`waitpid`. Windows relaunches the executable, selects the current test, and replays
+`assertDeath` and `expectDeath` run a callable in a child process. A thrown exception
+in the child counts as death; normal return or exit status zero does not.
+Windows relaunches the executable, selects the current test, and replays
 its setup and body up to the requested death check. Earlier death callables are
 skipped during replay; multiple checks, nested checks, and parameterized cases are
 supported. Nested Windows checks replay their enclosing death callables to reach
@@ -212,7 +203,15 @@ must remain safe even with invalid input. See the contract example for safe case
 | `-h`, `--help` | Print usage and exit |
 | `-l`, `--list` | List the suite and test names |
 | `-t`, `--test-name NAME...` | Run fully qualified names; repeatable |
+| `--filter GLOB`, `--exclude GLOB` | Include or exclude matching names; repeatable |
+| `--tag TAG`, `--exclude-tag TAG` | Include or exclude tagged cases; repeatable |
+| `--jobs N` | Run up to N subprocesses concurrently |
+| `--timeout SECONDS` | Set a hard per-case subprocess deadline |
 | `--xml-output FILE` | Write a suite XML report, overwriting the file |
+| `--json-output FILE` | Write a JSON report, overwriting the file |
+
+See the [command-line reference](docs/source/api/testing/command_line.rst) for
+all options, defaults, limits, and environment variables.
 
 Fully qualified names are `Suite.Test`. Parameterized instances append a one-based
 index, such as `ParameterizedTests.addition.2`. Selecting the base method name runs
@@ -221,10 +220,10 @@ all its instances. Quote names containing spaces.
 Reports include timings, failures, skip totals, and captured stdout/stderr.
 XML preserves valid Unicode; forbidden control bytes and malformed UTF-8 appear as
 visible `\xNN` escapes. Runtime capture and console diagnostics retain the original bytes.
-Test output is captured even without an XML file; use `--xml-output` to inspect it. Skipped tests
-have individual `<testcase><skipped message="…"/></testcase>` entries. The runner
-uses shared state and process-wide output capture; use `--jobs N` for concurrent subprocess execution. Concurrent or recursive
-in-process runner calls are rejected.
+Test output is captured even without a report file. Skipped tests have individual
+`<testcase><skipped message="…"/></testcase>` entries in XML. Output capture is
+process-wide. Use `--jobs N` for concurrent subprocess execution; concurrent or
+recursive in-process runner calls are rejected.
 
 ## CMake integration
 
@@ -243,7 +242,7 @@ endif()
 set(CMAKE_CXX_MODULE_STD ON)
 project(MyTests LANGUAGES CXX)
 if(CMAKE_VERSION VERSION_LESS 4.4)
-  # Enable reflection on CMake 4.3's shared std module after compiler detection.
+  # Enable reflection when using CMake 4.3.
   string(APPEND CMAKE_CXX_FLAGS " -freflection")
 endif()
 
@@ -258,11 +257,10 @@ annotest_discover_tests(my_tests)
 ```
 
 Configure with `cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=g++`, build, then
-run `ctest --test-dir build --output-on-failure`. The `import std` setup must precede
-`project()` in the consumer, too. The UUIDs match the tested CMake series;
-future versions may need a different experimental setting. CMake 4.3 also requires
-`-freflection` in the top-level `CMAKE_CXX_FLAGS` after `project()` so its shared `std` module
-contains reflection declarations. CMake 4.4 propagates these options through targets.
+run `ctest --test-dir build --output-on-failure`. Configure `import std` before
+`project()` in the consumer. With CMake 4.3, set `-freflection` in the top-level
+`CMAKE_CXX_FLAGS` after `project()`. CMake 4.4 propagates reflection options
+through the library target.
 
 For FetchContent, replace `add_subdirectory` with the following, substituting a
 published commit containing this API for `<commit>`:
@@ -320,6 +318,19 @@ Set `annotest_discover_tests(my_tests DISCOVERY_TIMEOUT 60)` to change the defau
 30-second listing timeout. Multi-config generators require `ctest -C Debug` or
 `-C Release` and keep each configuration's discovery separate.
 
+## API reference
+
+| Topic | Reference |
+| --- | --- |
+| Test annotations, hooks, names, conditions, and parameters | [Annotations](docs/source/api/testing/annotations.rst) |
+| Assertions, messages, failure inspection, and helper threads | [Assertions and expectations](docs/source/api/testing/assertions.rst) |
+| Composable value, range, string, exception, and numeric checks | [Matchers](docs/source/api/testing/matchers.rst) |
+| Metadata, temporary directories, and shared resources | [Test context](docs/source/api/testing/context.rst) |
+| Selection, repetition, isolation, deadlines, and environment defaults | [Command-line reference](docs/source/api/testing/command_line.rst) |
+| Nested fixtures, runtime factories, registration, listeners, and reports | [Execution APIs](docs/source/api/testing/execution.rst) |
+| Contract checks and violation handling | [Contracts](docs/source/api/testing/contracts.rst) |
+| Child-process death, exit status, and stderr checks | [Death tests](docs/source/api/testing/death.rst) |
+
 ## Documentation and contributing
 
 See the [documentation](https://annotest.readthedocs.io/), runnable examples above,
@@ -328,107 +339,8 @@ and [self-test guide](tests/README.md). Build the documentation locally with:
 ```sh
 python3 -m venv .venv-docs
 .venv-docs/bin/python -m pip install -r docs/requirements.txt
-.venv-docs/bin/python -m sphinx -b html docs/source docs/build/html
+.venv-docs/bin/python -m sphinx -W --keep-going -b html docs/source docs/build/html
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance and [LICENSE](LICENSE)
 for the MIT license.
-
-## Extended runner features
-
-Use `run_tests<SuiteA, SuiteB>()` to discover and report multiple suites together.
-Nested classes marked `[[= nested{}]]` become suites with an outer-name prefix.
-Their enclosing fixtures and hooks run even when only an inner test is selected.
-An inner fixture may accept its enclosing fixture by reference, optionally followed by
-`test_context&`. Public base methods are inherited unless hidden by derived methods.
-Multiple setup hooks run from base to derived; cleanup runs in reverse order and continues
-when one cleanup hook fails. Repeating an annotation on one hook is rejected.
-Constructors and destructors manage fixture resources.
-
-- `skip("reason")` and `assume(condition, "reason")` stop the body and retain cleanup.
-- `tag<"fast">{}` on suites or methods adds labels. A marker type annotated with
-  `test{}` and tags can be used as a composed annotation.
-- `--filter GLOB`, `--exclude GLOB`, `--tag TAG`, and `--exclude-tag TAG` are repeatable.
-  Globs support `*` and `?`. Explicit names are resolved before other filters.
-- `--run-disabled`, `--repeat N`, `--shuffle --seed N`, and `--fail-fast` control execution.
-- `test{.repetitions = N}` repeats each concrete case, defaulting to 1. CLI
-  `--repeat` multiplies the count; each invocation has a separate result and
-  a zero-based `current_test().repetition` index.
-- `enabled_if<&predicate>{"reason"}` and `disabled_if<&predicate>{"reason"}`
-  on methods or suites evaluate runtime conditions before fixture construction.
-  Predicates accept no arguments or `const test_context&`; skipped cases retain
-  the reason in reports. Suite conditions also apply to nested and derived suites.
-- `--shard-count N --shard-index I` partitions full names using a stable hash; indices start at zero.
-- `--isolate` and `--jobs N` re-execute individual cases in subprocesses. `timeout{seconds}`
-  or `--timeout SECONDS` enforces a hard per-case deadline and kills the worker process tree.
-  Completed results remain in scheduling order. Fail-fast stops new batches; active workers finish.
-
-A runtime provider returning tuples or `case_of("name", args...)` values is selected with
-`[[= test{}, = parameter_source<&provider>{} ]]`. `csv_cases(path, has_header)` returns
-named string-column cases; `line_cases(path)` returns named lines. Providers must return
-stable names and data across discovery and worker re-execution. Empty and duplicate cases fail discovery.
-`test_factory{}` on a factory method returning `dynamic_case{name, callable}` values
-runs setup once, keeps the factory fixture alive for its children, and runs cleanup once.
-`test_factory<&provider>{}` also accepts free or member providers. Factories execute during
-runtime discovery so CTest can list their generated names; they must be deterministic.
-Process isolation re-creates the factory in each selected worker.
-
-Test methods and fixture constructors may receive `test_context&`. It exposes the name,
-tags, repetition, parameters, and a lazily created `temp_dir()` cleaned up after the case.
-Shared fixtures own a stable constructor context until their destructor completes; its identity
-fields are updated before each test. `context.resources.get_or_create<T>(key, factory)`
-stores RAII resources for the context lifetime and releases them in reverse registration order.
-
-`assert_that` / `expect_that` accept composable matchers: `eq`, `ne`, ordering, `all_of`,
-`any_of`, `negate`, strings/regex, `contains`, `each`, `size_is`, `elements_are`,
-`unordered_elements_are`, `field`/`property`, pointers, optionals, variants, exception,
-and absolute/relative/ULP numeric checks. `satisfies(predicate, description)` defines a custom matcher.
-`scoped_trace` / `scoped_message` add context to failures; range comparisons identify the first difference.
-Unformatted values use stream formatting or a type-name fallback.
-
-Register `test_listener` instances with `add_listener(listener, optional_suite_prefix)` for discovery, suite/test events,
-assertions, extension setup/cleanup, and final results. `record_property` adds report metadata.
-A listener can implement a custom reporter through `on_run_end`; listener setup runs before
-fixture construction and cleanup runs after fixture teardown. In subprocess mode extension
-hooks run in workers; assertion events (including source locations) and result notifications
-run in the parent. Observer failures become report entries and preserve completed results. Single-suite XML retains
-`<testsuite>`; multiple suites use an aggregate `<testsuites>` root.
-
-## Generated names and parameterized suites
-
-A naming function receives `std::string_view` and returns a name during constant
-evaluation. Use `name_generator<&function>{}` on a suite to name its methods,
-or on a method to override the suite convention. `suite_name_generator<&function>{}`
-names the suite itself. `readable_name` replaces underscores with spaces.
-
-Suite-level `parameterize{parameters(...), ...}` supplies fixture constructor
-arguments. `parameter_source<&provider>{}` supplies runtime constructor cases,
-and `parameterize_template<template_params<...>, ...>{}` selects class-template
-specializations. See [the named-suite example](examples/example11_named_suites.cpp).
-
-Ordinary assertions accept custom messages, such as `expect_equal(4, result, "input row 7")`.
-`assert_all("label", block1, block2, ...)` runs independent callable blocks,
-continuing through later blocks after a fatal assertion. It unwinds after all
-blocks if any failed. `expect_all` continues after the group. Groups support
-nesting, preserve original assertion locations, and record unexpected exceptions
-as errors. A skip stops the remaining blocks immediately.
-Use `assert_streq` / `expect_streq` and `assert_strne` / `expect_strne` for C-string
-content comparisons; `*_strcaseeq` and `*_strcasene` ignore ASCII letter case.
-Narrow/wide strings and null pointers are supported. Generic equality retains
-pointer identity. String diagnostics show escaped values and first differences;
-wide strings print as UTF-8. Define `PrintTo(const T&, std::ostream*)` beside a
-type to customize its diagnostic printing. Ordering failures show the operator
-and both operands.
-`current_failures()` and `has_failure()` inspect the active case;
-`capture_failures(callable)` intercepts assertion failures for testing helpers.
-Assertions from joined helper threads attach to the active test in arrival order.
-`test_thread(callable)` joins automatically and records exceptions on that test.
-
-`assert_exit` and `expect_exit` check exit codes, signals, and stderr expressions.
-The death helpers also accept stderr expressions; exceptions count as death.
-
-Register runtime tests with `register_test`, or use its fixture-factory overload.
-Listeners receive detailed failures, metadata, captured output, and suite totals.
-`--json-output FILE`, `--brief`, and `--break-on-failure` control reporting and debugging.
-Runner defaults can be configured with the corresponding `ANNOTEST_*` environment variables;
-see the [execution API](docs/source/api/testing/execution.rst).

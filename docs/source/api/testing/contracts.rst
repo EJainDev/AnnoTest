@@ -17,8 +17,8 @@ callable violates a contract. ``assert_no_contract_violation`` and
 ``expect_no_contract_violation`` check that it does not. Callables may return a
 value or void; value-returning checks return the callable's result.
 
-Observe semantics continue after a violation, so the body must remain safe with
-invalid input. For example, use a guarded fallback rather than divide by zero.
+Observe semantics continue after a violation. The callable must remain safe
+with inputs that violate its contracts.
 Unexpected violations fail the test. A custom callback can be installed through
 ``annotest::custom_handler``; the default handler sets
 ``annotest::contract_violation_occurred`` before invoking it. The runner resets

@@ -1,5 +1,5 @@
 Named and Parameterized Suites
-=============================
+==============================
 
 ``name_generator<&function>{}`` on a suite supplies the naming convention for
 its test methods. A method annotation overrides the suite convention.
@@ -17,10 +17,10 @@ arguments followed by ``test_context&``.
 
 On a class template with default template arguments,
 ``parameterize_template<template_params<...>, ...>{}`` selects the concrete suite
-types. Invoke the default specialization with ``run_tests<Suite<>>()``. Each
+types. Invoke the default specialization with ``run_tests<Suite<>>(argc, argv)``. Each
 specialization has a distinct suite name.
 
-.. literalinclude:: ../../../../examples/example11_named_suites.cpp
+.. literalinclude:: ../../../examples/example11_named_suites.cpp
    :language: cpp
 
 Build and run ``example11_named_suites``. Use ``--list`` to see the generated

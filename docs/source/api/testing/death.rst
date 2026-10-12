@@ -12,27 +12,25 @@ records a failure and continues.
 Linux and macOS
 ---------------
 
-The child is created with ``fork`` and the parent waits with ``waitpid``, retrying
-interrupted waits. The child inherits the parent's memory and file descriptors;
-changes to ordinary child memory do not change the parent. Complex shared
-resources and background threads still require care.
+The child inherits the parent's memory and file descriptors. Changes to ordinary
+child memory do not change the parent.
 
 Windows
 -------
 
-Windows relaunches the current executable with an internal selector for the test
-and death-check ordinal. It repeats setup and the test body up to that check,
+Windows relaunches the current executable and runs the selected test.
+It repeats setup and the test body up to the selected death check,
 skipping earlier death callables. Named tests, parameterized cases, and multiple
 checks in one test are supported. Nested checks are supported on every platform.
 For a nested Windows check, the child replays its enclosing death callables to
-reach the selected inner callable. A handshake is sent only when that callable
-is reached, so startup failures or exceptions in enclosing callables do not
-falsely pass the inner check.
+reach the selected inner callable. Startup failures or exceptions before reaching
+that callable fail the death check.
 
 Use these helpers inside ``run_tests`` and forward ``argc`` and ``argv`` from
 ``main``. Setup and code before the death check must be deterministic and safe to
-repeat, including enclosing callables for nested checks. State from previously executed tests and parent-only resources are not
-inherited. Pointers into the parent process cannot be used in the child.
+repeat, including enclosing callables for nested checks. State from earlier tests
+and parent-only resources are not inherited. Pointers into the parent process
+cannot be used in the child.
 Replayed setup and body output can appear in captured output.
 
 Example

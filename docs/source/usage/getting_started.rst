@@ -28,7 +28,7 @@ public methods with ``test``, and forward the command line to ``run_tests``:
     }
 
 ``run_tests`` constructs a fresh fixture for each test invocation by default.
-Public static and const methods are supported too. Test methods may receive
+Public static and const methods are supported. Test methods may receive
 ``test_context&``; other required arguments need a parameterization annotation.
 Inaccessible or deleted annotated methods, missing
 arguments, empty parameterizations, duplicate names, and names with tabs or line
@@ -39,10 +39,12 @@ can use ``suite<"custom suite">{}`` and can be disabled.
 Fixture lifecycle
 -----------------
 
-A suite must be default-constructible or accept ``test_context&``. A fresh
-instance is constructed for every test and parameterized invocation. Constructors
-and destructors manage fixture resources. Use
-``suite{.lifecycle = fixture_lifecycle::shared}`` to retain state explicitly.
+A fixture without supplied constructor arguments must be default-constructible
+or accept ``test_context&``. By default, a fresh instance is constructed for every
+test and parameterized invocation. Constructors and destructors manage fixture
+resources. ``suite{.lifecycle = fixture_lifecycle::shared}`` retains the fixture
+across cases. Nested and parameterized suites can supply constructor arguments;
+see :doc:`/api/testing/execution` and :doc:`/examples/named_suites`.
 This example uses the default fresh fixture:
 
 .. code-block:: cpp
@@ -56,8 +58,9 @@ This example uses the default fresh fixture:
 
 Multiple hooks are allowed: setup runs base-first and cleanup runs in reverse
 order. Duplicate annotations and combining a hook with ``test`` on the same
-method are compile-time errors. Setup failure prevents the
-body from running; cleanup still runs after setup or body failure. Hook exceptions
+method are compile-time errors. A fatal assertion or exception in setup prevents
+the body from running. A failed expectation records a failure and continues setup
+and the test body. Cleanup runs after setup or body failure. Hook exceptions
 fail the test, and later cleanup hooks still run. Tests disabled or excluded by
 OS requirements do not run hooks; runtime skips still run cleanup.
 Data members may be private; annotated test and hook methods must be public.
@@ -80,6 +83,7 @@ Windows executables have an ``.exe`` suffix. Filters use fully qualified names;
 parameterized cases have one-based numeric suffixes. ``--help`` describes the
 supported options. Test failures, invalid arguments, unknown names, and report
 write failures return 1; successful runs return 0.
+See :doc:`/api/testing/command_line` for the complete option reference.
 
 ``annotest_discover_tests(my_tests)`` lists the executable after building it and
 registers each case with CTest. Each selected case runs in its own process, with
@@ -103,9 +107,7 @@ Reports and platform behavior
 -----------------------------
 
 ``--xml-output`` writes XML containing totals, timing, failures, and captured
-stdout/stderr. Capture includes C stdio and uses temporary files to accommodate
-large writes. Windows synchronizes CRT descriptors with native standard handles.
-Capture is process-wide, so background writers must finish before the test ends.
+stdout/stderr, including C stdio. Background writers must finish before the test ends.
 Windows command-line names and report paths support UTF-8.
 
 XML preserves valid Unicode. Forbidden XML control bytes and malformed UTF-8

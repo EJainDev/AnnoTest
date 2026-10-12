@@ -5,8 +5,9 @@ Assertions and Expectations
 
 A failed ``assert_*`` records a failure and unwinds the current body; a failed
 ``expect_*`` records a failure and continues. Both fail the case and allow later
-cases to run. The internal assertion exception is not a public API. Avoid
-catching assertion failures yourself.
+cases to run. Use ``capture_failures`` to inspect assertion failures.
+For composable value checks with ``assert_that`` and ``expect_that``, see
+:doc:`matchers`.
 
 .. list-table:: Checks in the annotest namespace
    :header-rows: 1
@@ -45,7 +46,7 @@ catching assertion failures yourself.
      - ``assertDeath(callable)``
      - ``expectDeath(callable)``
 
-The death helpers retain camel-case names and support all three platforms; see
+``assertDeath`` and ``expectDeath`` support Linux, macOS, and Windows; see
 :doc:`death` for the Windows replay requirements. The tolerance default is 0.001.
 Exception helpers default to ``std::exception`` and match derived types;
 ``*_throws_exact`` requires the precise exception type. All checks accept an
@@ -100,7 +101,7 @@ Fatal assertions unwind its callable; unexpected exceptions are recorded as
 failures on the active case. Nonfatal expectations continue within the thread.
 
 String comparisons and diagnostic printers
------------------------------------------
+------------------------------------------
 
 ``assert_streq`` / ``expect_streq`` compare C strings by content, and
 ``assert_strne`` / ``expect_strne`` check that their contents differ.
@@ -142,9 +143,8 @@ Assertion diagnostics invoke printers only on failure.
         }
     };
 
-Function-based assertions cannot automatically recover operand expression text
-from the call site. Use the optional message or ``scoped_trace`` to name the
-expressions or input context you want included in diagnostics.
+Diagnostics include evaluated operand values. Use the optional message or
+``scoped_trace`` to include expression names or input context.
 
 Grouped assertions
 ------------------
@@ -169,5 +169,5 @@ Original failure types and assertion locations are retained, with the group
 label added as trace context. Standard and unknown exceptions are recorded as
 errors and do not prevent later blocks from running. A skip immediately aborts
 the group and remaining blocks. Groups do not duplicate recorded failures and
-work inside ``capture_failures``; intentionally intercepted inner failures do
+work inside ``capture_failures``; intercepted inner failures do
 not fail the surrounding group.

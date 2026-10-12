@@ -22,26 +22,14 @@ AnnoTest
 What is AnnoTest?
 -----------------
 
-AnnoTest is a C++26 **annotation-based unit testing library**. It uses C++26 reflection and the module system to let you mark test functions with ``[[= test{}]]`` annotations instead of relying on macros or boilerplate.
+AnnoTest is a C++26 **annotation-based unit testing library**. Import the
+``annotest`` module and mark public test methods with ``[[= test{}]]``.
 
 The library supports compile-time test discovery, fixture hooks, value/type parameterization, assertions, expectations, contracts, captured output, and death tests on Linux, macOS, and native Windows.
 
 .. code-block:: cpp
 
     [[= test{}]] void my_test();
-
-Compatibility
--------------
-
-Starting with v1.0, documented public annotations, assertions, expectations,
-runner options, and CMake targets retain source compatibility within v1.x.
-Correctness fixes can reject previously accepted invalid tests. Internal
-implementation modules and undocumented APIs are excluded.
-
-Rebuild libraries and module artifacts with the consuming compiler and compatible
-settings. GCC reflection and CMake standard-library module support remain
-experimental. Compatibility across compiler versions, module formats, ABIs, and
-experimental CMake settings is outside this source API promise.
 
 .. toctree::
    :maxdepth: 2
