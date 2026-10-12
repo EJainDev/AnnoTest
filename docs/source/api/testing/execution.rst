@@ -8,7 +8,9 @@ Fixtures and suites
 By default, a fresh fixture is constructed for each test invocation, including
 every parameterized case and repetition.
 ``suite{.lifecycle = fixture_lifecycle::shared}`` retains the fixture across cases.
-Constructors and destructors manage fixture resources.
+Constructors and destructors manage fixture resources. Public static
+``before_all``/``after_all`` hooks manage resources across fresh fixtures; see
+:doc:`annotations` for nesting, failures, discovery, and worker semantics.
 
 ``nested{}`` creates a child suite with the outer name prefix and tags. Enclosing
 fixtures are constructed and their setup hooks run before inner fixtures, even
@@ -155,7 +157,9 @@ with ``clear_registered_tests()``.
 ``register_test<Fixture>(suite, name, factory, body, tags)`` constructs a fixture
 with the supplied factory and calls ``body(Fixture&)`` between its annotated
 hooks. Factories return ``std::unique_ptr<Fixture>`` and may accept
-``test_context&``. Registrations carry the caller's source location. Repeat the
+``test_context&``. Registrations carry the caller's source location. Suite hooks are shared across
+registrations with the same fixture type and suite name; annotated tests of that
+type in the same suite share them too. Repeat the
 same registration in each worker invocation when using subprocess execution.
 
 Reporter data and output options

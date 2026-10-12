@@ -94,17 +94,17 @@ struct FaultTests {
         exited_with_code(7), "exit marker");
   }
   [[= test{}]] void assert_death() {
-    assertDeath([] { std::_Exit(1); });
+    annotest::assert_death([] { std::_Exit(1); });
   }
   [[= test{}]] void expect_death() {
-    expectDeath([] { std::_Exit(1); });
+    annotest::expect_death([] { std::_Exit(1); });
     std::println("continued");
   }
   [[= test{}]] void child_return() {
-    assertDeath([] {});
+    annotest::assert_death([] {});
   }
   [[= test{}]] void child_exception() {
-    expectDeath([] { throw 42; });
+    annotest::expect_death([] { throw 42; });
   }
 };
 

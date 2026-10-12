@@ -53,7 +53,7 @@ template <std::meta::info Suite>
 consteval auto get_tests() {
   static constexpr auto members = std::define_static_array(inherited_members(Suite));
 
-  std::vector<std::meta::info> before_hooks, after_hooks;
+  std::vector<std::meta::info> before_hooks, after_hooks, before_all_hooks, after_all_hooks;
   std::vector<const char*> suite_tags;
   suite_test result;
   result.suite = Suite;
@@ -125,6 +125,21 @@ consteval auto get_tests() {
         validate_condition<a>();
         if constexpr (std::is_same_v<std::remove_cv_t<typename[:std::meta::type_of(a):]>, timeout>)
           current_test.timeout_seconds = std::meta::extract<timeout>(a).seconds;
+        if constexpr (std::is_same_v<std::remove_cv_t<typename[:std::meta::type_of(a):]>,
+                                     before_all> ||
+                      std::is_same_v<std::remove_cv_t<typename[:std::meta::type_of(a):]>,
+                                     after_all>) {
+          if (lifecycle_found || test_found)
+            throw std::logic_error("Suite hooks cannot share test or lifecycle annotations");
+          if (!std::meta::is_static_member(member))
+            throw std::logic_error("Suite hooks must be static methods");
+          lifecycle_found = true;
+          if constexpr (std::is_same_v<std::remove_cv_t<typename[:std::meta::type_of(a):]>,
+                                       before_all>)
+            before_all_hooks.push_back(member);
+          else
+            after_all_hooks.push_back(member);
+        }
         if constexpr (std::meta::has_template_arguments(std::meta::type_of(a))) {
           constexpr auto t = std::meta::template_of(std::meta::type_of(a));
 
@@ -147,6 +162,8 @@ consteval auto get_tests() {
                                     : std::define_static_string(std::meta::identifier_of(m));
             test_found = true;
           } else if constexpr (t == ^^before_each) {
+            if (lifecycle_found && !before_found && !after_found)
+              throw std::logic_error("Suite hooks cannot share test or lifecycle annotations");
             if (before_found) {
               throw std::logic_error(std::format(
                   "Duplicate before_each annotation detected. First one at {} and second one at {}",
@@ -164,6 +181,8 @@ consteval auto get_tests() {
             result.before_each = m;
             result.has_before_each = true;
           } else if constexpr (t == ^^after_each) {
+            if (lifecycle_found && !before_found && !after_found)
+              throw std::logic_error("Suite hooks cannot share test or lifecycle annotations");
             if (after_found) {
               throw std::logic_error(std::format(
                   "Duplicate after_each annotation detected. First one at {} and second one at {}",
@@ -287,6 +306,8 @@ consteval auto get_tests() {
 
   result.before_hooks = std::define_static_array(before_hooks);
   result.after_hooks = std::define_static_array(after_hooks);
+  result.before_all_hooks = std::define_static_array(before_all_hooks);
+  result.after_all_hooks = std::define_static_array(after_all_hooks);
   return suite_discovery{result, std::define_static_array(children)};
 }
 
@@ -305,8 +326,19 @@ void invoke_test_method(void* context) {
     static_cast<T*>(context)->[:Method:](Parameters...);
 }
 
+struct suite_hook_state {
+  std::shared_ptr<suite_hook_state> parent;
+  std::function<void()> before, after;
+  test_context context;
+  test_xml_log preparation;
+  bool entered = false, finished = false, claimed = false, has_hooks = false;
+};
+void ensure_suite_hooks(const std::shared_ptr<suite_hook_state>& state);
+void finish_suite_hooks(const std::shared_ptr<suite_hook_state>& state);
+
 template <typename T>
 struct fixture_state {
+  std::shared_ptr<suite_hook_state> suite_hooks;
   std::unique_ptr<T> value;
   std::unique_ptr<test_context> context;
   std::function<std::unique_ptr<T>(test_context&)> construct;
@@ -339,6 +371,7 @@ void destroy_fixture(fixture_state<T>& fixture, bool preserve_context = false) {
 
 template <auto Suite, typename T>
 void begin_fixture(fixture_state<T>& fixture) {
+  ensure_suite_hooks(fixture.suite_hooks);
   if (fixture.parent_before) {
     fixture.parent_entered = true;
     fixture.parent_before();
@@ -506,6 +539,47 @@ int run_parameterized_dual_test(auto& s, int parameterize_target_idx) {
   return status_code;
 }
 
+template <internal_test Test>
+std::string parameter_description(int index) {
+  using annotation = typename[:std::meta::type_of(Test.parameterize_annotation):];
+  std::string result;
+  if constexpr (Test.parameterization_type == parameterization_types::Value ||
+                Test.parameterization_type == parameterization_types::Dual) {
+    static constexpr auto source = std::meta::extract<annotation>(Test.parameterize_annotation);
+    static constexpr auto indices = std::make_index_sequence<annotation::N>{};
+    template for (constexpr auto i : indices) {
+      if (index == i) {
+        if constexpr (Test.parameterization_type == parameterization_types::Value)
+          result = print_value(as_std_tuple(source.parameters.template get<i>().params));
+        else
+          result = print_value(as_std_tuple(source.sets.template get<i>().params.params));
+      }
+    }
+  }
+  if constexpr (Test.parameterization_type == parameterization_types::Template ||
+                Test.parameterization_type == parameterization_types::Dual) {
+    static constexpr auto groups = std::define_static_array(
+        std::meta::template_arguments_of(std::meta::type_of(Test.parameterize_annotation)));
+    static constexpr auto indices = std::make_index_sequence<groups.size()>{};
+    template for (constexpr auto i : indices) {
+      if (index == i) {
+        constexpr auto group = Test.parameterization_type == parameterization_types::Dual
+                                   ? std::meta::template_arguments_of(groups[i])[0]
+                                   : groups[i];
+        if (!result.empty()) result += "; ";
+        result += "types: ";
+        bool first = true;
+        template for (constexpr auto type :
+                      std::define_static_array(std::meta::template_arguments_of(group))) {
+          if (!std::exchange(first, false)) result += ", ";
+          result += std::meta::display_string_of(type);
+        }
+      }
+    }
+  }
+  return result;
+}
+
 struct runner_options {
   std::vector<std::string> includes, excludes, include_tags, exclude_tags;
   bool run_disabled = false, shuffle = false, fail_fast = false, isolate = false, worker = false;
@@ -514,7 +588,7 @@ struct runner_options {
   unsigned repeat = 1, seed = 0, shard_count = 1, shard_index = 0, jobs = 1;
   double timeout_seconds = 0;
   std::string worker_result;
-  bool list_tests = false;
+  bool list_tests = false, list_json = false;
   bool should_exit = false;
   int exit_code = 0;
   std::string xml_output, json_output;
@@ -530,8 +604,8 @@ struct discovered_test {
   int parameter_count = 0;
   bool disabled = false;
   bool has_required_os = false;
-  std::span<const OS> required_os;
-  std::span<const OS> disallowed_os;
+  std::span<const operating_system> required_os;
+  std::span<const operating_system> disallowed_os;
   test_callback body = nullptr;
   int (*run)(void*, int) = nullptr;
 };
@@ -598,6 +672,7 @@ struct execution_case {
   std::string group_name;
   std::function<void()> finish_group;
   std::function<std::vector<execution_case>()> expand;
+  std::function<void(std::shared_ptr<suite_hook_state>)> set_suite_hooks;
 };
 using execution_conditions =
     std::vector<std::function<std::optional<std::string>(const test_context&)>>;
@@ -652,6 +727,8 @@ struct execution_suite {
   std::string name, file;
   std::vector<execution_case> cases;
   std::function<void()> finish_fixture;
+  std::shared_ptr<suite_hook_state> suite_hooks;
+  std::type_index fixture_type = typeid(void);
 };
 int run_plan(std::vector<execution_suite> suites, const runner_options& options, int argc,
              char** argv);
@@ -666,6 +743,7 @@ std::shared_ptr<fixture_state<Child>> nested_fixture(
                 ParentSuite.lifecycle != fixture_lifecycle::shared)
     throw std::logic_error("Shared nested fixtures require a shared enclosing fixture");
   auto child = std::make_shared<fixture_state<Child>>();
+  child->suite_hooks = parent->suite_hooks;
   child->parent_before = [parent] { begin_fixture<ParentSuite>(*parent); };
   child->parent_after = [parent] { end_fixture<ParentSuite>(*parent); };
   child->construct = [parent](test_context& context) -> std::unique_ptr<Child> {
@@ -725,6 +803,42 @@ void append_suite(std::vector<execution_suite>&, std::string = {}, std::vector<s
                   bool = false, std::function<std::shared_ptr<fixture_state<T>>()> = {},
                   std::function<std::shared_ptr<fixture_state<T>>()> = {},
                   execution_conditions = {});
+template <auto Suite, typename T>
+std::shared_ptr<suite_hook_state> make_suite_hooks(std::string name, std::vector<std::string> tags,
+                                                   std::shared_ptr<suite_hook_state> parent = {}) {
+  auto hook_state = std::make_shared<suite_hook_state>();
+  hook_state->parent = std::move(parent);
+  static constexpr bool has_suite_hooks =
+      Suite.before_all_hooks.size > 0 || Suite.after_all_hooks.size > 0;
+  hook_state->has_hooks = has_suite_hooks;
+  hook_state->context.suite = std::move(name);
+  hook_state->context.name = "_suite";
+  hook_state->context.tags = std::move(tags);
+  static constexpr auto hook_tags = Suite.tags;
+  for (auto label : hook_tags) hook_state->context.tags.emplace_back(label);
+  hook_state->before = [] {
+    static constexpr auto hooks = Suite.before_all_hooks;
+    static constexpr auto indices = std::make_index_sequence<hooks.size>{};
+    template for (constexpr auto i : indices) {
+      current_phase = "before_all";
+      invoke_test_method<hooks.data[i], T>(nullptr);
+    }
+  };
+  hook_state->after = [] {
+    static constexpr auto hooks = Suite.after_all_hooks;
+    static constexpr auto indices = std::make_index_sequence<hooks.size>{};
+    template for (constexpr auto i : indices) {
+      current_phase = "after_all";
+      try {
+        invoke_test_method<hooks.data[hooks.size - 1 - i], T>(nullptr);
+      } catch (...) {
+        record_exception(current_phase);
+      }
+    }
+  };
+  return hook_state;
+}
+
 template <typename T>
 void append_suite_instance(std::vector<execution_suite>& suites, std::string prefix = {},
                            std::vector<std::string> inherited_tags = {},
@@ -748,8 +862,13 @@ void append_suite_instance(std::vector<execution_suite>& suites, std::string pre
   if (!fresh_creator) fresh_creator = [] { return std::make_shared<fixture_state<T>>(); };
   auto fixture = creator();
   fixture->retain = retained;
-  output.finish_fixture = [fixture] {
+  auto hook_state = make_suite_hooks<Suite, T>(output.name, inherited_tags, fixture->suite_hooks);
+  output.suite_hooks = hook_state;
+  output.fixture_type = typeid(T);
+  fixture->suite_hooks = hook_state;
+  output.finish_fixture = [fixture, hook_state] {
     if (fixture->value) destroy_fixture(*fixture);
+    finish_suite_hooks(hook_state);
   };
   template for (constexpr auto test : discovery.tests) {
     static constexpr auto test_labels = test.tags;
@@ -766,11 +885,11 @@ void append_suite_instance(std::vector<execution_suite>& suites, std::string pre
     for (auto label : test_labels) entry.tags.emplace_back(label);
     static constexpr auto described = describe_test<Suite, test, T>();
 #if defined(_WIN32)
-    constexpr auto os = OS::Windows;
+    constexpr auto os = operating_system::windows;
 #elif defined(__APPLE__)
-    constexpr auto os = OS::Mac;
+    constexpr auto os = operating_system::macos;
 #else
-    constexpr auto os = OS::Linux;
+    constexpr auto os = operating_system::linux_os;
 #endif
     if constexpr (described.has_required_os &&
                   std::ranges::find(described.required_os, os) == described.required_os.end())
@@ -780,11 +899,12 @@ void append_suite_instance(std::vector<execution_suite>& suites, std::string pre
     if constexpr (test.dynamic) {
       auto prototype = entry;
       std::string suite_name = output.name;
-      entry.expand = [creator, prototype, suite_name]() mutable {
+      entry.expand = [creator, prototype, suite_name, hook_state]() mutable {
         auto group = std::make_shared<factory_state<T>>();
         group->conditions = prototype.conditions;
         group->skip_reason = prototype.skip_reason;
         group->fixture = creator();
+        group->fixture->suite_hooks = hook_state;
         group->fixture->retain = true;
         group->fixture->context = std::make_unique<test_context>();
         group->fixture->context->suite = suite_name;
@@ -921,6 +1041,7 @@ void append_suite_instance(std::vector<execution_suite>& suites, std::string pre
       for (int index = 0; index < test.num_parameterizations; ++index) {
         auto concrete = entry;
         concrete.name += "." + std::to_string(index + 1);
+        concrete.parameters = parameter_description<test>(index);
         concrete.run = [fixture, index] { return described.run(fixture.get(), index); };
         output.cases.push_back(std::move(concrete));
       }
@@ -1050,6 +1171,8 @@ void append_suite(std::vector<execution_suite>& suites, std::string prefix,
 struct registered_case {
   std::string suite, file;
   std::function<execution_case()> create;
+  std::function<std::shared_ptr<suite_hook_state>()> create_suite_hooks;
+  std::type_index fixture_type = typeid(void);
 };
 inline std::vector<registered_case> registered_cases;
 export inline void clear_registered_tests() { registered_cases.clear(); }
@@ -1086,7 +1209,8 @@ void register_test(std::string suite, std::string name, Factory factory, Body bo
   auto shared_factory = std::make_shared<Factory>(std::move(factory));
   auto shared_body = std::make_shared<Body>(std::move(body));
   registered_cases.push_back(
-      {suite, location.file_name(), [name, shared_factory, shared_body, tags, location] {
+      {suite, location.file_name(),
+       [name, shared_factory, shared_body, tags, location] {
          static constexpr auto description = get_tests<^^Fixture>();
          auto state = std::make_shared<fixture_state<Fixture>>();
          state->construct = [shared_factory](test_context& context) {
@@ -1100,15 +1224,28 @@ void register_test(std::string suite, std::string name, Factory factory, Body bo
                                .file = location.file_name(),
                                .line = location.line(),
                                .tags = tags};
+         result.set_suite_hooks = [state](std::shared_ptr<suite_hook_state> hooks) {
+           state->suite_hooks = std::move(hooks);
+         };
          result.run = [name, state, shared_body] {
            return execute_fixture<description.suite, Fixture>(
                *state, name,
                [shared_body](Fixture& fixture) { std::invoke(*shared_body, fixture); });
          };
          return result;
-       }});
+       },
+       [suite, tags] {
+         static constexpr auto description = get_tests<^^Fixture>();
+         return make_suite_hooks<description.suite, Fixture>(suite, tags);
+       },
+       typeid(Fixture)});
 }
 void append_registered_tests(std::vector<execution_suite>& suites) {
+  std::unordered_map<std::string,
+                     std::unordered_map<std::type_index, std::shared_ptr<suite_hook_state>>>
+      hooks;
+  for (const auto& suite : suites)
+    if (suite.suite_hooks) hooks[suite.name][suite.fixture_type] = suite.suite_hooks;
   for (const auto& test : registered_cases) {
     auto found =
         std::ranges::find_if(suites, [&](const auto& suite) { return suite.name == test.suite; });
@@ -1116,7 +1253,20 @@ void append_registered_tests(std::vector<execution_suite>& suites) {
       suites.push_back({.name = test.suite, .file = test.file});
       found = std::prev(suites.end());
     }
-    found->cases.push_back(test.create());
+    auto entry = test.create();
+    if (test.create_suite_hooks) {
+      auto& state = hooks[test.suite][test.fixture_type];
+      if (!state) {
+        state = test.create_suite_hooks();
+        auto previous = found->finish_fixture;
+        found->finish_fixture = [state, previous] {
+          finish_suite_hooks(state);
+          if (previous) previous();
+        };
+      }
+      entry.set_suite_hooks(state);
+    }
+    found->cases.push_back(std::move(entry));
   }
 }
 export inline int run_registered_tests(int argc, char** argv) {

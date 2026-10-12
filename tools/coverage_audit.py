@@ -23,7 +23,7 @@ root = args.root.resolve()
 files = {}
 for p in args.data.rglob('*.gz'):
     for f in json.load(gzip.open(p))['files']:
-        if '/include/' not in f['file'] or 'CLI11' in f['file']:
+        if '/include/' not in f['file']:
             continue
         name = 'include/' + f['file'].split('/include/', 1)[1]
         if not (root / name).is_file():

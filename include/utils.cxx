@@ -68,7 +68,7 @@ constexpr std::string to_string(T value) {
   return std::define_static_string(result);
 }
 
-consteval auto getAnnotations(std::meta::info member) { return std::meta::annotations_of(member); }
+consteval auto get_annotations(std::meta::info member) { return std::meta::annotations_of(member); }
 
 export template <typename E>
   requires std::is_enum_v<E>
@@ -209,9 +209,9 @@ std::string string_comparison_diagnostic(T first, U second, bool equal, bool ign
 
 export template <typename T>
 std::string print_value(const T& value) {
-  if constexpr (requires(std::ostream* stream) { PrintTo(value, stream); }) {
+  if constexpr (requires(std::ostream* stream) { print_to(value, stream); }) {
     std::ostringstream stream;
-    PrintTo(value, &stream);
+    print_to(value, &stream);
     return stream.str();
   } else if constexpr (c_string_operand<std::remove_cvref_t<T>>) {
     if constexpr (std::same_as<std::remove_cvref_t<T>, std::nullptr_t>)

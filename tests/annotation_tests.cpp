@@ -4,13 +4,13 @@ import std;
 using namespace annotest;
 
 #if defined(__linux__)
-constexpr auto current_os = OS::Linux;
+constexpr auto current_os = operating_system::linux_os;
 #elif defined(__APPLE__)
-constexpr auto current_os = OS::Mac;
+constexpr auto current_os = operating_system::macos;
 #elif defined(_WIN32)
-constexpr auto current_os = OS::Windows;
+constexpr auto current_os = operating_system::windows;
 #else
-constexpr auto current_os = OS::Unknown;
+constexpr auto current_os = operating_system::unknown;
 #endif
 
 static_assert(test{}.is_empty());
@@ -34,16 +34,16 @@ struct[[= suite{}]] AnnotationTests {
   [[= test{.disabled = true}]] void disabled() { assert_true(false); }
   [[ = test{}, = requires_os{current_os} ]] void required_current() { std::println("allowed"); }
   [[ = test{},
-     = requires_os{OS::Windows, OS::Mac, OS::Linux, OS::Unknown} ]] void required_multiple() {
+     = requires_os{operating_system::windows, operating_system::macos, operating_system::linux_os, operating_system::unknown} ]] void required_multiple() {
     std::println("allowed");
   }
-  [[ = test{}, = requires_os{OS::Unknown} ]] void required_other() { assert_true(false); }
+  [[ = test{}, = requires_os{operating_system::unknown} ]] void required_other() { assert_true(false); }
   [[ = test{}, = disallows_os{current_os} ]] void disallowed_current() { assert_true(false); }
   [[ = test{},
-     = disallows_os{OS::Windows, OS::Mac, OS::Linux, OS::Unknown} ]] void disallowed_multiple() {
+     = disallows_os{operating_system::windows, operating_system::macos, operating_system::linux_os, operating_system::unknown} ]] void disallowed_multiple() {
     assert_true(false);
   }
-  [[ = test{}, = disallows_os{OS::Unknown} ]] void disallowed_other() { std::println("allowed"); }
+  [[ = test{}, = disallows_os{operating_system::unknown} ]] void disallowed_other() { std::println("allowed"); }
   [[ = test{}, = requires_os{current_os}, = disallows_os{current_os} ]] void contradictory_os() {
     assert_true(false);
   }
@@ -51,7 +51,7 @@ struct[[= suite{}]] AnnotationTests {
      = parameterize{parameters(1), parameters(2)} ]] void os_values(int) {
     assert_true(false);
   }
-  [[ = test{}, = requires_os{OS::Unknown},
+  [[ = test{}, = requires_os{operating_system::unknown},
      = parameterize{parameters(1), parameters(2)} ]] void required_values(int) {
     assert_true(false);
   }

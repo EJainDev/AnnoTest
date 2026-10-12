@@ -13,7 +13,7 @@ import :logger;
 import std;
 
 namespace annotest {
-struct DeathResult {
+struct death_result {
   bool died;
   std::string detail;
   int exit_code = -1, signal = 0;
@@ -22,7 +22,7 @@ struct DeathResult {
 
 #if defined(__unix__) || defined(__APPLE__)
 template <typename F>
-DeathResult runDeathTest(F&& func) {
+death_result run_death_test(F&& func) {
   const pid_t pid = fork();
 
   if (pid < 0) {
@@ -59,7 +59,7 @@ DeathResult runDeathTest(F&& func) {
 }
 #elif defined(_WIN32)
 template <typename F>
-DeathResult runDeathTest(F&& func) {
+death_result run_death_test(F&& func) {
   if (annotest_platform::death_child_active() && !annotest_platform::death_callable_active()) {
     if (!annotest_platform::enter_death_child()) return {true, "earlier death check replayed"};
     try {
@@ -78,17 +78,17 @@ DeathResult runDeathTest(F&& func) {
 #error "AnnoTest requires Windows or a POSIX platform"
 #endif
 
-export void assertDeath(auto func,
-                        const std::source_location& loc = std::source_location::current()) {
-  auto result = runDeathTest(std::move(func));
+export void assert_death(auto func,
+                         const std::source_location& loc = std::source_location::current()) {
+  auto result = run_death_test(std::move(func));
   if (!result.died) {
     add_failure("Assertion failed: expected process death, child " + result.detail, loc);
   }
 }
 
-export void expectDeath(auto func,
-                        const std::source_location& loc = std::source_location::current()) {
-  auto result = runDeathTest(std::move(func));
+export void expect_death(auto func,
+                         const std::source_location& loc = std::source_location::current()) {
+  auto result = run_death_test(std::move(func));
   if (!result.died) {
     add_failure_expect("Expectation failed: expected process death, child " + result.detail, loc);
   }
@@ -108,7 +108,7 @@ bool check_exit(F&& callable, Predicate predicate, const std::string& pattern,
                 std::string& detail) {
 #ifdef _WIN32
   if (annotest_platform::death_child_active() && !annotest_platform::death_callable_active()) {
-    return runDeathTest(std::forward<F>(callable)).died;
+    return run_death_test(std::forward<F>(callable)).died;
   }
 #endif
   std::regex expression(pattern);
@@ -142,7 +142,7 @@ bool check_exit(F&& callable, Predicate predicate, const std::string& pattern,
     return false;
   }
   annotest_platform::sync_standard_handles();
-  auto result = runDeathTest(std::forward<F>(callable));
+  auto result = run_death_test(std::forward<F>(callable));
   std::fflush(stderr);
   std::rewind(capture);
   std::string text;
@@ -166,16 +166,16 @@ void expect_exit(F&& callable, Predicate predicate, std::string stderr_pattern =
     add_failure_expect("Unexpected child termination: " + detail, location);
 }
 export template <typename F>
-void assertDeath(F&& callable, std::string stderr_pattern,
-                 std::source_location location = std::source_location::current()) {
+void assert_death(F&& callable, std::string stderr_pattern,
+                  std::source_location location = std::source_location::current()) {
   assert_exit(
       std::forward<F>(callable),
       [](exit_status status) { return status.signal != 0 || status.code != 0; },
       std::move(stderr_pattern), location);
 }
 export template <typename F>
-void expectDeath(F&& callable, std::string stderr_pattern,
-                 std::source_location location = std::source_location::current()) {
+void expect_death(F&& callable, std::string stderr_pattern,
+                  std::source_location location = std::source_location::current()) {
   expect_exit(
       std::forward<F>(callable),
       [](exit_status status) { return status.signal != 0 || status.code != 0; },

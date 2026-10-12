@@ -1,9 +1,9 @@
-# Compile-time comparison with GoogleTest
+# Compilation and runtime comparison with GoogleTest
 
-Generate matching regular-test workloads for AnnoTest and GoogleTest: the same
+Generate matching test workloads for AnnoTest and GoogleTest: the same
 number of tests, fixture classes, setup/teardown operations, and one integer
 equality assertion per test. Each executable checks that all expected test bodies
-ran and returned success before measurements begin. These are compile-time
+ran and returned success before measurements begin. These are performance
 benchmarks, not a new correctness test suite.
 
 ## Run in the devcontainer
@@ -61,13 +61,48 @@ GoogleTest median: 1.0 means equal compile time.
 Add `--cold` to measure clean target builds including framework dependencies,
 standard library module compilation where needed, dependency scanning, and
 linking. Dependencies have already been downloaded and configured; this is not
-a fresh installation measurement. Clean builds are serial by default; use
+a fresh installation measurement. With an installed GoogleTest package, its
+static library remains prebuilt while AnnoTest and its fetched dependencies
+rebuild from source; the clean comparison reflects those different build setups.
+Clean builds are serial by default; use
 `--jobs N` explicitly for a parallel build comparison. Their peak RSS is the
 largest child process reported by `wait4`, not total memory across simultaneous
 compilers. Clean builds can take substantially longer than warm compilations.
 
-The workloads cover regular tests only. Parameterization, failure diagnostics,
-XML output, and runtime speed are separate questions. GoogleTest reconstructs
-its fixture for each test; AnnoTest reuses its suite instance. Setup resets the
-state in this workload, so the assertions and executed-test counts match, but
-this benchmark does not claim identical fixture lifecycle semantics.
+
+## V1 workload coverage
+
+The runner now measures three workloads selected with `--workloads`:
+
+- `regular`: independent test methods with setup, cleanup, and integer equality.
+- `parameterized`: the same number of concrete invocations supplied as value parameters.
+- `output`: regular tests writing 1 MiB per invocation, exercising AnnoTest's capture and retained output.
+
+All workloads validate the number of executed bodies. Both frameworks use fresh
+fixtures. Runtime measurements launch the complete executable, including startup,
+discovery, fixtures, assertions, reporting, and shutdown. Stdout is discarded by
+the harness. AnnoTest still captures each test's output internally; GoogleTest's
+normal runner writes it directly. The output workload therefore measures each
+framework's default behavior, with different output retention semantics.
+
+Use `--runtime-repetitions 5` to choose the runtime sample count. Runtime wall
+time and process peak RSS are saved separately from compiler wall time/RSS.
+RSS includes process launch overhead; small-run high-water marks may reflect
+the harness launch footprint. These small runs include process startup and should not be interpreted as
+per-assertion latency or parallel-worker performance. AnnoTest invokes one runner
+per fixture class, preserving the original generator layout; GoogleTest invokes
+one global runner. Runtime results include that difference. The complete
+generated sources and commands are identified by the recorded hashes. No XML/JSON files are
+requested in these workloads.
+
+For a compact Release run covering warm compilation, parameterization, output,
+and runtime, followed by a separate clean-build measurement:
+
+```sh
+python3 benchmarks/run.py --build-dir build/benchmarks-release \
+  --sizes 1 24 240 --repetitions 3 --runtime-repetitions 5 \
+  --output benchmarks/results-v1-release.json
+python3 benchmarks/run.py --build-dir build/benchmarks-release \
+  --sizes 1 --workloads regular --repetitions 3 --cold \
+  --output benchmarks/results-v1-clean-release.json
+```

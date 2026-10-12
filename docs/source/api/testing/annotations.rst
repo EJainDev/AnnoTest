@@ -28,6 +28,31 @@ be publicly callable and may accept ``test_context&``. They cannot also be tests
 duplicate annotations on one hook are rejected. Hook failures fail the current
 case; cleanup still runs after setup or body failure.
 
+``before_all{}`` and ``after_all{}`` mark public static suite hooks. They accept
+no required arguments or a ``test_context&``. Suite setup runs base-first once
+before the first participating fixture is constructed; cleanup runs in reverse
+order after the suite's fixtures are destroyed. Hooks cannot share a method with
+another lifecycle annotation or a test annotation. A suite-hook context and its
+resources remain alive from setup through cleanup, with ``name == "_suite"``.
+Properties recorded during suite setup are copied to each participating case.
+
+A failed or skipped suite setup prevents that suite's bodies from running;
+subsequent cases receive the setup failure or skip reason. Cleanup still runs
+for every suite whose setup was entered, including after fail-fast. A cleanup
+failure is reported as a separate teardown case in ordinary runs and merged into
+the selected case in an isolated worker. Every cleanup hook runs even if an
+earlier cleanup hook throws. Enclosing suite setup precedes nested suite setup;
+nested suite cleanup precedes enclosing cleanup. Each parameterized suite
+instance owns its own hook context. Static user state remains shared by the C++
+type, so keep instance-specific resources in the hook context.
+
+Ordinary listing, filtered-out cases, and disabled/OS-skipped cases do not enter
+suite hooks. Factories may enter them during discovery because constructing
+factory fixtures requires suite resources. Each isolated worker runs its own
+suite setup and cleanup; resources are not shared between processes. Suite hooks
+run once across in-process repetitions, while ``before_each``/``after_each``
+still wrap each invocation. See :doc:`/examples/suite_resources`.
+
 Fixtures are fresh for each test and parameterized invocation by default.
 ``suite{.lifecycle = fixture_lifecycle::shared}`` retains the fixture across cases.
 Constructors and destructors manage fixture resources. See :doc:`execution` for
@@ -58,9 +83,9 @@ See :doc:`/examples/dual_parameters`.
 Operating systems
 -----------------
 
-``OS`` has values ``Linux``, ``Mac``, ``Windows``, and ``Unknown``.
-``requires_os{OS::Linux, OS::Mac}`` runs a test when any listed OS matches.
-``disallows_os{OS::Windows}`` skips a test when any listed OS matches. These
+``operating_system`` has values ``linux_os``, ``macos``, ``windows``, and ``unknown``.
+``requires_os{operating_system::linux_os, operating_system::macos}`` runs a test when any listed OS matches.
+``disallows_os{operating_system::windows}`` skips a test when any listed OS matches. These
 annotations control execution; the body must compile on every target platform.
 See :doc:`/examples/os_annotations`.
 

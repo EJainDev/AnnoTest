@@ -11,6 +11,7 @@ import std;
 namespace annotest {
 void debugger_break() { annotest_platform::debugger_break(); }
 inline bool brief_output = false;
+inline bool suite_hook_execution = false;
 
 // Temporary files let large writes complete without full pipes or background reader threads.
 class std_streams {
@@ -103,7 +104,7 @@ void record_exception(const std::string& phase) {
 
 int execute_test(void* context, std::string_view name, test_callback test, test_callback before,
                  test_callback after, bool extensions) {
-  annotest_platform::reset_death_ordinal();
+  if (!suite_hook_execution) annotest_platform::reset_death_ordinal();
   contract_violation_occurred = false;
   traces.clear();
   suite_log.testcases.emplace_back(
@@ -213,6 +214,93 @@ int execute_cleanup(std::string_view name, std::function<void()> cleanup) {
   return execute_test(
       &cleanup, name, [](void* p) { (*static_cast<std::function<void()>*>(p))(); }, nullptr,
       nullptr, false);
+}
+
+void ensure_suite_hooks(const std::shared_ptr<suite_hook_state>& state) {
+  if (!state) return;
+  ensure_suite_hooks(state->parent);
+  if (!state->has_hooks) return;
+  if (!state->entered) {
+    state->entered = true;
+    struct context_guard {
+      test_context* previous = active_context;
+      bool quiet = quiet_execution;
+      bool hook = suite_hook_execution;
+      bool contract = contract_violation_occurred;
+      std::vector<std::string> saved_traces = std::move(traces);
+      std::string phase = std::move(current_phase);
+      ~context_guard() {
+        active_context = previous;
+        quiet_execution = quiet;
+        suite_hook_execution = hook;
+        contract_violation_occurred = contract || contract_violation_occurred;
+        traces = std::move(saved_traces);
+        current_phase = std::move(phase);
+      }
+    } restore;
+    active_context = &state->context;
+    quiet_execution = true;
+    suite_hook_execution = true;
+    auto name = suite_log.testcases.back().name;
+    try {
+      execute_test(
+          state.get(), name,
+          [](void* pointer) { static_cast<suite_hook_state*>(pointer)->before(); }, nullptr,
+          nullptr, false);
+    } catch (...) {
+      current_phase = "before_all";
+      record_exception(current_phase);
+      suite_log.testcases.back().failed = true;
+    }
+    state->preparation = std::move(suite_log.testcases.back());
+    suite_log.testcases.pop_back();
+  }
+  auto& entry = suite_log.testcases.back();
+  entry.properties.insert(entry.properties.end(), state->preparation.properties.begin(),
+                          state->preparation.properties.end());
+  if (!std::exchange(state->claimed, true)) {
+    std::cout << state->preparation.sysout;
+    std::cerr << state->preparation.syserr;
+  }
+  if (state->preparation.failed) {
+    entry.failures.insert(entry.failures.end(), state->preparation.failures.begin(),
+                          state->preparation.failures.end());
+    throw assertion_error{"Suite setup failed", true};
+  }
+  if (!state->preparation.skip_entries.empty())
+    skip(state->preparation.skip_entries.front().message);
+}
+
+void finish_suite_hooks(const std::shared_ptr<suite_hook_state>& state) {
+  if (!state || !state->entered || std::exchange(state->finished, true)) return;
+  auto* previous = active_context;
+  active_context = &state->context;
+  state->after();
+  state->context.resources.clear();
+  state->context.directory.reset();
+  active_context = previous;
+}
+
+std::string json_quote(std::string_view text) {
+  std::string result = "\"";
+  for (unsigned char c : xml_text(text)) {
+    if (c == '"' || c == '\\') {
+      result += '\\';
+      result += c;
+    } else if (c < 0x20)
+      result += std::format("\\u{:04x}", c);
+    else
+      result += c;
+  }
+  return result + "\"";
+}
+std::string json_strings(std::span<const std::string> values) {
+  std::string result = "[";
+  for (const auto& value : values) {
+    if (result.size() > 1) result += ',';
+    result += json_quote(value);
+  }
+  return result + ']';
 }
 
 runner_options parse_options(int argc, char** argv) {
@@ -436,11 +524,12 @@ runner_options parse_options(int argc, char** argv) {
           options.fail_fast = enabled;
         else
           options.isolate = enabled;
-      } else if (name == "--list" || name == "--help") {
+      } else if (name == "--list" || name == "--list-json" || name == "--help") {
         if (has_value) {
           error(std::format("{} does not accept a value", name));
-        } else if (name == "--list") {
+        } else if (name == "--list" || name == "--list-json") {
           options.list_tests = true;
+          options.list_json |= name == "--list-json";
         } else {
           show_help = true;
         }
@@ -485,6 +574,7 @@ runner_options parse_options(int argc, char** argv) {
         "Options:\n"
         "  -h, --help                  Show this help and exit\n"
         "  -l, --list                  List all available tests\n"
+        "      --list-json            List test metadata as JSON\n"
         "  -t, --test-name NAME...     Run fully qualified test names (repeatable)\n"
         "      --xml-output FILE      Write an XML report to this file\n"
         "      --filter GLOB          Include matching fully qualified names (repeatable)\n"
@@ -723,9 +813,33 @@ int run_plan(std::vector<execution_suite> suites, const runner_options& requeste
     }
   }
   if (options.list_tests) {
-    for (const auto& suite : suites) {
-      std::println("{}.", suite.name);
-      for (const auto& test : suite.cases) std::println("\t{}", test.name);
+    if (options.list_json) {
+      std::string json = "{\"schema_version\":1,\"suites\":[";
+      bool first_suite = true;
+      for (const auto& suite : suites) {
+        if (!std::exchange(first_suite, false)) json += ',';
+        json += "{\"name\":" + json_quote(suite.name) + ",\"file\":" + json_quote(suite.file) +
+                ",\"tests\":[";
+        bool first_test = true;
+        for (const auto& test : suite.cases) {
+          if (!std::exchange(first_test, false)) json += ',';
+          json += "{\"name\":" + json_quote(test.name) +
+                  ",\"full_name\":" + json_quote(suite.name + "." + test.name) +
+                  ",\"base_name\":" + json_quote(suite.name + "." + test.base_name) +
+                  ",\"file\":" + json_quote(test.file) + ",\"line\":" + std::to_string(test.line) +
+                  ",\"parameters\":" + json_quote(test.parameters) +
+                  ",\"tags\":" + json_strings(test.tags) +
+                  ",\"disabled\":" + (test.disabled ? "true" : "false") +
+                  ",\"skip_reason\":" + json_quote(test.skip_reason) + "}";
+        }
+        json += "]}";
+      }
+      std::println("{}", json + "]}");
+    } else {
+      for (const auto& suite : suites) {
+        std::println("{}.", suite.name);
+        for (const auto& test : suite.cases) std::println("\t{}", test.name);
+      }
     }
     bool failed = false;
     for (std::size_t index = suites.size(); index-- > 0;) {
@@ -997,7 +1111,10 @@ int run_plan(std::vector<execution_suite> suites, const runner_options& requeste
               entry.sysout = preparation->sysout + entry.sysout;
               entry.syserr = preparation->syserr + entry.syserr;
             }
-            if (!test.parameters.empty())
+            if (!test.parameters.empty() &&
+                std::ranges::none_of(entry.properties, [](const auto& property) {
+                  return property.name == "parameters";
+                }))
               entry.properties.push_back({"parameters", test.parameters});
 
             if (entry.failed && options.fail_fast) stopped = true;
@@ -1073,10 +1190,33 @@ int run_plan(std::vector<execution_suite> suites, const runner_options& requeste
       execute_cleanup(context.name, suite.finish_fixture);
       auto entry = std::move(suite_log.testcases.back());
       suite_log.testcases.pop_back();
-      if (entry.failed) {
+      // A parent selected only through a nested suite has no case of its own.
+      // Preserve its successful cleanup output on the last participating descendant.
+      test_xml_log* target = suite_log.testcases.empty() ? nullptr : &suite_log.testcases.back();
+      if (!target) {
+        for (std::size_t child = i + 1; child < reports.size(); ++child)
+          if (reports[child].name.starts_with(suite.name + ".") &&
+              !reports[child].testcases.empty())
+            target = &reports[child].testcases.back();
+      }
+      if (options.worker && target) {
+        target->failures.insert(target->failures.end(), entry.failures.begin(),
+                                entry.failures.end());
+        target->failed |= entry.failed;
+        target->errors += entry.errors;
+        if (target->failed) target->skip_entries.clear();
+        target->sysout += entry.sysout;
+        target->syserr += entry.syserr;
+        status |= entry.failed;
+      } else if (entry.failed) {
         status = 1;
         test_result result{suite.name, entry.name, test_status::failed,
                            entry.time, "",         entry.failures.size()};
+        for (const auto& failure : entry.failures)
+          result.details.push_back(
+              {failure.type, failure.message, failure.phase, failure.cdata.location});
+        result.standard_output = entry.sysout;
+        result.standard_error = entry.syserr;
         notify_listeners("on_test_start", [&](test_listener& listener) {
           listener.on_test_start(suite.name, entry.name);
         });
@@ -1084,14 +1224,35 @@ int run_plan(std::vector<execution_suite> suites, const runner_options& requeste
         notify_listeners("on_test_end",
                          [&](test_listener& listener) { listener.on_test_end(result); });
         suite_log.testcases.push_back(std::move(entry));
-      } else if (!suite_log.testcases.empty()) {
-        suite_log.testcases.back().sysout += entry.sysout;
-        suite_log.testcases.back().syserr += entry.syserr;
+      } else if (target) {
+        target->sysout += entry.sysout;
+        target->syserr += entry.syserr;
       }
     }
     active_context = nullptr;
     reports[i] = suite_log;
   }
+  // Index repeated results in execution order. Suite teardown may append output
+  // after on_test_end, so refresh the snapshots passed to the final reporters.
+  std::unordered_map<std::string, std::vector<std::size_t>> result_indices;
+  std::unordered_map<std::string, const test_result*> result_metadata;
+  for (std::size_t index = 0; index < results.size(); ++index) {
+    auto name = results[index].suite + "." + results[index].name;
+    result_indices[name].push_back(index);
+    result_metadata.try_emplace(name, &results[index]);
+  }
+  std::unordered_map<std::string, std::size_t> consumed;
+  for (const auto& report : reports)
+    for (const auto& entry : report.testcases) {
+      auto name = report.name + "." + entry.name;
+      auto found = result_indices.find(name);
+      auto& next = consumed[name];
+      if (found != result_indices.end() && next < found->second.size()) {
+        auto& result = results[found->second[next++]];
+        result.standard_output = entry.sysout;
+        result.standard_error = entry.syserr;
+      }
+    }
   // Each registration receives final results once, regardless of its suite scope.
   for (const auto& registration : listeners) {
     selected_listeners = {registration};
@@ -1155,27 +1316,16 @@ int run_plan(std::vector<execution_suite> suites, const runner_options& requeste
   }
   if (!options.json_output.empty()) {
     try {
-      auto quote = [](std::string_view text) {
-        std::string result = "\"";
-        for (unsigned char c : xml_text(text)) {
-          if (c == '"' || c == '\\') {
-            result += '\\';
-            result += c;
-          } else if (c < 0x20)
-            result += std::format("\\u{:04x}", c);
-          else
-            result += c;
-        }
-        return result + "\"";
-      };
+      auto quote = json_quote;
       unsigned total = 0, failed = 0, skipped = 0;
       for (const auto& report : reports) {
         total += report.total_tests;
         failed += report.failed;
         skipped += report.skipped;
       }
-      std::string json = std::format("{{\"tests\":{},\"failed\":{},\"skipped\":{},\"suites\":[",
-                                     total, failed, skipped);
+      std::string json = std::format(
+          "{{\"schema_version\":1,\"tests\":{},\"failed\":{},\"skipped\":{},\"suites\":[", total,
+          failed, skipped);
       bool first_suite = true;
       for (const auto& report : reports) {
         if (!std::exchange(first_suite, false)) json += ',';
@@ -1189,14 +1339,24 @@ int run_plan(std::vector<execution_suite> suites, const runner_options& requeste
                   quote(entry.failed ? "failed"
                                      : (!entry.skip_entries.empty() ? "skipped" : "passed")) +
                   ",\"time\":" + std::to_string(entry.time) + ",\"stdout\":" + quote(entry.sysout) +
-                  ",\"stderr\":" + quote(entry.syserr) + ",\"failures\":[";
+                  ",\"stderr\":" + quote(entry.syserr);
+          auto found = result_metadata.find(report.name + "." + entry.name);
+          auto* metadata = found == result_metadata.end() ? nullptr : found->second;
+          json += ",\"parameters\":" + quote(metadata ? metadata->parameters : "") +
+                  ",\"tags\":" + (metadata ? json_strings(metadata->tags) : "[]") +
+                  ",\"failures\":[";
           bool first_failure = true;
           for (const auto& failure : entry.failures) {
             if (!std::exchange(first_failure, false)) json += ',';
-            json += "{\"message\":" + quote(failure.message) +
-                    ",\"phase\":" + quote(failure.phase) +
-                    ",\"type\":" + quote(std::format("{}", failure.type)) +
-                    ",\"diagnostic\":" + quote(std::format("{}", failure.cdata)) + "}";
+            json +=
+                "{\"message\":" + quote(failure.message) + ",\"phase\":" + quote(failure.phase) +
+                ",\"type\":" + quote(std::format("{}", failure.type)) +
+                ",\"diagnostic\":" + quote(std::format("{}", failure.cdata)) + ",\"location\":" +
+                (failure.cdata.location
+                     ? "{\"file\":" + quote(failure.cdata.location->first) +
+                           ",\"line\":" + std::to_string(failure.cdata.location->second) + "}"
+                     : "null") +
+                "}";
           }
           json += "],\"skip_reason\":" +
                   quote(entry.skip_entries.empty() ? "" : entry.skip_entries.front().message) +

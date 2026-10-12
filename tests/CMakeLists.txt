@@ -2,7 +2,7 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 # Fixtures intentionally include failing tests. An independent verifier checks
 # their status and report instead of registering those failures directly in CTest.
-foreach(name IN ITEMS Assertion Expectation Parameterization Annotation Lifecycle Contract Utility Behavior Generic Name Parity Scope Feature Diagnostic Execution)
+foreach(name IN ITEMS Assertion Expectation Parameterization Annotation Lifecycle Contract Utility Behavior Generic Name Parity Scope Feature Diagnostic Execution V1)
   string(TOLOWER "${name}" source)
   add_executable(${name}Tests ${source}_tests.cpp)
   target_link_libraries(${name}Tests PRIVATE annotest)
@@ -11,7 +11,7 @@ target_compile_options(ContractTests PRIVATE -fcontracts -fcontract-evaluation-s
 
 add_executable(InternalTests internal_tests.cpp)
 target_link_libraries(InternalTests PRIVATE annotest)
-set(integration_categories checks behavior generic parameterization annotations lifecycle contracts cli reporting internals discovery parity scopes features diagnostics execution)
+set(integration_categories checks behavior generic parameterization annotations lifecycle contracts cli reporting internals discovery parity scopes features diagnostics execution v1)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_executable(FaultTests fault_tests.cpp)
   target_link_libraries(FaultTests PRIVATE annotest)
@@ -144,3 +144,12 @@ endforeach()
 expect_invalid_annotation(zero_repetitions "Test repetitions must be between 1 and 1000000")
 expect_invalid_annotation(excessive_repetitions "Test repetitions must be between 1 and 1000000")
 expect_invalid_annotation(invalid_condition "Execution conditions must return bool")
+
+expect_invalid_annotation(nonstatic_before_all "Suite hooks must be static methods")
+expect_invalid_annotation(suite_hook_arguments "Lifecycle hooks must not have required arguments")
+expect_invalid_annotation(duplicate_before_all "Suite hooks cannot share test or lifecycle annotations")
+expect_invalid_annotation(suite_hook_then_test "Cannot have a `test` annotation on a lifecycle")
+expect_invalid_annotation(test_then_suite_hook "Suite hooks cannot share test or lifecycle annotations")
+expect_invalid_annotation(suite_hook_then_each "Suite hooks cannot share test or lifecycle annotations")
+expect_invalid_annotation(each_then_suite_hook "Suite hooks cannot share test or lifecycle annotations")
+expect_invalid_annotation(private_suite_hook "Annotated test and lifecycle methods must be public")

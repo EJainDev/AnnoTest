@@ -10,12 +10,12 @@ struct UtilityTests {
     assert_true(true);
   }
   [[= test<"named enum">{}]] void named() {
-    assert_equal(std::string{"Linux"}, enum_to_string(OS::Linux));
+    assert_equal(std::string{"linux_os"}, enum_to_string(operating_system::linux_os));
   }
   [[
-    = test{}, = parameterize{parameters(OS::Windows), parameters(OS::Mac), parameters(OS::Linux)}
-  ]] void os_values(OS os) {
-    assert_not_equal(std::string{"Unknown"}, enum_to_string(os));
+    = test{}, = parameterize{parameters(operating_system::windows), parameters(operating_system::macos), parameters(operating_system::linux_os)}
+  ]] void os_values(operating_system os) {
+    assert_not_equal(std::string{"unknown"}, enum_to_string(os));
   }
 
   [[= test{}]] void enums() {
@@ -25,11 +25,11 @@ struct UtilityTests {
     assert_equal(std::string{"<invalid enum value>"}, enum_to_string(static_cast<Colour>(99)));
     assert_equal(std::string{"first"}, enum_to_string(first));
     assert_equal(std::string{"second"}, enum_to_string(second));
-    assert_equal(std::string{"Windows"}, enum_to_string(OS::Windows));
-    assert_equal(std::string{"Mac"}, enum_to_string(OS::Mac));
-    assert_equal(std::string{"Linux"}, enum_to_string(OS::Linux));
-    assert_equal(std::string{"Unknown"}, enum_to_string(OS::Unknown));
-    assert_equal(std::string{"<invalid enum value>"}, enum_to_string(static_cast<OS>(99)));
+    assert_equal(std::string{"windows"}, enum_to_string(operating_system::windows));
+    assert_equal(std::string{"macos"}, enum_to_string(operating_system::macos));
+    assert_equal(std::string{"linux_os"}, enum_to_string(operating_system::linux_os));
+    assert_equal(std::string{"unknown"}, enum_to_string(operating_system::unknown));
+    assert_equal(std::string{"<invalid enum value>"}, enum_to_string(static_cast<operating_system>(99)));
   }
 };
 int main(int argc, char** argv) { return run_tests<UtilityTests>(argc, argv); }

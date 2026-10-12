@@ -11,11 +11,11 @@ template <typename... Ts>
 using tuple = structural_tuple::tuple<Ts...>;
 
 namespace annotest {
-export enum class OS {
-  Windows,
-  Mac,
-  Linux,
-  Unknown,
+export enum class operating_system {
+  windows,
+  macos,
+  linux_os,
+  unknown,
 };
 
 export enum class fixture_lifecycle { per_test, shared };
@@ -115,6 +115,9 @@ struct suite {
 
 export template <typename T = int>
 struct after_each {};
+
+export struct before_all {};
+export struct after_all {};
 
 export template <typename... Ts>
 struct parameters {
@@ -224,7 +227,7 @@ struct parameterize_dual {
 
 export template <int N>
 struct requires_os {
-  OS os[N];
+  operating_system os[N];
 };
 
 template <typename... Ts>
@@ -232,7 +235,7 @@ requires_os(Ts...) -> requires_os<sizeof...(Ts)>;
 
 export template <int N>
 struct disallows_os {
-  OS os[N];
+  operating_system os[N];
 };
 
 template <typename... Ts>
@@ -298,7 +301,7 @@ struct suite_test {
   static_tags tags;
   double timeout_seconds = 0;
 
-  static_hooks before_hooks, after_hooks;
+  static_hooks before_hooks, after_hooks, before_all_hooks, after_all_hooks;
   bool has_before_each = false;
   std::meta::info before_each = ^^int;
 

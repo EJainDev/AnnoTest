@@ -53,6 +53,9 @@ context across cases; the runner refreshes its identity fields before each case.
 ``current_test()`` refers to the active invocation's context, which may be a
 different object from the fixture's constructor context.
 
+Suite-hook contexts retain their temporary directories and resources until all
+``after_all`` hooks finish. They are distinct from per-test and constructor contexts.
+
 Temporary directories
 ---------------------
 

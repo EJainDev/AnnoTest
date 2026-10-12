@@ -43,10 +43,10 @@ For composable value checks with ``assert_that`` and ``expect_that``, see
      - ``assert_contract_violation``, ``assert_no_contract_violation``
      - Corresponding ``expect_*`` helpers
    * - Process death
-     - ``assertDeath(callable)``
-     - ``expectDeath(callable)``
+     - ``assert_death(callable)``
+     - ``expect_death(callable)``
 
-``assertDeath`` and ``expectDeath`` support Linux, macOS, and Windows; see
+``assert_death`` and ``expect_death`` support Linux, macOS, and Windows; see
 :doc:`death` for the Windows replay requirements. The tolerance default is 0.001.
 Exception helpers default to ``std::exception`` and match derived types;
 ``*_throws_exact`` requires the precise exception type. All checks accept an
@@ -128,7 +128,7 @@ Ordering failures include the comparison operator and both operands.
 Generic C-string equality failures also show pointer addresses to distinguish
 different buffers containing identical text.
 
-Define ``void PrintTo(const T&, std::ostream*)`` in the same namespace as your
+Define ``void print_to(const T&, std::ostream*)`` in the same namespace as your
 type, or as a friend, to supply a diagnostic printer. Argument-dependent lookup
 finds it before the standard formatter, range printer, or stream fallback.
 The same printer is used inside ranges and first-difference diagnostics.
@@ -138,7 +138,7 @@ Assertion diagnostics invoke printers only on failure.
 
     struct Point {
         int x, y;
-        friend void PrintTo(const Point& point, std::ostream* out) {
+        friend void print_to(const Point& point, std::ostream* out) {
             *out << "Point(" << point.x << ", " << point.y << ")";
         }
     };

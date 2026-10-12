@@ -47,20 +47,27 @@ foreach(count IN LISTS ANNOTEST_BENCHMARK_SIZES)
       "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/generate.py"
       --output "${CMAKE_CURRENT_BINARY_DIR}/generated" --count "${count}"
       --suites "${ANNOTEST_BENCHMARK_SUITES}" COMMAND_ERROR_IS_FATAL ANY)
+  foreach(workload regular parameterized output)
   foreach(framework annotest gtest)
+    if(workload STREQUAL "regular")
+      set(stem ${framework})
+    else()
+      set(stem ${framework}_${workload})
+    endif()
     add_executable(
-      ${framework}_bench_${count} EXCLUDE_FROM_ALL
-      "${CMAKE_CURRENT_BINARY_DIR}/generated/${framework}_${count}.cpp")
-    set_target_properties(${framework}_bench_${count} PROPERTIES CXX_EXTENSIONS
+      ${stem}_bench_${count} EXCLUDE_FROM_ALL
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/${stem}_${count}.cpp")
+    set_target_properties(${stem}_bench_${count} PROPERTIES CXX_EXTENSIONS
                                                                  ON)
     if(framework STREQUAL "annotest")
-      target_link_libraries(${framework}_bench_${count} PRIVATE annotest)
+      target_link_libraries(${stem}_bench_${count} PRIVATE annotest)
     else()
       set_target_properties(
-        ${framework}_bench_${count} PROPERTIES CXX_MODULE_STD OFF
+        ${stem}_bench_${count} PROPERTIES CXX_MODULE_STD OFF
                                                CXX_SCAN_FOR_MODULES OFF)
-      target_link_libraries(${framework}_bench_${count} PRIVATE GTest::gtest)
+      target_link_libraries(${stem}_bench_${count} PRIVATE GTest::gtest)
     endif()
+  endforeach()
   endforeach()
 endforeach()
 file(

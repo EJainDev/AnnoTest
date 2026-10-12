@@ -6,7 +6,7 @@ namespace custom {
 struct Printed {
   int value;
   bool operator==(const Printed&) const = default;
-  friend void PrintTo(const Printed& item, std::ostream* out) {
+  friend void print_to(const Printed& item, std::ostream* out) {
     *out << "Printed(" << item.value << ")";
   }
   friend std::ostream& operator<<(std::ostream& out, const Printed&) {
@@ -17,7 +17,7 @@ struct Counted {
   int value;
   static inline int prints = 0;
   bool operator==(const Counted&) const = default;
-  friend void PrintTo(const Counted& item, std::ostream* out) {
+  friend void print_to(const Counted& item, std::ostream* out) {
     ++prints;
     *out << "Counted(" << item.value << ")";
   }

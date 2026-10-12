@@ -19,3 +19,7 @@ both ``BUILD_EXAMPLES=ON`` and ``BUILD_TESTS=ON`` are enabled. The reporting exa
    dual_parameters
    reporting
    named_suites
+   matchers_and_threads
+   suite_resources
+   runtime_sources
+   execution

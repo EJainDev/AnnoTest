@@ -46,3 +46,14 @@ The installed and FetchContent consumers in `tests/consumer` exercise the public
 link target, contract-handler header, assertions, parameters, death checks, and CTest discovery.
 The check verifies relocated installation paths and exported CMake configuration.
 Use `--cmake /path/to/cmake` to select a CMake version for the consumer checks.
+
+The V1 integration category covers static suite hooks with fresh/shared/nested
+fixtures, repetitions, factory discovery, registered fixtures, helper-thread
+listeners, and subprocess cleanup failures. Eight compile-failure fixtures check
+invalid suite-hook declarations. The example gallery also runs through CTest,
+including a separate parallel-worker invocation.
+
+JSON discovery (`--list-json`) and execution reports carry schema version 1.
+The downloadable schemas live in `docs/source/_static/`; schema validation is an
+additional check and does not add dependencies to the standard-library-only
+Python integration tests.

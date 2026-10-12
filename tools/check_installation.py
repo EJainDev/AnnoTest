@@ -6,6 +6,7 @@ CMake cache controls compiler, configuration and install directory overrides.
 """
 import argparse
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -74,6 +75,13 @@ def main():
                     'ConsumerTests.parameters_work.1', 'ConsumerTests.parameters_work.2'}
         if names != expected:
             raise RuntimeError(f'{mode} discovery mismatch: {names}')
+        binary = build / ('consumer.exe' if os.name == 'nt' else 'consumer')
+        discovery = subprocess.run([str(binary), '--list-json'], check=True,
+                                   capture_output=True, text=True)
+        data = json.loads(discovery.stdout)
+        actual = {case['full_name'] for suite in data['suites'] for case in suite['tests']}
+        if data['schema_version'] != 1 or actual != expected:
+            raise RuntimeError(f'{mode} JSON discovery mismatch: {data}')
         run(ctest, '--test-dir', build, '-C', args.config, '--output-on-failure')
     print('Relocated installation and FetchContent consumers passed', flush=True)
 

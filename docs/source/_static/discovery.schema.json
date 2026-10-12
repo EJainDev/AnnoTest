@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AnnoTest discovery schema v1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "suites": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "file": {
+            "type": "string"
+          },
+          "tests": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "full_name": {
+                  "type": "string"
+                },
+                "base_name": {
+                  "type": "string"
+                },
+                "file": {
+                  "type": "string"
+                },
+                "line": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "parameters": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "disabled": {
+                  "type": "boolean"
+                },
+                "skip_reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "full_name",
+                "base_name",
+                "file",
+                "line",
+                "parameters",
+                "tags",
+                "disabled",
+                "skip_reason"
+              ]
+            }
+          }
+        },
+        "required": [
+          "name",
+          "file",
+          "tests"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "suites"
+  ]
+}

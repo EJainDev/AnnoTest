@@ -268,17 +268,17 @@ struct FeatureTests {
         },
         exited_with_code(7), "goodbye");
     expect_exit([] {}, exited_with_code(0));
-    assertDeath(
+    assert_death(
         [] {
           std::fprintf(stderr, "abort marker\n");
           std::abort();
         },
         "abort marker");
-    expectDeath([] { throw std::runtime_error("still death"); }, ".*");
-    expectDeath([] { std::abort(); }, ".*");
-    expectDeath([] { std::_Exit(7); }, ".*");
-    assertDeath([] { throw std::runtime_error("still death"); }, ".*");
-    assertDeath([] { std::_Exit(7); }, ".*");
+    expect_death([] { throw std::runtime_error("still death"); }, ".*");
+    expect_death([] { std::abort(); }, ".*");
+    expect_death([] { std::_Exit(7); }, ".*");
+    assert_death([] { throw std::runtime_error("still death"); }, ".*");
+    assert_death([] { std::_Exit(7); }, ".*");
 #ifndef _WIN32
     auto mismatch =
         capture_failures([] { expect_exit([] { std::raise(SIGTERM); }, exited_with_code(0)); });
@@ -290,7 +290,7 @@ struct FeatureTests {
     assert_throws<std::regex_error>([] { assert_exit([] {}, exited_with_code(0), "["); });
   }
   [[= test{}]] void exit_mismatch() {
-    expectDeath([] {}, ".*");
+    expect_death([] {}, ".*");
     expect_exit([] { std::_Exit(4); }, exited_with_code(7));
     expect_exit(
         [] {
@@ -298,7 +298,7 @@ struct FeatureTests {
           std::_Exit(7);
         },
         exited_with_code(7), "expected");
-    assertDeath([] {}, "anything");
+    assert_death([] {}, "anything");
   }
   [[= test{}]] void breakpoint_handled() {
 #ifndef _WIN32

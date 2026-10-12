@@ -1,4 +1,78 @@
-# Recorded compile benchmark
+# Recorded performance results
+
+## V1 Release measurements — October 12, 2026
+
+Measured in the local devcontainer with GCC 16.2.0, CMake 4.4.3, GNU C++26,
+Release (`-O3 -DNDEBUG`), and GoogleTest 1.15.0 (installed). Warm compilation is the
+median of three direct compiler invocations with dependencies prebuilt; runtime
+is the median of five whole-executable runs. Every executable verifies that all
+expected test bodies executed. Validation builds finished before measurement.
+
+Both frameworks use fresh fixtures and matching case counts and integer checks.
+AnnoTest uses a separate runner call per fixture class, preserving the original
+generator layout; GoogleTest uses one global runner. Runtime includes startup,
+discovery, output handling, and shutdown. Stdout is discarded by the harness.
+
+### Warm compilation
+
+| Workload | Cases | AnnoTest (s) | GoogleTest (s) | AnnoTest / GoogleTest |
+| --- | ---: | ---: | ---: | ---: |
+| Ordinary | 1 | 6.396 | 2.056 | 3.11× |
+| Ordinary | 24 | 9.879 | 3.093 | 3.19× |
+| Ordinary | 240 | 31.983 | 14.198 | 2.25× |
+| Value parameters | 1 | 6.749 | 3.286 | 2.05× |
+| Value parameters | 24 | 9.971 | 4.861 | 2.05× |
+| Value parameters | 240 | 23.746 | 5.094 | 4.66× |
+| 1 MiB output per case | 1 | 6.385 | 2.063 | 3.10× |
+| 1 MiB output per case | 24 | 9.957 | 3.078 | 3.24× |
+| 1 MiB output per case | 240 | 33.138 | 14.180 | 2.34× |
+
+### Whole-executable runtime
+
+| Workload | Cases | AnnoTest (ms) | GoogleTest (ms) | AnnoTest RSS (MiB) | GoogleTest RSS (MiB) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Ordinary | 1 | 3.285 | 2.053 | 18.6 | 18.6 |
+| Ordinary | 24 | 6.289 | 2.193 | 18.6 | 18.6 |
+| Ordinary | 240 | 15.340 | 3.504 | 18.7 | 18.7 |
+| Value parameters | 1 | 2.358 | 2.361 | 18.7 | 18.7 |
+| Value parameters | 24 | 5.587 | 2.491 | 18.7 | 18.7 |
+| Value parameters | 240 | 15.710 | 4.514 | 18.7 | 18.7 |
+| 1 MiB output per case | 1 | 8.792 | 2.705 | 18.7 | 18.7 |
+| 1 MiB output per case | 24 | 93.254 | 4.941 | 30.1 | 18.7 |
+| 1 MiB output per case | 240 | 701.701 | 17.295 | 245.6 | 18.7 |
+
+RSS is the harness child-process high-water mark, including launch overhead.
+Small runs show a roughly 19 MiB measurement floor in this environment.
+
+The output workload emits 1 MiB per case: 240 cases produce 240 MiB per run.
+AnnoTest captures and retains output for reports; GoogleTest writes output
+directly. These figures measure the default behaviors and their different
+retention costs. They do not measure per-assertion latency or parallel workers.
+
+### Clean target builds
+
+Median of three serial clean builds of the one-case ordinary workload, including
+compilation, dependency scanning, and linking. Dependencies were already fetched
+and configured. AnnoTest and its dependencies rebuild from source; GoogleTest
+links the installed prebuilt library. The comparison reflects these build setups.
+
+| Framework | Clean build (s) | Peak child RSS (MiB) |
+| --- | ---: | ---: |
+| AnnoTest | 108.249 | 675.9 |
+| GoogleTest | 2.224 | 267.7 |
+
+In these Release workloads AnnoTest has higher warm compilation costs than
+GoogleTest. Value-parameterized AnnoTest cases compile faster than the equivalent
+number of independent AnnoTest methods at 240 cases, while remaining slower than
+the measured GoogleTest parameterized workload. The earlier warm Debug figures
+below describe a different source snapshot and optimization mode.
+
+Raw samples, compiler RSS, object sizes, exact commands, and source hashes:
+[warm/runtime JSON](results-v1-release.json), [clean-build JSON](results-v1-clean-release.json).
+The source hashes identify the uncommitted implementation measured here.
+See [README.md](README.md) for reproduction commands and scope.
+
+## Earlier Debug measurements
 
 Measured in the devcontainer with GCC 16.2.0, GNU C++26, Debug (`-g`), and
 installed GoogleTest 1.15.0. Each number is the median of three direct compiler

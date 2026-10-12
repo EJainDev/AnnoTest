@@ -19,6 +19,9 @@ Selection
      - Prints usage and exits.
    * - ``-l``, ``--list``
      - Lists discovered suites and cases without executing ordinary test bodies.
+   * - ``--list-json``
+     - Lists the same discovered cases as ``--list``, with versioned JSON metadata
+       on stdout. Does not accept a value.
    * - ``-t``, ``--test-name NAME...``
      - Selects fully qualified names. Accepts multiple names and may be repeated.
    * - ``--filter GLOB``
@@ -163,3 +166,25 @@ Exit status
 Successful runs, successful listing, and ``--help`` return 0. Test failures,
 discovery errors, unknown explicit names, invalid options, and report write failures
 return 1. Skipped tests do not fail a run unless cleanup also fails.
+
+JSON formats
+------------
+
+Both discovery and result documents have ``schema_version: 1``. Their schemas
+are :download:`discovery JSON <../../_static/discovery.schema.json>` and
+:download:`report JSON <../../_static/report.schema.json>`. Consumers should ignore
+unknown fields within a supported schema version and reject unsupported versions.
+
+Discovery includes every concrete name, its fully qualified base selector, source
+file/line, formatted parameters, tags, annotation-disabled status, and any static
+OS skip reason. Runtime conditions remain unevaluated for ordinary tests.
+Providers and factories still run to discover their children; factory lifecycle
+hooks, including suite hooks, may execute. Selection options do not restrict
+the listing. ``--list-json`` takes precedence if combined with ``--list``.
+
+Result JSON includes formatted parameters and tags on each case. Every failure
+has a ``location`` object containing ``file`` and ``line``, or ``null`` when no
+assertion location is available. Timings are in seconds. ``properties`` remains
+an array to retain duplicate user property names. Malformed output bytes use
+visible hexadecimal escapes. Listing returns discovery JSON on stdout;
+``--json-output`` writes execution results to a file.

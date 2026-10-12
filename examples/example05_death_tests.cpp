@@ -7,22 +7,22 @@ using namespace annotest;
 
 struct DeathTests {
   [[= test{}]] void nonzero_exit() {
-    assertDeath([] { std::_Exit(2); });
+    assert_death([] { std::_Exit(2); });
   }
 
   [[= test{}]] void throwing_child() {
-    assertDeath([] { throw std::runtime_error("child failure"); });
+    assert_death([] { throw std::runtime_error("child failure"); });
   }
 
   [[= test{}]] void expectation() {
-    expectDeath([] { std::_Exit(3); });
-    // expectDeath records failure without unwinding the body if the child survives.
+    expect_death([] { std::_Exit(3); });
+    // expect_death records failure without unwinding the body if the child survives.
     expect_true(true);
   }
 
   [[= test{}]] void child_state_is_isolated() {
     int value = 7;
-    assertDeath([&] {
+    assert_death([&] {
       value = 99;
       std::_Exit(1);
     });

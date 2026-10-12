@@ -21,7 +21,7 @@ int main(int argc, char** argv) {
 ```
 
 The runner discovers annotated methods at compile time. It supports named and disabled
-suites/tests, per-test hooks, value and template parameterization, fatal assertions,
+suites/tests, per-test and suite hooks, value and template parameterization, fatal assertions,
 nonfatal expectations, exception checks, process death checks, and XML reports.
 
 ## Requirements
@@ -101,7 +101,7 @@ use CTest to run the self-test suite.
 
 ## Examples
 
-Each example has a runnable `main`. With both build options enabled, CTest runs all eleven
+Each example has a runnable `main`. With both build options enabled, CTest runs all fifteen
 examples in addition to the library's self-tests.
 
 | Source | Executable | Demonstrates |
@@ -117,6 +117,10 @@ examples in addition to the library's self-tests.
 | [Type and value parameters](examples/example09_dual_parameters.cpp) | `example9_dual_parameters` | Coupled template and function arguments |
 | [Reporting and failures](examples/example10_reporting.cpp) | `example10_reporting` | Captured output, XML, fatal/nonfatal behavior |
 | [Named and parameterized suites](examples/example11_named_suites.cpp) | `example11_named_suites` | Compile-time names and constructor/type suite parameters |
+| [Matchers and threads](examples/example12_matchers_and_threads.cpp) | `example12_matchers_and_threads` | Matchers, grouped checks, helper threads, failure inspection |
+| [Suite resources](examples/example13_suite_resources.cpp) | `example13_suite_resources` | Suite hooks, resources, temporary files, nested fixtures |
+| [Runtime sources](examples/example14_runtime_sources.cpp) | `example14_runtime_sources` | Providers, CSV/lines, factories, registration, listeners |
+| [Execution](examples/example15_execution.cpp) | `example15_execution` | Tags, repetitions, conditions, deadlines, parallel workers |
 
 The reporting example passes normally. To deliberately produce failures:
 
@@ -147,7 +151,10 @@ without defaults are ignored.
 parameterized instance. By default, a fresh fixture is constructed for each test
 and parameterized case. `suite{.lifecycle = fixture_lifecycle::shared}` retains
 the fixture across cases. Cleanup runs after setup or body exceptions.
-Constructors and destructors manage fixture resources.
+Constructors and destructors manage fixture resources. Static `before_all` and
+`after_all` hooks manage suite resources while keeping per-test fixtures fresh.
+Suite cleanup runs after setup failure and fail-fast; isolated workers run their
+own suite hooks.
 
 ```cpp
 struct FixtureTests {
@@ -174,9 +181,9 @@ also fail the test. Disabled or OS-filtered tests do not run their hooks.
 | Null pointer | `assert_null(pointer)` | `expect_null(pointer)` |
 | Exception | `assert_throws<E>(callable)`, `assert_throws_exact<E>(callable)` | `expect_throws<E>`, `expect_throws_exact<E>` |
 | Contract | `assert_contract_violation`, `assert_no_contract_violation` | Corresponding `expect_*` functions |
-| Process death | `assertDeath(callable)` | `expectDeath(callable)` |
+| Process death | `assert_death(callable)` | `expect_death(callable)` |
 
-`assertDeath` and `expectDeath` run a callable in a child process. A thrown exception
+`assert_death` and `expect_death` run a callable in a child process. A thrown exception
 in the child counts as death; normal return or exit status zero does not.
 Windows relaunches the executable, selects the current test, and replays
 its setup and body up to the requested death check. Earlier death callables are
@@ -202,6 +209,7 @@ must remain safe even with invalid input. See the contract example for safe case
 | --- | --- |
 | `-h`, `--help` | Print usage and exit |
 | `-l`, `--list` | List the suite and test names |
+| `--list-json` | List versioned discovery metadata as JSON on stdout |
 | `-t`, `--test-name NAME...` | Run fully qualified names; repeatable |
 | `--filter GLOB`, `--exclude GLOB` | Include or exclude matching names; repeatable |
 | `--tag TAG`, `--exclude-tag TAG` | Include or exclude tagged cases; repeatable |
@@ -218,6 +226,8 @@ index, such as `ParameterizedTests.addition.2`. Selecting the base method name r
 all its instances. Quote names containing spaces.
 
 Reports include timings, failures, skip totals, and captured stdout/stderr.
+JSON reports use schema version 1 and include tags, formatted parameters, and
+structured failure locations. See the command-line reference for downloadable schemas.
 XML preserves valid Unicode; forbidden control bytes and malformed UTF-8 appear as
 visible `\xNN` escapes. Runtime capture and console diagnostics retain the original bytes.
 Test output is captured even without a report file. Skipped tests have individual

@@ -3,7 +3,7 @@
 Death Tests
 ===========
 
-``annotest::assertDeath(callable)`` and ``annotest::expectDeath(callable)`` run a
+``annotest::assert_death(callable)`` and ``annotest::expect_death(callable)`` run a
 callable in a child process on Linux, macOS, and Windows. A nonzero exit, signal,
 or uncaught exception counts as death. Returning normally or exiting with status
 zero fails the check. Assertion failure unwinds the body; expectation failure
@@ -49,6 +49,6 @@ accepts a callable returning normally. On POSIX systems,
 ``killed_by_signal(signal_number)`` checks signal termination. Custom predicates
 receive ``exit_status{code, signal}``.
 
-``assertDeath(callable, "message.*")`` and ``expectDeath`` combine nonzero exit
+``assert_death(callable, "message.*")`` and ``expect_death`` combine nonzero exit
 or signal termination with a stderr match. Exceptions continue to count as
 process death. Invalid regular expressions raise ``std::regex_error``.

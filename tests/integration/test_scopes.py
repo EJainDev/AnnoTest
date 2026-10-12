@@ -56,7 +56,7 @@ class ScopeTests(RunnerTest):
         self.assertEqual([c.attrib['name'] for c in cases], ['first', 'second'])
         output = ''.join(c.findtext('system-out', '') for c in cases)
         self.assertEqual(output.splitlines(), ['parent constructor', 'child constructor',
-                                              'child destructor 12'])
+                                              'child destructor 12', 'parent destructor'])
 
     def test_shared_context_is_stable_until_destructor(self):
         _,_,cases=self.invoke('shared')
