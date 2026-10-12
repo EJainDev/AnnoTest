@@ -1121,9 +1121,14 @@ void append_suite_instance(std::vector<execution_suite>& suites, std::string pre
   } else {
     template for (constexpr auto test : discovery.tests) {
       static constexpr auto described = describe_test<Suite, test, T>();
+      // Keep reflection-bearing descriptors out of runtime expressions, including at -O0.
+      static constexpr auto tags = test.tags;
+      static constexpr auto location = std::meta::source_location_of(test.test);
+      static constexpr bool disabled = test.disabled;
+      static constexpr double timeout = test.timeout_seconds;
+      static constexpr unsigned repetitions = test.repetitions;
       auto entry = make_execution_case(
-          described, test.tags, std::meta::source_location_of(test.test),
-          test.disabled || parent_disabled, test.timeout_seconds, test.repetitions,
+          described, tags, location, disabled || parent_disabled, timeout, repetitions,
           inherited_tags, conditions);
       append_conditions<test.test>(entry.conditions);
       if constexpr (test.dynamic) {
