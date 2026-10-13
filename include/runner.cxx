@@ -10,16 +10,31 @@ import std;
 
 namespace annotest {
 
+void set_fixture_cleanup(execution_suite& output, std::shared_ptr<void> fixture,
+                         void (*cleanup)(void*), std::shared_ptr<suite_hook_state> hooks) {
+  output.finish_fixture = [fixture = std::move(fixture), cleanup, hooks = std::move(hooks)] {
+    cleanup(fixture.get());
+    finish_suite_hooks(hooks);
+  };
+}
+
 suite_builder::suite_builder(std::string name, std::string file)
     : suite{.name = std::move(name), .file = std::move(file)} {}
 
+suite_builder::suite_builder(std::string_view prefix, std::string_view name,
+                             std::string_view suffix, std::string_view file)
+    : suite{.file = std::string(file)} {
+  suite.name.reserve(prefix.size() + name.size() + suffix.size());
+  suite.name.append(prefix);
+  suite.name.append(name);
+  suite.name.append(suffix);
+}
+
 suite_builder::~suite_builder() = default;
 
-std::string commit_suite(std::vector<execution_suite>& suites, execution_suite& suite) {
+void commit_suite(std::vector<execution_suite>& suites, execution_suite& suite) {
   validate_case_names(suite);
-  auto prefix = suite.name + ".";
   suites.push_back(std::move(suite));
-  return prefix;
 }
 
 std::string format_runtime(std::string_view text, std::format_args values) {
@@ -75,14 +90,15 @@ void delete_fixture_context(test_context* context) noexcept { delete context; }
 fixture_context make_fixture_context() { return {new test_context, delete_fixture_context}; }
 
 std::shared_ptr<suite_hook_state> make_suite_hooks_runtime(
-    std::string name, std::vector<std::string> tags, std::shared_ptr<suite_hook_state> parent,
+    const std::string& name, const std::vector<std::string>& tags,
+    std::shared_ptr<suite_hook_state> parent,
     static_tags labels, bool has_hooks, void (*before)(), void (*after)()) {
   auto state = std::make_shared<suite_hook_state>();
   state->parent = std::move(parent);
   state->has_hooks = has_hooks;
-  state->context.suite = std::move(name);
+  state->context.suite = name;
   state->context.name = "_suite";
-  state->context.tags = std::move(tags);
+  state->context.tags = tags;
   for (auto label : labels) state->context.tags.emplace_back(label);
   state->before = before;
   state->after = after;

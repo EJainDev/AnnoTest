@@ -901,14 +901,19 @@ struct execution_suite {
   std::type_index fixture_type = typeid(void);
 };
 
+void set_fixture_cleanup(execution_suite& output, std::shared_ptr<void> fixture,
+                         void (*cleanup)(void*), std::shared_ptr<suite_hook_state> hooks);
+
 // Keep aggregate execution_suite available to implementation clients while
 // compiling its construction and destruction once in the runtime module.
 struct suite_builder {
   execution_suite suite;
   suite_builder(std::string name, std::string file);
+  suite_builder(std::string_view prefix, std::string_view name, std::string_view suffix,
+                 std::string_view file);
   ~suite_builder();
 };
-std::string commit_suite(std::vector<execution_suite>& suites, execution_suite& suite);
+void commit_suite(std::vector<execution_suite>& suites, execution_suite& suite);
 struct static_test_description {
   discovered_test test;
   static_tags tags;
@@ -1020,11 +1025,13 @@ void append_suite(std::vector<execution_suite>&, std::string = {}, std::vector<s
                   execution_conditions = {});
 
 std::shared_ptr<suite_hook_state> make_suite_hooks_runtime(
-    std::string name, std::vector<std::string> tags, std::shared_ptr<suite_hook_state> parent,
+    const std::string& name, const std::vector<std::string>& tags,
+    std::shared_ptr<suite_hook_state> parent,
     static_tags labels, bool has_hooks, void (*before)(), void (*after)());
 
 template <auto Suite, typename T>
-std::shared_ptr<suite_hook_state> make_suite_hooks(std::string name, std::vector<std::string> tags,
+std::shared_ptr<suite_hook_state> make_suite_hooks(const std::string& name,
+                                                   const std::vector<std::string>& tags,
                                                    std::shared_ptr<suite_hook_state> parent = {}) {
   static constexpr bool has_suite_hooks =
       Suite.before_all_hooks.size > 0 || Suite.after_all_hooks.size > 0;
@@ -1049,7 +1056,7 @@ std::shared_ptr<suite_hook_state> make_suite_hooks(std::string name, std::vector
     }
   };
   static constexpr auto labels = Suite.tags;
-  return make_suite_hooks_runtime(std::move(name), std::move(tags), std::move(parent), labels,
+  return make_suite_hooks_runtime(name, tags, std::move(parent), labels,
                                   has_suite_hooks, before, after);
 }
 
@@ -1066,7 +1073,7 @@ void append_suite_instance(std::vector<execution_suite>& suites, std::string pre
   append_suite_conditions<^^T>(conditions);
   static constexpr auto suite_name = Suite.name;
   static constexpr auto location = std::meta::source_location_of(^^T);
-  suite_builder prepared(prefix + suite_name + case_name, location.file_name());
+  suite_builder prepared(prefix, suite_name, case_name, location.file_name());
   auto& output = prepared.suite;
   static constexpr bool retained = Suite.lifecycle == fixture_lifecycle::shared;
   static constexpr bool nested_suites = [] {
@@ -1099,10 +1106,10 @@ void append_suite_instance(std::vector<execution_suite>& suites, std::string pre
   output.suite_hooks = hook_state;
   output.fixture_type = typeid(T);
   fixture->suite_hooks = hook_state;
-  output.finish_fixture = [fixture, hook_state] {
-    if (fixture->value) destroy_fixture(*fixture);
-    finish_suite_hooks(hook_state);
-  };
+  set_fixture_cleanup(output, fixture, [](void* pointer) {
+    auto& state = *static_cast<fixture_state<T>*>(pointer);
+    if (state.value) destroy_fixture(state);
+  }, hook_state);
   static constexpr bool static_cases = [] {
     for (const auto& test : discovery.tests)
       if (test.dynamic || test.runtime_parameters) return false;
@@ -1282,26 +1289,31 @@ void append_suite_instance(std::vector<execution_suite>& suites, std::string pre
       }
     }
   }
-  auto nested_prefix = commit_suite(suites, output);
-  std::vector<std::string> nested_tags = inherited_tags;
-  static constexpr auto suite_labels = Suite.tags;
-  for (auto label : suite_labels) nested_tags.emplace_back(label);
-  template for (constexpr auto member : std::define_static_array(
-                    std::meta::members_of(^^T, std::meta::access_context::unchecked()))) {
-    if constexpr (std::meta::is_type(member) && std::meta::is_class_type(member)) {
-      template for (constexpr auto annotation :
-                    std::define_static_array(expanded_annotations(member))) {
-        if constexpr (std::is_same_v<std::remove_cv_t<typename[:std::meta::type_of(annotation):]>,
-                                     nested>)
-          append_suite<typename[:member:]>(
-              suites, nested_prefix, nested_tags, parent_disabled || suite_disabled,
-              [fixture] { return nested_fixture<typename[:member:], T, Suite>(fixture); },
-              [fresh_creator] {
-                return nested_fixture<typename[:member:], T, Suite>(fresh_creator());
-              },
-              conditions);
+  if constexpr (nested_suites) {
+    auto nested_prefix = output.name + ".";
+    commit_suite(suites, output);
+    std::vector<std::string> nested_tags = inherited_tags;
+    static constexpr auto suite_labels = Suite.tags;
+    for (auto label : suite_labels) nested_tags.emplace_back(label);
+    template for (constexpr auto member : std::define_static_array(
+                      std::meta::members_of(^^T, std::meta::access_context::unchecked()))) {
+      if constexpr (std::meta::is_type(member) && std::meta::is_class_type(member)) {
+        template for (constexpr auto annotation :
+                      std::define_static_array(expanded_annotations(member))) {
+          if constexpr (std::is_same_v<std::remove_cv_t<typename[:std::meta::type_of(annotation):]>,
+                                       nested>)
+            append_suite<typename[:member:]>(
+                suites, nested_prefix, nested_tags, parent_disabled || suite_disabled,
+                [fixture] { return nested_fixture<typename[:member:], T, Suite>(fixture); },
+                [fresh_creator] {
+                  return nested_fixture<typename[:member:], T, Suite>(fresh_creator());
+                },
+                conditions);
+        }
       }
     }
+  } else {
+    commit_suite(suites, output);
   }
 }
 
@@ -1392,8 +1404,9 @@ void append_suite(std::vector<execution_suite>& suites, std::string prefix,
     }
   }
   if (!parameterized)
-    append_suite_instance<T>(suites, prefix, tags, disabled, creator, fresh_creator, {},
-                             conditions);
+    append_suite_instance<T>(suites, std::move(prefix), std::move(tags), disabled,
+                             std::move(creator), std::move(fresh_creator), {},
+                             std::move(conditions));
 }
 struct registered_case {
   std::string suite, file;
