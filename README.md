@@ -235,6 +235,49 @@ Test output is captured even without a report file. Skipped tests have individua
 process-wide. Use `--jobs N` for concurrent subprocess execution; concurrent or
 recursive in-process runner calls are rejected.
 
+## Compilation benchmarks
+
+AnnoTest compiled faster than GoogleTest in all 24 measured comparisons below.
+These are **test-file compilation times in seconds**, excluding linking and test
+execution, with framework libraries and modules already built. Each value is the
+median of five paired compiler invocations with compiler caches bypassed.
+
+Measured on 2026-10-16 using GCC 16.2.0, CMake 4.4.3, GNU C++26, and installed
+GoogleTest 1.15.0 in the development container. Debug uses `-g` and default
+`-O0`; Release uses `-O3 -DNDEBUG`. Matching workloads use fresh fixtures,
+setup/cleanup, and integer equality checks. All expected test bodies are verified.
+
+| Workload | Cases | Debug AnnoTest (s) | Debug GoogleTest (s) | Release AnnoTest (s) | Release GoogleTest (s) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Regular | 1 | 1.739 | 2.158 | 1.352 | 2.080 |
+| Regular | 24 | 2.111 | 2.384 | 2.350 | 3.100 |
+| Regular | 72 | 2.460 | 3.083 | 2.872 | 5.476 |
+| Regular | 240 | 3.489 | 5.079 | 4.780 | 14.371 |
+| Value parameters | 1 | 1.880 | 2.766 | 1.603 | 3.256 |
+| Value parameters | 24 | 2.412 | 3.337 | 2.628 | 4.906 |
+| Value parameters | 72 | 2.489 | 3.388 | 2.755 | 4.922 |
+| Value parameters | 240 | 3.000 | 3.613 | 3.260 | 5.132 |
+| 1 MiB output per case | 1 | 1.699 | 2.112 | 1.399 | 2.074 |
+| 1 MiB output per case | 24 | 2.190 | 2.422 | 2.567 | 3.218 |
+| 1 MiB output per case | 72 | 2.637 | 3.178 | 3.538 | 5.589 |
+| 1 MiB output per case | 240 | 3.827 | 5.253 | 5.886 | 14.559 |
+
+The [C++ workloads](benchmarks/workloads/), [generator](benchmarks/generate.py),
+[harness](benchmarks/run.py), [release gate](benchmarks/check_results.py),
+[Debug raw samples](benchmarks/results-debug-warm.json), and
+[Release raw samples](benchmarks/results-release-warm.json) are included in the
+repository. [Full results](benchmarks/RESULTS.md) include runtime measurements;
+the [performance documentation](docs/source/performance.rst) explains measurement
+scope and reproduction. Results apply to these workloads and configuration.
+
+Clean target builds, measured separately with three serial samples for one regular
+case, took 73.304 s (AnnoTest) versus 2.363 s (GoogleTest) in Debug and
+103.331 s versus 2.357 s in Release. These builds rebuild AnnoTest, its dependencies,
+and the standard-library module from source; the installed GoogleTest binary stays
+prebuilt. Dependencies are already fetched and configured. See the
+[clean-build samples](benchmarks/results-debug-clean.json) and
+[Release clean-build samples](benchmarks/results-release-clean.json).
+
 ## CMake integration
 
 This consumer project assumes a checkout of this source revision at `../AnnoTest`,

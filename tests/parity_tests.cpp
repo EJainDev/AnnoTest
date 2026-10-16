@@ -218,6 +218,39 @@ struct[[= tag<"unit">{}]] ParityTests : Base {
     assert_false(empty.matched);
     assert_equal("Missing element at index 0", empty.explanation);
   }
+  [[= test{}]] void unordered_matcher_boundaries() {
+    auto matcher = unordered_elements_are(gt(0), eq(1), eq(2));
+    for (auto values : {std::vector{1, 2, 3}, std::vector{3, 2, 1},
+                        std::vector{2, 1, 3}})
+      assert_true(matcher(values).matched);
+    for (auto values : {std::vector{1, 1, 3}, std::vector{2, 2, 3},
+                        std::vector{1, 2, -1}, std::vector{1, 2},
+                        std::vector{1, 2, 3, 4}, std::vector<int>{}})
+      assert_false(matcher(values).matched);
+  }
+  [[= test{}]] void fatal_failure_inspection_boundaries() {
+    std::function<void()> body;
+    auto check = [&](bool fatal) {
+      auto nonfatal = capture_failures([&] { expect_no_fatal_failure(body); });
+      auto asserted = capture_failures([&] { assert_no_fatal_failure(body); });
+      assert_equal(fatal ? 2u : 0u, nonfatal.size());
+      assert_equal(fatal ? 2u : 0u, asserted.size());
+      if (fatal) {
+        assert_equal(failure_types::assertion, nonfatal[0].type);
+        assert_equal(failure_types::expectation, nonfatal[1].type);
+        assert_equal(failure_types::assertion, asserted[1].type);
+        assert_that(nonfatal[1].message, has_substr("Unexpected fatal assertion"));
+        assert_that(asserted[1].message, has_substr("Unexpected fatal assertion"));
+      }
+    };
+    body = [] { assert_true(true); };
+    check(false);
+    body = [] { assert_true(false); };
+    check(true);
+    body = [] { throw std::runtime_error("inspection exception"); };
+    assert_throws<std::runtime_error>([&] { expect_no_fatal_failure(body); });
+    assert_throws<std::runtime_error>([&] { assert_no_fatal_failure(body); });
+  }
   [[= test{}]] void source_empty_fields_and_headers() {
     auto path = current_test().temp_dir() / "boundaries.csv";
     std::ofstream(path) << "\"\"\n\"\",tail\n,\n";
@@ -328,6 +361,28 @@ struct InjectedFixture {
   InjectedFixture(test_context& ctx) : name(ctx.name) {}
   [[= test{}]] void injected() { assert_equal("injected", name); }
 };
+struct BasicParent {
+  int value = 0;
+  [[= before_each{}]] void parent_setup() { ++value; }
+  [[= after_each{}]] void parent_cleanup() { record_property("parent_cleanup", "yes"); }
+  [[= test{}]] void inherited() { assert_equal(3, value); }
+};
+struct BasicFixture : BasicParent {
+  [[= before_each{}]] void setup(test_context&) { value += 2; }
+  [[= after_each{}]] void cleanup(int = 0) {
+    assert_equal(3, value);
+    record_property("cleanup", "yes");
+  }
+  [[= test{}]] void default_argument(int expected = 3) {
+    assert_equal(expected, value);
+    if (std::getenv("ANNOTEST_BASIC_FAILURE")) expect_true(false, "basic body failure");
+  }
+  [[= test{.repetitions = 2}]] void repeated(test_context& context) {
+    assert_equal(3, value);
+    assert_equal("repeated", context.name);
+  }
+  [[= test{.disabled = true}]] void disabled() { assert_equal(3, value); }
+};
 struct Listener : test_listener {
   std::size_t starts = 0, ends = 0;
   void on_test_start(std::string_view, std::string_view) override { ++starts; }
@@ -362,6 +417,12 @@ int main(int argc, char** argv) {
         put("AnnoTest worker 2");
         return 0;
       }
+      if (mode == "truncated-string") {
+        const std::uint64_t size = 20;
+        output.write(reinterpret_cast<const char*>(&size), sizeof(size));
+        output.write("partial", 7);
+        return 0;
+      }
       if (mode == "protocol") {
         put("wrong protocol");
         return 0;
@@ -376,9 +437,9 @@ int main(int argc, char** argv) {
         put("100001");
         return 0;
       }
-      if (mode == "failure-type") {
+      if (mode == "failure-type" || mode == "negative-failure-type") {
         put("1");
-        put("999");
+        put(mode == "failure-type" ? "999" : "-1");
         return 0;
       }
       if (mode == "properties") {
@@ -402,6 +463,10 @@ int main(int argc, char** argv) {
 
   add_listener(std::make_shared<Listener>());
   auto scenario = std::getenv("ANNOTEST_SCENARIO");
+  if (scenario && std::string_view(scenario) == "basic")
+    return run_tests<BasicFixture>(argc, argv);
+  if (scenario && std::string_view(scenario) == "duplicate")
+    return run_tests<BasicFixture, BasicFixture>(argc, argv);
   if (scenario && std::string_view(scenario) == "shared")
     return run_tests<SharedFixture>(argc, argv);
   if (scenario && std::string_view(scenario) == "injected")

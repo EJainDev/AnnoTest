@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -25,6 +26,33 @@ class ParityTests(RunnerTest):
         self.assertTrue(all(not c.findall('failure') for c in cases))
         self.assertEqual({c.attrib['name'] for c in cases if c.attrib['name'].startswith('runtime_values')},
                          {'runtime_values.small','runtime_values.large'})
+    def test_basic_discovery_execution(self):
+        for options in ([], ['--isolate', '--jobs', '2'], ['--repeat', '2']):
+            with self.subTest(options=options):
+                _,_,cases=self.invoke(options,scenario='basic')
+                self.assertEqual(len(cases),10 if '--repeat' in options else 5)
+                self.assertEqual(sum(c.attrib['name']=='repeated' for c in cases),
+                                 4 if '--repeat' in options else 2)
+                for case in cases:
+                    self.assertFalse(case.findall('failure'))
+                    if case.attrib['name']=='disabled':
+                        self.assertIsNotNone(case.find('skipped'))
+                    else:
+                        for name in ('cleanup','parent_cleanup'):
+                            self.assertEqual(case.find(f"properties/property[@name='{name}']").attrib['value'],'yes')
+        _,_,cases=self.invoke(['--filter','*.disabled','--run-disabled'],scenario='basic')
+        self.assertEqual(len(cases),1)
+        self.assertIsNone(cases[0].find('skipped'))
+        self.assertIsNotNone(cases[0].find("properties/property[@name='cleanup']"))
+    def test_basic_discovery_cleanup_after_failure(self):
+        for options in ([], ['--isolate']):
+            with self.subTest(options=options):
+                _,_,cases=self.invoke(['--filter','*.default_argument',*options],1,
+                                     scenario='basic',env={'ANNOTEST_BASIC_FAILURE':'1'})
+                self.assertEqual(len(cases),1)
+                self.assertIn('basic body failure',cases[0].find('failure').attrib['message'])
+                for name in ('cleanup','parent_cleanup'):
+                    self.assertEqual(cases[0].find(f"properties/property[@name='{name}']").attrib['value'],'yes')
     def test_nested_suites_and_dynamic_cases(self):
         _,root,cases=self.invoke(['--filter','*.child','--filter','*.generated_cases.*'])
         self.assertEqual(root.tag,'testsuites')
@@ -106,6 +134,28 @@ class ParityTests(RunnerTest):
                 self.assertEqual(result.returncode,1)
                 self.assertIn('Error:',result.stderr)
 
+    def test_integer_options_reject_trailing_and_overflow_input(self):
+        for option in ('--repeat','--jobs','--seed','--shard-count','--shard-index'):
+            for value in ('1x','9'*60):
+                with self.subTest(option=option,value=value):
+                    result=self.run_binary('ParityTests',[option,value])
+                    self.assertEqual(result.returncode,1)
+                    self.assertIn('integer',result.stderr)
+
+    def test_json_listing_multiple_suites(self):
+        result=self.run_binary('ParityTests',['--list-json'],scenario='multiple')
+        self.assertEqual(result.returncode,0,result.stderr)
+        data=json.loads(result.stdout)
+        self.assertEqual(data['schema_version'],1)
+        self.assertEqual({suite['name'] for suite in data['suites']},
+                         {'SharedFixture','InjectedFixture'})
+        self.assertEqual(sum(len(suite['tests']) for suite in data['suites']),3)
+
+    def test_duplicate_suite_names_are_rejected(self):
+        result=self.run_binary('ParityTests',scenario='duplicate')
+        self.assertEqual(result.returncode,1)
+        self.assertIn('Duplicate suite name: BasicFixture',result.stderr)
+
     def test_zero_seed_is_reproducible(self):
         args=['--filter','*.fresh*','--shuffle','--seed','0']
         a=self.invoke(args)[2];b=self.invoke(args)[2]
@@ -134,6 +184,18 @@ class ParityTests(RunnerTest):
     def test_ordered_matcher_boundaries(self):
         _,_,cases=self.invoke(['--test-name','ParityTests.ordered_matcher_boundaries'])
         self.assertEqual(len(cases),1)
+    def test_unordered_matcher_boundaries(self):
+        for options in ([], ['--isolate'], ['--repeat', '2']):
+            with self.subTest(options=options):
+                _,_,cases=self.invoke(['--test-name','ParityTests.unordered_matcher_boundaries', *options])
+                self.assertEqual(len(cases), 2 if '--repeat' in options else 1)
+                self.assertTrue(all(not case.findall('failure') for case in cases))
+    def test_fatal_failure_inspection_boundaries(self):
+        for options in ([], ['--isolate'], ['--repeat', '2']):
+            with self.subTest(options=options):
+                _,_,cases=self.invoke(['--test-name','ParityTests.fatal_failure_inspection_boundaries', *options])
+                self.assertEqual(len(cases), 2 if '--repeat' in options else 1)
+                self.assertTrue(all(not case.findall('failure') for case in cases))
     def test_source_empty_fields_and_headers(self):
         _,_,cases=self.invoke(['--test-name','ParityTests.source_empty_fields_and_headers'])
         self.assertEqual(len(cases),1)
@@ -172,8 +234,10 @@ class ParityTests(RunnerTest):
     def test_worker_protocol_errors_are_reported(self):
         for mode,message in (('missing','Invalid worker result'),('exit','Test worker crashed'),
                              ('oversized','Invalid worker result'),('truncated','Invalid worker result'),
+                             ('truncated-string','Incomplete worker result'),
                              ('protocol','Invalid worker protocol'),('failure-count','Invalid worker failure count'),
                              ('failure-type','Invalid worker failure type'),('properties','Invalid worker property count'),
+                             ('negative-failure-type','Invalid worker failure type'),
                              ('exit-mismatch','Worker exit status disagrees')):
             with self.subTest(mode=mode):
                 _,_,cases=self.invoke(['--filter','*.fresh_a','--isolate'],1,env={'ANNOTEST_WORKER_FAULT':mode})

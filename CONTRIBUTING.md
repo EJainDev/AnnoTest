@@ -27,9 +27,9 @@ ctest --test-dir build --output-on-failure --no-tests=error
 
 Use the native setup instructions in [README.md](README.md) for macOS and Windows.
 The Build workflow can also be run manually on the exact candidate commit before
-creating a release tag. Require all native jobs, installation checks, coverage,
-and documentation checks to pass. Intel macOS may compile GCC from source on a
-cold toolchain cache; that job has a separate four-hour budget.
+creating a release tag. Require the Linux build, installation checks, coverage,
+documentation checks, and test-file compilation benchmarks to pass. Changes to platform backends also require
+native testing on the affected platforms.
 
 ## Coding Standards
 

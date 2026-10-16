@@ -49,6 +49,9 @@ def main():
     relocated = workspace / 'relocated prefix'
     run(args.cmake, '--install', producer, '--config', args.config, '--prefix', prefix)
     prefix.rename(relocated)
+    licenses = list(relocated.rglob('licenses/AnnoTest/LICENSE'))
+    if len(licenses) != 1 or licenses[0].read_bytes() != (source / 'LICENSE').read_bytes():
+        raise RuntimeError('Installed AnnoTest license is missing or differs from the source')
     configs = list(relocated.rglob('AnnoTestConfig.cmake'))
     if len(configs) != 1:
         raise RuntimeError(f'Expected one installed AnnoTest config, found {configs}')

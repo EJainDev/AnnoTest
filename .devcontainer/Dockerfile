@@ -26,7 +26,7 @@ RUN apt-get update && \
     && \
     rm -rf /var/lib/apt/lists/*
 
-# Install the latest CMake from Kitware's official repository.
+# Install the pinned CMake distribution from Kitware.
 RUN wget https://github.com/Kitware/CMake/releases/download/v4.4.3/cmake-4.4.3-linux-x86_64.sh && bash cmake-4.4.3-linux-x86_64.sh --skip-license --prefix=/usr/local
 
 # cmake-format / cmakelang

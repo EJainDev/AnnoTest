@@ -46,6 +46,40 @@ permissions:
     contents: read
 
 jobs:
+    compile-benchmarks:
+        timeout-minutes: 45
+        runs-on: ubuntu-24.04
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6.0.3
+
+            - name: Compare test-file compilation in Dev Container
+              uses: devcontainers/ci@v0.3
+              with:
+                  push: never
+                  runCmd: |
+                      set -eu
+                      for mode in Debug Release; do
+                        cmake -S . -B "build/benchmark-$mode" -G Ninja \
+                          -DCMAKE_BUILD_TYPE="$mode" -DBUILD_EXAMPLES=OFF \
+                          -DBUILD_TESTS=OFF -DBUILD_BENCHMARKS=ON \
+                          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+                          -DCMAKE_CXX_COMPILER_LAUNCHER=
+                        python3 benchmarks/run.py --build-dir "build/benchmark-$mode" \
+                          --sizes 1 24 72 240 --repetitions 5 --runtime-repetitions 5 \
+                          --output "build/benchmark-$mode.json"
+                      done
+                      python3 benchmarks/check_results.py \
+                        build/benchmark-Debug.json build/benchmark-Release.json
+
+            - name: Compilation benchmark samples
+              if: ${{ !cancelled() }}
+              uses: actions/upload-artifact@v4
+              with:
+                  name: compile-benchmark-samples
+                  path: build/benchmark-*.json
+                  if-no-files-found: warn
+
     build-and-test:
         timeout-minutes: 45
         runs-on: ubuntu-24.04
@@ -70,6 +104,11 @@ jobs:
                       ctest --test-dir build/test-release --output-on-failure --no-tests=error \
                         --parallel 2 --output-junit test-results.xml
                       python3 tools/check_installation.py --build-dir build/test-release
+
+                      python3 -m venv /tmp/annotest-docs
+                      /tmp/annotest-docs/bin/python -m pip install -r docs/requirements.txt
+                      /tmp/annotest-docs/bin/python -m sphinx -W --keep-going -b html \
+                        docs/source build/docs/html
 
                       cmake -S . -B build/coverage -G Ninja \
                         -DBUILD_TESTS=ON -DBUILD_EXAMPLES=OFF -DCMAKE_BUILD_TYPE=Debug \

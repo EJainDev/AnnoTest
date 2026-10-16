@@ -11,7 +11,7 @@ set(CMAKE_CXX_MODULE_STD 1)
 
 project(
   AnnoTest
-  VERSION 1.0.0.0
+  VERSION 1.0.0
   LANGUAGES CXX)
 
 # CMake 4.3 builds one shared std BMI and does not inherit target options.
@@ -70,12 +70,20 @@ endblock()
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/AnnoTest")
+
 # The pinned dependencies hard-code `include` in their install interfaces. Keep
 # their exported include paths consistent with GNUInstallDirs overrides.
 foreach(dependency IN ITEMS structural_tuple serial_xml)
   if(TARGET ${dependency})
     get_target_property(is_imported ${dependency} IMPORTED)
     if(NOT is_imported)
+      get_target_property(dependency_source ${dependency} SOURCE_DIR)
+      if(EXISTS "${dependency_source}/LICENSE")
+        install(FILES "${dependency_source}/LICENSE"
+                DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/${dependency}")
+      endif()
       get_target_property(include_dirs ${dependency}
                           INTERFACE_INCLUDE_DIRECTORIES)
       string(REPLACE "$<INSTALL_INTERFACE:include>"

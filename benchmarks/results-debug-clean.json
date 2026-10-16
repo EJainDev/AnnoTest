@@ -1,0 +1,225 @@
+{
+  "metadata": {
+    "compiler": "/usr/local/bin/g++",
+    "compiler_id": "GNU",
+    "compiler_version": "16.2.0",
+    "build_type": "Debug",
+    "gtest_version": "1.15.0 (installed)",
+    "suites": 3,
+    "annotest_git_head": null,
+    "annotest_git_status": null,
+    "annotest_module_sha256": {
+      "include/annotest_contract.h": "0a6ffdb6827fd508d8eaf978a6504a73021c1345d646fb81b6a89441b8b006ae",
+      "include/annotest_platform.h": "fb710e7ce02eddc6849431dc1c003b593675779a7a670cc6be48eec9f441dbc3",
+      "include/asserts.cxx": "528294493151c482b1b680a49d363b0b0605c16f6718d05a12778b5952c6786b",
+      "include/contracts.cxx": "c30d9acdc85d59eb9c6da882eb3cead50db02b605cd52470400781150e59c9f6",
+      "include/death_test.cxx": "b11d208f8c078b00d00bb069fec7ade5785a447cb104d31529ed80bd79d80544",
+      "include/diagnostics.cxx": "5a677e72b5221d53116f51d911a3f8136624d235b0a7cc54458799c9e2ac17ae",
+      "include/exceptions.cxx": "bd175f7a00e8c46931a356678ba03160bd6390f3a6417aa2d0aeda870d559981",
+      "include/expects.cxx": "c7277acac47e5e2d21c022de24b2358caa76496adfdc1e8301f4fd47b6efd3c9",
+      "include/logger.cxx": "b0c320a02c34db43970c53b0b92dd71b1e00abf2793fb9dd4b6f0635dae1b847",
+      "include/matchers.cxx": "cc3e1a0c1a583b9a9c860fd88da0dc9c1878b63194164926b7f9af87b7fcf4cd",
+      "include/platform.cpp": "f1bcf639dacc3cb5705410e22e6ccbd278c3fa5db6b83ca6a71039392cd28342",
+      "include/posix.cxx": "b6173c9c4f0d72160d33421e2466d2c311a5db163b19728f76d6b02e7b683f3b",
+      "include/runner.cxx": "da158cf219904e4ea6086dbb4ca94339ab1ce88beb743d4e76d5297d1080db75",
+      "include/sources.cxx": "f5d40eed048fa8023e743dee20f04f9ef2c9f2e73ad70592a1fff18257d6173d",
+      "include/structs.cxx": "1454e42191023b2be3131e5948110b20991971d8e5b938036c15ed1f753a8bc0",
+      "include/test.cxx": "8c8f102efddfe5f8bc0f2eb59bc4eda05f280ac2395fbdc0ba5c3b372c77c056",
+      "include/utils.cxx": "25d85a07b4208b3828646f4d49de5b31d1d1f16180ccb6135883b4e8dba00eb0"
+    },
+    "utc": "2026-10-16T13:07:37.087962+00:00",
+    "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.41",
+    "cpu_count": 16,
+    "repetitions": 3,
+    "build_jobs": 1,
+    "runtime_repetitions": 5,
+    "warm_schedule": "paired samples; first framework alternates per sample and workload",
+    "benchmark_tool_sha256": {
+      "benchmarks/run.py": "0b3ecba3d4ac04b3351ca0f1cd20faed8dd06286e691cfac027117bc60811505",
+      "benchmarks/generate.py": "fd2dd098f31b32a57e15d3e1e3af3a0cea5db31ef19d716edbf467cbdf6ecdd3"
+    },
+    "runtime_scope": "whole executable; startup, discovery, execution, console, shutdown",
+    "warm_scope": "one test translation unit; dependencies prebuilt; no linking or cache",
+    "cold_scope": "clean target build; pre-fetched dependencies; compilation and linking"
+  },
+  "workloads": [
+    {
+      "test_count": 1,
+      "workload": "regular",
+      "frameworks": {
+        "annotest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 1.7026738390004539,
+                "peak_rss_kib": 355248
+              },
+              {
+                "wall_seconds": 1.7190754789999119,
+                "peak_rss_kib": 355016
+              },
+              {
+                "wall_seconds": 1.8415969890002089,
+                "peak_rss_kib": 354484
+              }
+            ],
+            "median_wall_seconds": 1.7190754789999119,
+            "median_peak_rss_kib": 355016
+          },
+          "object_bytes": 1374400,
+          "command": [
+            "/usr/local/bin/g++",
+            "-I/workspaces/improved-features/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/serial_xml-src/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/structural_tuple-src/include",
+            "-g",
+            "-std=gnu++26",
+            "-freflection",
+            "-fmodules-ts",
+            "-fmodule-mapper=benchmarks/CMakeFiles/annotest_bench_1.dir/generated/annotest_1.cpp.o.modmap",
+            "-x",
+            "c++",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/annotest_1.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "b86962ba494af7a3e5a602a85d12be912b301b3bac969d57bf5c99efbaa70cb9",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.004486216999794124,
+                "peak_rss_kib": 18872
+              },
+              {
+                "wall_seconds": 0.0031926679994285223,
+                "peak_rss_kib": 18872
+              },
+              {
+                "wall_seconds": 0.0026492629995118477,
+                "peak_rss_kib": 18872
+              },
+              {
+                "wall_seconds": 0.002624337000270316,
+                "peak_rss_kib": 18872
+              },
+              {
+                "wall_seconds": 0.0029101860000082524,
+                "peak_rss_kib": 18872
+              }
+            ],
+            "median_wall_seconds": 0.0029101860000082524,
+            "median_peak_rss_kib": 18872
+          },
+          "payload_bytes": 0,
+          "output_capture": true,
+          "clean_build": {
+            "samples": [
+              {
+                "wall_seconds": 73.30425493300027,
+                "peak_rss_kib": 592960
+              },
+              {
+                "wall_seconds": 73.2967532950006,
+                "peak_rss_kib": 593132
+              },
+              {
+                "wall_seconds": 76.04174962400066,
+                "peak_rss_kib": 592524
+              }
+            ],
+            "median_wall_seconds": 73.30425493300027,
+            "median_peak_rss_kib": 592960
+          }
+        },
+        "gtest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 2.127094725000461,
+                "peak_rss_kib": 300580
+              },
+              {
+                "wall_seconds": 2.11820513100065,
+                "peak_rss_kib": 300444
+              },
+              {
+                "wall_seconds": 2.228826509999635,
+                "peak_rss_kib": 300684
+              }
+            ],
+            "median_wall_seconds": 2.127094725000461,
+            "median_peak_rss_kib": 300580
+          },
+          "object_bytes": 456432,
+          "command": [
+            "/usr/local/bin/g++",
+            "-g",
+            "-std=gnu++26",
+            "-DGTEST_HAS_PTHREAD=1",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/gtest_1.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "2443c579c3fcbfdd4485eb2a41d734d1740dfad0c2f840af08f1663043f97642",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.0017126809998444514,
+                "peak_rss_kib": 18872
+              },
+              {
+                "wall_seconds": 0.0023501919995396747,
+                "peak_rss_kib": 18872
+              },
+              {
+                "wall_seconds": 0.0026263230001859483,
+                "peak_rss_kib": 18872
+              },
+              {
+                "wall_seconds": 0.003507115000502381,
+                "peak_rss_kib": 18872
+              },
+              {
+                "wall_seconds": 0.0036392310003066086,
+                "peak_rss_kib": 18872
+              }
+            ],
+            "median_wall_seconds": 0.0026263230001859483,
+            "median_peak_rss_kib": 18872
+          },
+          "payload_bytes": 0,
+          "output_capture": false,
+          "clean_build": {
+            "samples": [
+              {
+                "wall_seconds": 2.363072538000779,
+                "peak_rss_kib": 300872
+              },
+              {
+                "wall_seconds": 2.312320138999894,
+                "peak_rss_kib": 300792
+              },
+              {
+                "wall_seconds": 2.554745496999203,
+                "peak_rss_kib": 300472
+              }
+            ],
+            "median_wall_seconds": 2.363072538000779,
+            "median_peak_rss_kib": 300792
+          }
+        }
+      },
+      "warm_compile_order": [
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest"
+      ],
+      "annotest_over_gtest_compile_ratio": 0.8081800301580548
+    }
+  ]
+}

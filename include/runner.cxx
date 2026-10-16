@@ -144,6 +144,15 @@ void append_static_case(execution_suite& output, execution_case entry,
   output.cases.push_back(std::move(entry));
 }
 
+void append_regular_case(execution_suite& output, execution_case entry,
+                         std::shared_ptr<void> fixture, const discovered_test& test) {
+  entry.run = [fixture = std::move(fixture), execute = test.execute,
+               body = test.body, name = entry.base_name] {
+    return execute(fixture.get(), name, body);
+  };
+  output.cases.push_back(std::move(entry));
+}
+
 void append_static_cases(execution_suite& output, std::shared_ptr<void> fixture,
                          std::span<const static_test_description> descriptions,
                          bool parent_disabled, const std::vector<std::string>& inherited_tags,
@@ -158,7 +167,7 @@ void append_static_cases(execution_suite& output, std::shared_ptr<void> fixture,
       for (int index = 0; index < test.parameter_count; ++index)
         append_static_case(output, entry, fixture, test.run, index, description.parameters(index));
     } else {
-      append_static_case(output, std::move(entry), fixture, test.run);
+      append_regular_case(output, std::move(entry), fixture, test);
     }
   }
 }

@@ -1,0 +1,1991 @@
+{
+  "metadata": {
+    "compiler": "/usr/local/bin/g++",
+    "compiler_id": "GNU",
+    "compiler_version": "16.2.0",
+    "build_type": "Debug",
+    "gtest_version": "1.15.0 (installed)",
+    "suites": 3,
+    "annotest_git_head": null,
+    "annotest_git_status": null,
+    "annotest_module_sha256": {
+      "include/annotest_contract.h": "0a6ffdb6827fd508d8eaf978a6504a73021c1345d646fb81b6a89441b8b006ae",
+      "include/annotest_platform.h": "fb710e7ce02eddc6849431dc1c003b593675779a7a670cc6be48eec9f441dbc3",
+      "include/asserts.cxx": "528294493151c482b1b680a49d363b0b0605c16f6718d05a12778b5952c6786b",
+      "include/contracts.cxx": "c30d9acdc85d59eb9c6da882eb3cead50db02b605cd52470400781150e59c9f6",
+      "include/death_test.cxx": "b11d208f8c078b00d00bb069fec7ade5785a447cb104d31529ed80bd79d80544",
+      "include/diagnostics.cxx": "5a677e72b5221d53116f51d911a3f8136624d235b0a7cc54458799c9e2ac17ae",
+      "include/exceptions.cxx": "bd175f7a00e8c46931a356678ba03160bd6390f3a6417aa2d0aeda870d559981",
+      "include/expects.cxx": "c7277acac47e5e2d21c022de24b2358caa76496adfdc1e8301f4fd47b6efd3c9",
+      "include/logger.cxx": "b0c320a02c34db43970c53b0b92dd71b1e00abf2793fb9dd4b6f0635dae1b847",
+      "include/matchers.cxx": "cc3e1a0c1a583b9a9c860fd88da0dc9c1878b63194164926b7f9af87b7fcf4cd",
+      "include/platform.cpp": "f1bcf639dacc3cb5705410e22e6ccbd278c3fa5db6b83ca6a71039392cd28342",
+      "include/posix.cxx": "b6173c9c4f0d72160d33421e2466d2c311a5db163b19728f76d6b02e7b683f3b",
+      "include/runner.cxx": "da158cf219904e4ea6086dbb4ca94339ab1ce88beb743d4e76d5297d1080db75",
+      "include/sources.cxx": "f5d40eed048fa8023e743dee20f04f9ef2c9f2e73ad70592a1fff18257d6173d",
+      "include/structs.cxx": "1454e42191023b2be3131e5948110b20991971d8e5b938036c15ed1f753a8bc0",
+      "include/test.cxx": "8c8f102efddfe5f8bc0f2eb59bc4eda05f280ac2395fbdc0ba5c3b372c77c056",
+      "include/utils.cxx": "25d85a07b4208b3828646f4d49de5b31d1d1f16180ccb6135883b4e8dba00eb0"
+    },
+    "utc": "2026-10-16T12:50:56.591405+00:00",
+    "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.41",
+    "cpu_count": 16,
+    "repetitions": 5,
+    "build_jobs": 1,
+    "runtime_repetitions": 5,
+    "warm_schedule": "paired samples; first framework alternates per sample and workload",
+    "benchmark_tool_sha256": {
+      "benchmarks/run.py": "0b3ecba3d4ac04b3351ca0f1cd20faed8dd06286e691cfac027117bc60811505",
+      "benchmarks/generate.py": "fd2dd098f31b32a57e15d3e1e3af3a0cea5db31ef19d716edbf467cbdf6ecdd3"
+    },
+    "runtime_scope": "whole executable; startup, discovery, execution, console, shutdown",
+    "warm_scope": "one test translation unit; dependencies prebuilt; no linking or cache",
+    "cold_scope": "clean target build; pre-fetched dependencies; compilation and linking"
+  },
+  "workloads": [
+    {
+      "test_count": 1,
+      "workload": "regular",
+      "frameworks": {
+        "annotest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 1.7442161009998927,
+                "peak_rss_kib": 354956
+              },
+              {
+                "wall_seconds": 1.7388200450000113,
+                "peak_rss_kib": 354808
+              },
+              {
+                "wall_seconds": 1.6827626059998693,
+                "peak_rss_kib": 355008
+              },
+              {
+                "wall_seconds": 1.7531443469997612,
+                "peak_rss_kib": 354876
+              },
+              {
+                "wall_seconds": 1.6954146749999381,
+                "peak_rss_kib": 355016
+              }
+            ],
+            "median_wall_seconds": 1.7388200450000113,
+            "median_peak_rss_kib": 354956
+          },
+          "object_bytes": 1374400,
+          "command": [
+            "/usr/local/bin/g++",
+            "-I/workspaces/improved-features/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/serial_xml-src/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/structural_tuple-src/include",
+            "-g",
+            "-std=gnu++26",
+            "-freflection",
+            "-fmodules-ts",
+            "-fmodule-mapper=benchmarks/CMakeFiles/annotest_bench_1.dir/generated/annotest_1.cpp.o.modmap",
+            "-x",
+            "c++",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/annotest_1.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "b86962ba494af7a3e5a602a85d12be912b301b3bac969d57bf5c99efbaa70cb9",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.004194894999727694,
+                "peak_rss_kib": 18940
+              },
+              {
+                "wall_seconds": 0.004573668999910296,
+                "peak_rss_kib": 18940
+              },
+              {
+                "wall_seconds": 0.00498875199991744,
+                "peak_rss_kib": 18940
+              },
+              {
+                "wall_seconds": 0.0040443889997732185,
+                "peak_rss_kib": 18940
+              },
+              {
+                "wall_seconds": 0.002570529999957216,
+                "peak_rss_kib": 18940
+              }
+            ],
+            "median_wall_seconds": 0.004194894999727694,
+            "median_peak_rss_kib": 18940
+          },
+          "payload_bytes": 0,
+          "output_capture": true
+        },
+        "gtest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 2.1576694140003383,
+                "peak_rss_kib": 300820
+              },
+              {
+                "wall_seconds": 2.0988104470002327,
+                "peak_rss_kib": 300896
+              },
+              {
+                "wall_seconds": 2.1677410069996768,
+                "peak_rss_kib": 300540
+              },
+              {
+                "wall_seconds": 2.1524852689999534,
+                "peak_rss_kib": 300760
+              },
+              {
+                "wall_seconds": 2.161203612999998,
+                "peak_rss_kib": 300696
+              }
+            ],
+            "median_wall_seconds": 2.1576694140003383,
+            "median_peak_rss_kib": 300760
+          },
+          "object_bytes": 456432,
+          "command": [
+            "/usr/local/bin/g++",
+            "-g",
+            "-std=gnu++26",
+            "-DGTEST_HAS_PTHREAD=1",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/gtest_1.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "2443c579c3fcbfdd4485eb2a41d734d1740dfad0c2f840af08f1663043f97642",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.002779000000373344,
+                "peak_rss_kib": 18940
+              },
+              {
+                "wall_seconds": 0.002458338999986154,
+                "peak_rss_kib": 18940
+              },
+              {
+                "wall_seconds": 0.0023322219999499794,
+                "peak_rss_kib": 18940
+              },
+              {
+                "wall_seconds": 0.0024403959996561753,
+                "peak_rss_kib": 18940
+              },
+              {
+                "wall_seconds": 0.002686811999865313,
+                "peak_rss_kib": 18940
+              }
+            ],
+            "median_wall_seconds": 0.002458338999986154,
+            "median_peak_rss_kib": 18940
+          },
+          "payload_bytes": 0,
+          "output_capture": false
+        }
+      },
+      "warm_compile_order": [
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest"
+      ],
+      "annotest_over_gtest_compile_ratio": 0.8058788031741264
+    },
+    {
+      "test_count": 24,
+      "workload": "regular",
+      "frameworks": {
+        "annotest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 2.1109290930003226,
+                "peak_rss_kib": 348596
+              },
+              {
+                "wall_seconds": 2.088100347999898,
+                "peak_rss_kib": 348424
+              },
+              {
+                "wall_seconds": 2.1333349259998613,
+                "peak_rss_kib": 348404
+              },
+              {
+                "wall_seconds": 2.125852901000144,
+                "peak_rss_kib": 348172
+              },
+              {
+                "wall_seconds": 2.111340551000012,
+                "peak_rss_kib": 348144
+              }
+            ],
+            "median_wall_seconds": 2.111340551000012,
+            "median_peak_rss_kib": 348404
+          },
+          "object_bytes": 1910776,
+          "command": [
+            "/usr/local/bin/g++",
+            "-I/workspaces/improved-features/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/serial_xml-src/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/structural_tuple-src/include",
+            "-g",
+            "-std=gnu++26",
+            "-freflection",
+            "-fmodules-ts",
+            "-fmodule-mapper=benchmarks/CMakeFiles/annotest_bench_24.dir/generated/annotest_24.cpp.o.modmap",
+            "-x",
+            "c++",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/annotest_24.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "0ce71d18da5a456c3b1d27942fd9574a66e1c6b09178c3c08e00d9004782332d",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.007491440000194416,
+                "peak_rss_kib": 19068
+              },
+              {
+                "wall_seconds": 0.0061662329999307985,
+                "peak_rss_kib": 19068
+              },
+              {
+                "wall_seconds": 0.004320877000282053,
+                "peak_rss_kib": 19068
+              },
+              {
+                "wall_seconds": 0.005268049999813229,
+                "peak_rss_kib": 19068
+              },
+              {
+                "wall_seconds": 0.00491229299996121,
+                "peak_rss_kib": 19068
+              }
+            ],
+            "median_wall_seconds": 0.005268049999813229,
+            "median_peak_rss_kib": 19068
+          },
+          "payload_bytes": 0,
+          "output_capture": true
+        },
+        "gtest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 2.3839295279999533,
+                "peak_rss_kib": 316920
+              },
+              {
+                "wall_seconds": 2.3660922559997744,
+                "peak_rss_kib": 317160
+              },
+              {
+                "wall_seconds": 2.3594378760003565,
+                "peak_rss_kib": 317052
+              },
+              {
+                "wall_seconds": 2.38471734299992,
+                "peak_rss_kib": 316976
+              },
+              {
+                "wall_seconds": 2.3899429410002995,
+                "peak_rss_kib": 316780
+              }
+            ],
+            "median_wall_seconds": 2.3839295279999533,
+            "median_peak_rss_kib": 316976
+          },
+          "object_bytes": 799144,
+          "command": [
+            "/usr/local/bin/g++",
+            "-g",
+            "-std=gnu++26",
+            "-DGTEST_HAS_PTHREAD=1",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/gtest_24.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "3b091cfb3e1d11186da02cd7574e4495b6ddd7ee39f824c569af3a61b6abe22d",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.0015923079999993206,
+                "peak_rss_kib": 19068
+              },
+              {
+                "wall_seconds": 0.0016767839997555711,
+                "peak_rss_kib": 19068
+              },
+              {
+                "wall_seconds": 0.0021968989999550104,
+                "peak_rss_kib": 19068
+              },
+              {
+                "wall_seconds": 0.0026200239999525365,
+                "peak_rss_kib": 19068
+              },
+              {
+                "wall_seconds": 0.0026829549997273716,
+                "peak_rss_kib": 19068
+              }
+            ],
+            "median_wall_seconds": 0.0021968989999550104,
+            "median_peak_rss_kib": 19068
+          },
+          "payload_bytes": 0,
+          "output_capture": false
+        }
+      },
+      "warm_compile_order": [
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest"
+      ],
+      "annotest_over_gtest_compile_ratio": 0.8856556060914119
+    },
+    {
+      "test_count": 72,
+      "workload": "regular",
+      "frameworks": {
+        "annotest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 2.5308636919999117,
+                "peak_rss_kib": 362588
+              },
+              {
+                "wall_seconds": 2.556429128000218,
+                "peak_rss_kib": 362532
+              },
+              {
+                "wall_seconds": 2.4220053250001,
+                "peak_rss_kib": 362516
+              },
+              {
+                "wall_seconds": 2.4274369989998377,
+                "peak_rss_kib": 362936
+              },
+              {
+                "wall_seconds": 2.460173195000152,
+                "peak_rss_kib": 362824
+              }
+            ],
+            "median_wall_seconds": 2.460173195000152,
+            "median_peak_rss_kib": 362588
+          },
+          "object_bytes": 2083880,
+          "command": [
+            "/usr/local/bin/g++",
+            "-I/workspaces/improved-features/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/serial_xml-src/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/structural_tuple-src/include",
+            "-g",
+            "-std=gnu++26",
+            "-freflection",
+            "-fmodules-ts",
+            "-fmodule-mapper=benchmarks/CMakeFiles/annotest_bench_72.dir/generated/annotest_72.cpp.o.modmap",
+            "-x",
+            "c++",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/annotest_72.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "3a1d89e7682ca78738a340a08ba1e3dae995443c555bf633c4085be9d3a2151c",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.011037661000045773,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.007717070000126114,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.009530777000236412,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.006650560000252881,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.010128700000223034,
+                "peak_rss_kib": 19196
+              }
+            ],
+            "median_wall_seconds": 0.009530777000236412,
+            "median_peak_rss_kib": 19196
+          },
+          "payload_bytes": 0,
+          "output_capture": true
+        },
+        "gtest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 3.0829383820000658,
+                "peak_rss_kib": 349644
+              },
+              {
+                "wall_seconds": 3.0000585220000175,
+                "peak_rss_kib": 349860
+              },
+              {
+                "wall_seconds": 3.083195784000054,
+                "peak_rss_kib": 349276
+              },
+              {
+                "wall_seconds": 3.064480454999739,
+                "peak_rss_kib": 349636
+              },
+              {
+                "wall_seconds": 3.0876240830002644,
+                "peak_rss_kib": 349356
+              }
+            ],
+            "median_wall_seconds": 3.0829383820000658,
+            "median_peak_rss_kib": 349636
+          },
+          "object_bytes": 1470544,
+          "command": [
+            "/usr/local/bin/g++",
+            "-g",
+            "-std=gnu++26",
+            "-DGTEST_HAS_PTHREAD=1",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/gtest_72.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "55da7bac2c9934588ed34e5c9f7f33a7e323f533d997f1e68d5315a7e05ad5b7",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.0030392880003091705,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.0027048309998463083,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.002660551999724703,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.003141428000162705,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.003099533999829873,
+                "peak_rss_kib": 19196
+              }
+            ],
+            "median_wall_seconds": 0.0030392880003091705,
+            "median_peak_rss_kib": 19196
+          },
+          "payload_bytes": 0,
+          "output_capture": false
+        }
+      },
+      "warm_compile_order": [
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest"
+      ],
+      "annotest_over_gtest_compile_ratio": 0.7979962263806607
+    },
+    {
+      "test_count": 240,
+      "workload": "regular",
+      "frameworks": {
+        "annotest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 3.630330913000307,
+                "peak_rss_kib": 433628
+              },
+              {
+                "wall_seconds": 3.4639598590001697,
+                "peak_rss_kib": 434188
+              },
+              {
+                "wall_seconds": 3.4892322239998066,
+                "peak_rss_kib": 434144
+              },
+              {
+                "wall_seconds": 3.4909854229999837,
+                "peak_rss_kib": 434156
+              },
+              {
+                "wall_seconds": 3.4674696659999427,
+                "peak_rss_kib": 434188
+              }
+            ],
+            "median_wall_seconds": 3.4892322239998066,
+            "median_peak_rss_kib": 434156
+          },
+          "object_bytes": 2694224,
+          "command": [
+            "/usr/local/bin/g++",
+            "-I/workspaces/improved-features/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/serial_xml-src/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/structural_tuple-src/include",
+            "-g",
+            "-std=gnu++26",
+            "-freflection",
+            "-fmodules-ts",
+            "-fmodule-mapper=benchmarks/CMakeFiles/annotest_bench_240.dir/generated/annotest_240.cpp.o.modmap",
+            "-x",
+            "c++",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/annotest_240.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "84bcd5453ac24e202307044d9f92a956c50d48ab9ab45ef720b1540a816aa07e",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.022312882000278478,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.02670388800015644,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.027900563000002876,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.0278849389997049,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.030468802000086725,
+                "peak_rss_kib": 19196
+              }
+            ],
+            "median_wall_seconds": 0.0278849389997049,
+            "median_peak_rss_kib": 19196
+          },
+          "payload_bytes": 0,
+          "output_capture": true
+        },
+        "gtest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 5.3528361690000565,
+                "peak_rss_kib": 435148
+              },
+              {
+                "wall_seconds": 4.945226157000434,
+                "peak_rss_kib": 435676
+              },
+              {
+                "wall_seconds": 5.112856162000298,
+                "peak_rss_kib": 435428
+              },
+              {
+                "wall_seconds": 5.078740030000063,
+                "peak_rss_kib": 435408
+              },
+              {
+                "wall_seconds": 5.046666454999922,
+                "peak_rss_kib": 435572
+              }
+            ],
+            "median_wall_seconds": 5.078740030000063,
+            "median_peak_rss_kib": 435428
+          },
+          "object_bytes": 3835392,
+          "command": [
+            "/usr/local/bin/g++",
+            "-g",
+            "-std=gnu++26",
+            "-DGTEST_HAS_PTHREAD=1",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/gtest_240.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "3ae6c58681c05555058fe737f5d152959a4f7370c6bc5232dec8c1c8fa2fbd3f",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.004516504000093846,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.006334831999993185,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.005180523000035464,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.006024579000040831,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.004311490999953094,
+                "peak_rss_kib": 19196
+              }
+            ],
+            "median_wall_seconds": 0.005180523000035464,
+            "median_peak_rss_kib": 19196
+          },
+          "payload_bytes": 0,
+          "output_capture": false
+        }
+      },
+      "warm_compile_order": [
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest"
+      ],
+      "annotest_over_gtest_compile_ratio": 0.6870271373192858
+    },
+    {
+      "test_count": 1,
+      "workload": "parameterized",
+      "frameworks": {
+        "annotest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 1.9427402309997888,
+                "peak_rss_kib": 346084
+              },
+              {
+                "wall_seconds": 1.903252538000288,
+                "peak_rss_kib": 346308
+              },
+              {
+                "wall_seconds": 1.8799280389998785,
+                "peak_rss_kib": 346328
+              },
+              {
+                "wall_seconds": 1.8762998040001548,
+                "peak_rss_kib": 346228
+              },
+              {
+                "wall_seconds": 1.8529579430000922,
+                "peak_rss_kib": 346352
+              }
+            ],
+            "median_wall_seconds": 1.8799280389998785,
+            "median_peak_rss_kib": 346308
+          },
+          "object_bytes": 1509360,
+          "command": [
+            "/usr/local/bin/g++",
+            "-I/workspaces/improved-features/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/serial_xml-src/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/structural_tuple-src/include",
+            "-g",
+            "-std=gnu++26",
+            "-freflection",
+            "-fmodules-ts",
+            "-fmodule-mapper=benchmarks/CMakeFiles/annotest_parameterized_bench_1.dir/generated/annotest_parameterized_1.cpp.o.modmap",
+            "-x",
+            "c++",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/annotest_parameterized_1.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "2c350747584b644d6edb777f6b49ab53c6a9a41c16a580e7ab24f78758c05079",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.0026692780002122163,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.003582915000151843,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.002516078000098787,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.0029841600003237545,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.002618646999962948,
+                "peak_rss_kib": 19196
+              }
+            ],
+            "median_wall_seconds": 0.0026692780002122163,
+            "median_peak_rss_kib": 19196
+          },
+          "payload_bytes": 0,
+          "output_capture": true
+        },
+        "gtest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 2.765553068999907,
+                "peak_rss_kib": 337144
+              },
+              {
+                "wall_seconds": 2.7349264979998225,
+                "peak_rss_kib": 337288
+              },
+              {
+                "wall_seconds": 2.7423491230001673,
+                "peak_rss_kib": 336708
+              },
+              {
+                "wall_seconds": 2.77485545799982,
+                "peak_rss_kib": 337364
+              },
+              {
+                "wall_seconds": 2.7775781899999856,
+                "peak_rss_kib": 337120
+              }
+            ],
+            "median_wall_seconds": 2.765553068999907,
+            "median_peak_rss_kib": 337144
+          },
+          "object_bytes": 1596712,
+          "command": [
+            "/usr/local/bin/g++",
+            "-g",
+            "-std=gnu++26",
+            "-DGTEST_HAS_PTHREAD=1",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/gtest_parameterized_1.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "efbf10ab2c887706ab8c4165c2cbeaa6f8f8bb686e5a4d23f32ad8012cbc511f",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.002604799999971874,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.0023670900000070105,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.0023850309999033925,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.002201698000135366,
+                "peak_rss_kib": 19196
+              },
+              {
+                "wall_seconds": 0.0023458489999939047,
+                "peak_rss_kib": 19196
+              }
+            ],
+            "median_wall_seconds": 0.0023670900000070105,
+            "median_peak_rss_kib": 19196
+          },
+          "payload_bytes": 0,
+          "output_capture": false
+        }
+      },
+      "warm_compile_order": [
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest"
+      ],
+      "annotest_over_gtest_compile_ratio": 0.6797656714935894
+    },
+    {
+      "test_count": 24,
+      "workload": "parameterized",
+      "frameworks": {
+        "annotest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 2.375466949999918,
+                "peak_rss_kib": 357444
+              },
+              {
+                "wall_seconds": 2.4491191649999564,
+                "peak_rss_kib": 357364
+              },
+              {
+                "wall_seconds": 2.4123624190001465,
+                "peak_rss_kib": 357384
+              },
+              {
+                "wall_seconds": 2.4195831059996635,
+                "peak_rss_kib": 357456
+              },
+              {
+                "wall_seconds": 2.4064165409999987,
+                "peak_rss_kib": 357348
+              }
+            ],
+            "median_wall_seconds": 2.4123624190001465,
+            "median_peak_rss_kib": 357384
+          },
+          "object_bytes": 2067056,
+          "command": [
+            "/usr/local/bin/g++",
+            "-I/workspaces/improved-features/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/serial_xml-src/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/structural_tuple-src/include",
+            "-g",
+            "-std=gnu++26",
+            "-freflection",
+            "-fmodules-ts",
+            "-fmodule-mapper=benchmarks/CMakeFiles/annotest_parameterized_bench_24.dir/generated/annotest_parameterized_24.cpp.o.modmap",
+            "-x",
+            "c++",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/annotest_parameterized_24.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "55d2feeb74d464aa789a895477a9263deaa82672780494fbf22a714c77434917",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.004338197000379296,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.004606455000157439,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.004253393999988475,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.004291538999950717,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.005541994999930466,
+                "peak_rss_kib": 19708
+              }
+            ],
+            "median_wall_seconds": 0.004338197000379296,
+            "median_peak_rss_kib": 19708
+          },
+          "payload_bytes": 0,
+          "output_capture": true
+        },
+        "gtest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 3.4754099609999685,
+                "peak_rss_kib": 339344
+              },
+              {
+                "wall_seconds": 3.305331841000225,
+                "peak_rss_kib": 339372
+              },
+              {
+                "wall_seconds": 3.26979110100001,
+                "peak_rss_kib": 339412
+              },
+              {
+                "wall_seconds": 3.3528556229998685,
+                "peak_rss_kib": 339076
+              },
+              {
+                "wall_seconds": 3.337332867999976,
+                "peak_rss_kib": 339372
+              }
+            ],
+            "median_wall_seconds": 3.337332867999976,
+            "median_peak_rss_kib": 339372
+          },
+          "object_bytes": 2228952,
+          "command": [
+            "/usr/local/bin/g++",
+            "-g",
+            "-std=gnu++26",
+            "-DGTEST_HAS_PTHREAD=1",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/gtest_parameterized_24.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "1fa71b9f17e26d6e36d448dd3b95cb5a52eca6d2319edac436e216382adbdbda",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.0035440040001049056,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.0033033049999176,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.002640804999828106,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.002947431000393408,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.0024873410002328455,
+                "peak_rss_kib": 19708
+              }
+            ],
+            "median_wall_seconds": 0.002947431000393408,
+            "median_peak_rss_kib": 19708
+          },
+          "payload_bytes": 0,
+          "output_capture": false
+        }
+      },
+      "warm_compile_order": [
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest"
+      ],
+      "annotest_over_gtest_compile_ratio": 0.7228414169084209
+    },
+    {
+      "test_count": 72,
+      "workload": "parameterized",
+      "frameworks": {
+        "annotest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 2.4844148030001634,
+                "peak_rss_kib": 364436
+              },
+              {
+                "wall_seconds": 2.4568506450000314,
+                "peak_rss_kib": 364312
+              },
+              {
+                "wall_seconds": 2.5305557850001605,
+                "peak_rss_kib": 364448
+              },
+              {
+                "wall_seconds": 2.493622311999843,
+                "peak_rss_kib": 364532
+              },
+              {
+                "wall_seconds": 2.4894884990003447,
+                "peak_rss_kib": 364288
+              }
+            ],
+            "median_wall_seconds": 2.4894884990003447,
+            "median_peak_rss_kib": 364436
+          },
+          "object_bytes": 2148672,
+          "command": [
+            "/usr/local/bin/g++",
+            "-I/workspaces/improved-features/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/serial_xml-src/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/structural_tuple-src/include",
+            "-g",
+            "-std=gnu++26",
+            "-freflection",
+            "-fmodules-ts",
+            "-fmodule-mapper=benchmarks/CMakeFiles/annotest_parameterized_bench_72.dir/generated/annotest_parameterized_72.cpp.o.modmap",
+            "-x",
+            "c++",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/annotest_parameterized_72.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "6bd63ad9c2bbb15d659f8fd46b218782c799c30d484d4087c0bcbdc7b8c7fb20",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.007986867999989045,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.007689299000048777,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.007846484999845416,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.007875217999753659,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.010719256999891513,
+                "peak_rss_kib": 19708
+              }
+            ],
+            "median_wall_seconds": 0.007875217999753659,
+            "median_peak_rss_kib": 19708
+          },
+          "payload_bytes": 0,
+          "output_capture": true
+        },
+        "gtest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 3.4111434390001705,
+                "peak_rss_kib": 341628
+              },
+              {
+                "wall_seconds": 3.3420182840000052,
+                "peak_rss_kib": 342012
+              },
+              {
+                "wall_seconds": 3.395343602000139,
+                "peak_rss_kib": 341420
+              },
+              {
+                "wall_seconds": 3.388354444000015,
+                "peak_rss_kib": 341948
+              },
+              {
+                "wall_seconds": 3.3273770400001013,
+                "peak_rss_kib": 341756
+              }
+            ],
+            "median_wall_seconds": 3.388354444000015,
+            "median_peak_rss_kib": 341756
+          },
+          "object_bytes": 2311552,
+          "command": [
+            "/usr/local/bin/g++",
+            "-g",
+            "-std=gnu++26",
+            "-DGTEST_HAS_PTHREAD=1",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/gtest_parameterized_72.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "d81e5b42c08bd8410dabca1556e92467be6e8ba2169939fcde655178d29a02bc",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.002788160999898537,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.003004962999966665,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.0030009459997017984,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.002785456999845337,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.0027193830001124297,
+                "peak_rss_kib": 19708
+              }
+            ],
+            "median_wall_seconds": 0.002788160999898537,
+            "median_peak_rss_kib": 19708
+          },
+          "payload_bytes": 0,
+          "output_capture": false
+        }
+      },
+      "warm_compile_order": [
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest"
+      ],
+      "annotest_over_gtest_compile_ratio": 0.7347190325406032
+    },
+    {
+      "test_count": 240,
+      "workload": "parameterized",
+      "frameworks": {
+        "annotest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 2.9285091240003567,
+                "peak_rss_kib": 390936
+              },
+              {
+                "wall_seconds": 2.999809054000252,
+                "peak_rss_kib": 390772
+              },
+              {
+                "wall_seconds": 2.984430477999922,
+                "peak_rss_kib": 390464
+              },
+              {
+                "wall_seconds": 3.0339463350001097,
+                "peak_rss_kib": 390700
+              },
+              {
+                "wall_seconds": 3.0608246560000225,
+                "peak_rss_kib": 390756
+              }
+            ],
+            "median_wall_seconds": 2.999809054000252,
+            "median_peak_rss_kib": 390756
+          },
+          "object_bytes": 2434528,
+          "command": [
+            "/usr/local/bin/g++",
+            "-I/workspaces/improved-features/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/serial_xml-src/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/structural_tuple-src/include",
+            "-g",
+            "-std=gnu++26",
+            "-freflection",
+            "-fmodules-ts",
+            "-fmodule-mapper=benchmarks/CMakeFiles/annotest_parameterized_bench_240.dir/generated/annotest_parameterized_240.cpp.o.modmap",
+            "-x",
+            "c++",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/annotest_parameterized_240.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "bb36a4e2fa318a44101b4165b87e1cd40b420fe6fa7c3339860101154cac995c",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.023307906999889383,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.0264018760003637,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.030014990999916336,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.020902510000269103,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.022920720999991318,
+                "peak_rss_kib": 19708
+              }
+            ],
+            "median_wall_seconds": 0.023307906999889383,
+            "median_peak_rss_kib": 19708
+          },
+          "payload_bytes": 0,
+          "output_capture": true
+        },
+        "gtest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 3.638464082000155,
+                "peak_rss_kib": 351280
+              },
+              {
+                "wall_seconds": 3.5892280879997998,
+                "peak_rss_kib": 351372
+              },
+              {
+                "wall_seconds": 3.635821418999967,
+                "peak_rss_kib": 350968
+              },
+              {
+                "wall_seconds": 3.613437366999733,
+                "peak_rss_kib": 351304
+              },
+              {
+                "wall_seconds": 3.5831130449996635,
+                "peak_rss_kib": 351040
+              }
+            ],
+            "median_wall_seconds": 3.613437366999733,
+            "median_peak_rss_kib": 351280
+          },
+          "object_bytes": 2775808,
+          "command": [
+            "/usr/local/bin/g++",
+            "-g",
+            "-std=gnu++26",
+            "-DGTEST_HAS_PTHREAD=1",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/gtest_parameterized_240.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "a5da7d01d68ce1f2a1d7e7aa00472e8cb8dac6c5b6ecb7e585d4117641ac515b",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.004436394999629556,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.004184588000043732,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.0050443019999875105,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.006279142000039428,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.004141703999721358,
+                "peak_rss_kib": 19708
+              }
+            ],
+            "median_wall_seconds": 0.004436394999629556,
+            "median_peak_rss_kib": 19708
+          },
+          "payload_bytes": 0,
+          "output_capture": false
+        }
+      },
+      "warm_compile_order": [
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest"
+      ],
+      "annotest_over_gtest_compile_ratio": 0.8301815554896468
+    },
+    {
+      "test_count": 1,
+      "workload": "output",
+      "frameworks": {
+        "annotest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 1.698710705999929,
+                "peak_rss_kib": 347408
+              },
+              {
+                "wall_seconds": 1.7162307559997316,
+                "peak_rss_kib": 347628
+              },
+              {
+                "wall_seconds": 1.7053511459998845,
+                "peak_rss_kib": 347508
+              },
+              {
+                "wall_seconds": 1.682396762999815,
+                "peak_rss_kib": 347176
+              },
+              {
+                "wall_seconds": 1.6800101690000702,
+                "peak_rss_kib": 347376
+              }
+            ],
+            "median_wall_seconds": 1.698710705999929,
+            "median_peak_rss_kib": 347408
+          },
+          "object_bytes": 1427504,
+          "command": [
+            "/usr/local/bin/g++",
+            "-I/workspaces/improved-features/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/serial_xml-src/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/structural_tuple-src/include",
+            "-g",
+            "-std=gnu++26",
+            "-freflection",
+            "-fmodules-ts",
+            "-fmodule-mapper=benchmarks/CMakeFiles/annotest_output_bench_1.dir/generated/annotest_output_1.cpp.o.modmap",
+            "-x",
+            "c++",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/annotest_output_1.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "9b915dc56cfbe27f4e1ffc4405fdb4ee2926705b9f96f36c7abba847697a1c9b",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.007614115000251331,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.007857413000238012,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.007489741999961552,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.012056056999881548,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.007914622000043892,
+                "peak_rss_kib": 19708
+              }
+            ],
+            "median_wall_seconds": 0.007857413000238012,
+            "median_peak_rss_kib": 19708
+          },
+          "payload_bytes": 1048576,
+          "output_capture": true
+        },
+        "gtest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 2.1069184810003208,
+                "peak_rss_kib": 301020
+              },
+              {
+                "wall_seconds": 2.1124877120000747,
+                "peak_rss_kib": 301132
+              },
+              {
+                "wall_seconds": 2.112111690000347,
+                "peak_rss_kib": 301012
+              },
+              {
+                "wall_seconds": 2.113057430000026,
+                "peak_rss_kib": 301040
+              },
+              {
+                "wall_seconds": 2.109590431000015,
+                "peak_rss_kib": 301068
+              }
+            ],
+            "median_wall_seconds": 2.112111690000347,
+            "median_peak_rss_kib": 301040
+          },
+          "object_bytes": 462240,
+          "command": [
+            "/usr/local/bin/g++",
+            "-g",
+            "-std=gnu++26",
+            "-DGTEST_HAS_PTHREAD=1",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/gtest_output_1.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "8b2bfc8ed897cd0bc5abf2dd34f7584aa3d9d7b3ae69f8d3b80b90ef0ec2b88b",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.0033748830001059105,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.0026704439997047302,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.002485245000116265,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.0026926259997708257,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.0043623139999908744,
+                "peak_rss_kib": 19708
+              }
+            ],
+            "median_wall_seconds": 0.0026926259997708257,
+            "median_peak_rss_kib": 19708
+          },
+          "payload_bytes": 1048576,
+          "output_capture": false
+        }
+      },
+      "warm_compile_order": [
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest"
+      ],
+      "annotest_over_gtest_compile_ratio": 0.8042712485529824
+    },
+    {
+      "test_count": 24,
+      "workload": "output",
+      "frameworks": {
+        "annotest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 2.141126141999848,
+                "peak_rss_kib": 347924
+              },
+              {
+                "wall_seconds": 2.245958146999783,
+                "peak_rss_kib": 347792
+              },
+              {
+                "wall_seconds": 2.1602606310002557,
+                "peak_rss_kib": 347612
+              },
+              {
+                "wall_seconds": 2.1903398250001374,
+                "peak_rss_kib": 347996
+              },
+              {
+                "wall_seconds": 2.2902812480001558,
+                "peak_rss_kib": 347540
+              }
+            ],
+            "median_wall_seconds": 2.1903398250001374,
+            "median_peak_rss_kib": 347792
+          },
+          "object_bytes": 1981104,
+          "command": [
+            "/usr/local/bin/g++",
+            "-I/workspaces/improved-features/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/serial_xml-src/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/structural_tuple-src/include",
+            "-g",
+            "-std=gnu++26",
+            "-freflection",
+            "-fmodules-ts",
+            "-fmodule-mapper=benchmarks/CMakeFiles/annotest_output_bench_24.dir/generated/annotest_output_24.cpp.o.modmap",
+            "-x",
+            "c++",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/annotest_output_24.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "7162f2652b3c62cefd96baa73463719bd98a102308194a62147b58ca4bbeced5",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.14402068400022472,
+                "peak_rss_kib": 30840
+              },
+              {
+                "wall_seconds": 0.1337227549997806,
+                "peak_rss_kib": 30948
+              },
+              {
+                "wall_seconds": 0.08029097200005708,
+                "peak_rss_kib": 30908
+              },
+              {
+                "wall_seconds": 0.12618086800011952,
+                "peak_rss_kib": 30820
+              },
+              {
+                "wall_seconds": 0.11542186499991658,
+                "peak_rss_kib": 30868
+              }
+            ],
+            "median_wall_seconds": 0.12618086800011952,
+            "median_peak_rss_kib": 30868
+          },
+          "payload_bytes": 25165824,
+          "output_capture": true
+        },
+        "gtest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 2.462606459000199,
+                "peak_rss_kib": 318152
+              },
+              {
+                "wall_seconds": 2.436971230999916,
+                "peak_rss_kib": 318268
+              },
+              {
+                "wall_seconds": 2.402075642999989,
+                "peak_rss_kib": 318040
+              },
+              {
+                "wall_seconds": 2.421925439000006,
+                "peak_rss_kib": 318472
+              },
+              {
+                "wall_seconds": 2.3982368580000184,
+                "peak_rss_kib": 317952
+              }
+            ],
+            "median_wall_seconds": 2.421925439000006,
+            "median_peak_rss_kib": 318152
+          },
+          "object_bytes": 818704,
+          "command": [
+            "/usr/local/bin/g++",
+            "-g",
+            "-std=gnu++26",
+            "-DGTEST_HAS_PTHREAD=1",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/gtest_output_24.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "0fd5009560fb07bfd37a7d64d4ace0000386080ded4d26090b07e9d229ee0029",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.0041021259999070026,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.007718906999798492,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.008509032999882038,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.007007662999967579,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.0058838929999183165,
+                "peak_rss_kib": 19708
+              }
+            ],
+            "median_wall_seconds": 0.007007662999967579,
+            "median_peak_rss_kib": 19708
+          },
+          "payload_bytes": 25165824,
+          "output_capture": false
+        }
+      },
+      "warm_compile_order": [
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest"
+      ],
+      "annotest_over_gtest_compile_ratio": 0.9043795443614117
+    },
+    {
+      "test_count": 72,
+      "workload": "output",
+      "frameworks": {
+        "annotest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 2.604116675000114,
+                "peak_rss_kib": 363352
+              },
+              {
+                "wall_seconds": 2.825772973000312,
+                "peak_rss_kib": 362920
+              },
+              {
+                "wall_seconds": 2.6367683519997627,
+                "peak_rss_kib": 363692
+              },
+              {
+                "wall_seconds": 2.662598300999889,
+                "peak_rss_kib": 363388
+              },
+              {
+                "wall_seconds": 2.625922414999877,
+                "peak_rss_kib": 363384
+              }
+            ],
+            "median_wall_seconds": 2.6367683519997627,
+            "median_peak_rss_kib": 363384
+          },
+          "object_bytes": 2190144,
+          "command": [
+            "/usr/local/bin/g++",
+            "-I/workspaces/improved-features/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/serial_xml-src/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/structural_tuple-src/include",
+            "-g",
+            "-std=gnu++26",
+            "-freflection",
+            "-fmodules-ts",
+            "-fmodule-mapper=benchmarks/CMakeFiles/annotest_output_bench_72.dir/generated/annotest_output_72.cpp.o.modmap",
+            "-x",
+            "c++",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/annotest_output_72.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "4541205d911adc295af97ba305d24f7b067181ec06d19ec77597f7adaf11e093",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.2512508280001384,
+                "peak_rss_kib": 79024
+              },
+              {
+                "wall_seconds": 0.2506146099999569,
+                "peak_rss_kib": 79124
+              },
+              {
+                "wall_seconds": 0.24300139600018156,
+                "peak_rss_kib": 78992
+              },
+              {
+                "wall_seconds": 0.2320477859998391,
+                "peak_rss_kib": 79092
+              },
+              {
+                "wall_seconds": 0.26952824700038036,
+                "peak_rss_kib": 78868
+              }
+            ],
+            "median_wall_seconds": 0.2506146099999569,
+            "median_peak_rss_kib": 79024
+          },
+          "payload_bytes": 75497472,
+          "output_capture": true
+        },
+        "gtest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 3.1219958589999806,
+                "peak_rss_kib": 350336
+              },
+              {
+                "wall_seconds": 3.178365739000128,
+                "peak_rss_kib": 350256
+              },
+              {
+                "wall_seconds": 3.22013970099988,
+                "peak_rss_kib": 350204
+              },
+              {
+                "wall_seconds": 3.1779184709998844,
+                "peak_rss_kib": 350184
+              },
+              {
+                "wall_seconds": 3.1587619250003627,
+                "peak_rss_kib": 350276
+              }
+            ],
+            "median_wall_seconds": 3.1779184709998844,
+            "median_peak_rss_kib": 350256
+          },
+          "object_bytes": 1519296,
+          "command": [
+            "/usr/local/bin/g++",
+            "-g",
+            "-std=gnu++26",
+            "-DGTEST_HAS_PTHREAD=1",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/gtest_output_72.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "35aaa0658ec7f87610f547112acefbb1d17afa8b4fa90f8c3551c3dca00edd49",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.010198697000305401,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.011764632999984315,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.011279776999799651,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.012275692000002891,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.010301642999820615,
+                "peak_rss_kib": 19708
+              }
+            ],
+            "median_wall_seconds": 0.011279776999799651,
+            "median_peak_rss_kib": 19708
+          },
+          "payload_bytes": 75497472,
+          "output_capture": false
+        }
+      },
+      "warm_compile_order": [
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest"
+      ],
+      "annotest_over_gtest_compile_ratio": 0.8297155436999436
+    },
+    {
+      "test_count": 240,
+      "workload": "output",
+      "frameworks": {
+        "annotest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 3.8293972189999295,
+                "peak_rss_kib": 443512
+              },
+              {
+                "wall_seconds": 3.8175086169999304,
+                "peak_rss_kib": 443308
+              },
+              {
+                "wall_seconds": 3.826982614999906,
+                "peak_rss_kib": 443356
+              },
+              {
+                "wall_seconds": 3.7950175349997153,
+                "peak_rss_kib": 443272
+              },
+              {
+                "wall_seconds": 3.872646451000037,
+                "peak_rss_kib": 443184
+              }
+            ],
+            "median_wall_seconds": 3.826982614999906,
+            "median_peak_rss_kib": 443308
+          },
+          "object_bytes": 2926576,
+          "command": [
+            "/usr/local/bin/g++",
+            "-I/workspaces/improved-features/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/serial_xml-src/include",
+            "-I/workspaces/improved-features/build/debug-bench/_deps/structural_tuple-src/include",
+            "-g",
+            "-std=gnu++26",
+            "-freflection",
+            "-fmodules-ts",
+            "-fmodule-mapper=benchmarks/CMakeFiles/annotest_output_bench_240.dir/generated/annotest_output_240.cpp.o.modmap",
+            "-x",
+            "c++",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/annotest_output_240.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "18b32539c9b7429511e9ee28d8c3fc918614ac30d33eb35fc643d7fbffc6e522",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.7407968759998766,
+                "peak_rss_kib": 251300
+              },
+              {
+                "wall_seconds": 0.7365692819998912,
+                "peak_rss_kib": 251260
+              },
+              {
+                "wall_seconds": 0.696040585999981,
+                "peak_rss_kib": 251340
+              },
+              {
+                "wall_seconds": 0.702126435000082,
+                "peak_rss_kib": 251460
+              },
+              {
+                "wall_seconds": 0.7161974309997277,
+                "peak_rss_kib": 251384
+              }
+            ],
+            "median_wall_seconds": 0.7161974309997277,
+            "median_peak_rss_kib": 251340
+          },
+          "payload_bytes": 251658240,
+          "output_capture": true
+        },
+        "gtest": {
+          "warm_compile": {
+            "samples": [
+              {
+                "wall_seconds": 5.227443060000041,
+                "peak_rss_kib": 445868
+              },
+              {
+                "wall_seconds": 5.28232669099998,
+                "peak_rss_kib": 446184
+              },
+              {
+                "wall_seconds": 5.221166758999971,
+                "peak_rss_kib": 445980
+              },
+              {
+                "wall_seconds": 5.326994088999982,
+                "peak_rss_kib": 445628
+              },
+              {
+                "wall_seconds": 5.25274540800001,
+                "peak_rss_kib": 446232
+              }
+            ],
+            "median_wall_seconds": 5.25274540800001,
+            "median_peak_rss_kib": 445980
+          },
+          "object_bytes": 3984968,
+          "command": [
+            "/usr/local/bin/g++",
+            "-g",
+            "-std=gnu++26",
+            "-DGTEST_HAS_PTHREAD=1",
+            "-c",
+            "/workspaces/improved-features/build/debug-bench/benchmarks/generated/gtest_output_240.cpp",
+            "-o",
+            "<temporary-object>"
+          ],
+          "source_sha256": "c4ba7a825fd5216f3435dc1a6fc6505a2d8c2584fbd43b8bd9ce53d45143cb67",
+          "runtime": {
+            "samples": [
+              {
+                "wall_seconds": 0.015795894999882876,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.016183008999632875,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.014303807000032975,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.014109870000083902,
+                "peak_rss_kib": 19708
+              },
+              {
+                "wall_seconds": 0.01628048900010981,
+                "peak_rss_kib": 19708
+              }
+            ],
+            "median_wall_seconds": 0.015795894999882876,
+            "median_peak_rss_kib": 19708
+          },
+          "payload_bytes": 251658240,
+          "output_capture": false
+        }
+      },
+      "warm_compile_order": [
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest",
+        "annotest",
+        "gtest",
+        "gtest",
+        "annotest"
+      ],
+      "annotest_over_gtest_compile_ratio": 0.7285680758811106
+    }
+  ]
+}

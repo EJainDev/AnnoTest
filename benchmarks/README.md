@@ -44,6 +44,11 @@ from warm measured commands; clean builds honor CMake launchers, which the
 configure command above disables. The OS filesystem cache is not flushed. Run
 on an idle machine, without concurrent builds.
 
+Both executables are built and validated before timing begins. Compiler samples
+are paired, alternating which framework compiles first in each pair and each
+workload. The JSON records the exact sample order. This limits the effect of CPU
+load changing during a comparison.
+
 Both test targets use the same compiler, GNU C++26 language mode, and build-type
 flags. AnnoTest additionally requires `-freflection`, module mapper inputs, and
 its normal transitive dependency options. GoogleTest uses its ordinary header
@@ -72,7 +77,7 @@ compilers. Clean builds can take substantially longer than warm compilations.
 
 ## V1 workload coverage
 
-The runner now measures three workloads selected with `--workloads`:
+The runner measures three workloads selected with `--workloads`:
 
 - `regular`: independent test methods with setup, cleanup, and integer equality.
 - `parameterized`: the same number of concrete invocations supplied as value parameters.
@@ -90,19 +95,45 @@ time and process peak RSS are saved separately from compiler wall time/RSS.
 RSS includes process launch overhead; small-run high-water marks may reflect
 the harness launch footprint. These small runs include process startup and should not be interpreted as
 per-assertion latency or parallel-worker performance. AnnoTest invokes one runner
-per fixture class, preserving the original generator layout; GoogleTest invokes
+per fixture class; GoogleTest invokes
 one global runner. Runtime results include that difference. The complete
 generated sources and commands are identified by the recorded hashes. No XML/JSON files are
 requested in these workloads.
 
-For a compact Release run covering warm compilation, parameterization, output,
+For a Release run covering warm compilation, parameterization, output,
 and runtime, followed by a separate clean-build measurement:
 
 ```sh
 python3 benchmarks/run.py --build-dir build/benchmarks-release \
-  --sizes 1 24 240 --repetitions 3 --runtime-repetitions 5 \
-  --output benchmarks/results-v1-release.json
+  --sizes 1 24 72 240 --repetitions 5 --runtime-repetitions 5 \
+  --output benchmarks/results-release-warm.json
 python3 benchmarks/run.py --build-dir build/benchmarks-release \
   --sizes 1 --workloads regular --repetitions 3 --cold \
-  --output benchmarks/results-v1-clean-release.json
+  --output benchmarks/results-release-clean.json
 ```
+
+## Release compile-time gate
+
+The release gate requires AnnoTest's median compilation time to be no greater
+than GoogleTest's in every warm workload at 1, 24, 72, and 240 cases, in both
+Debug and Release. Collect at least three samples per measurement on an idle
+machine. Clean framework builds are reported separately from compilation of
+user test files; their comparison includes the build setup described above.
+
+Pass the two complete warm reports to:
+
+```sh
+python3 benchmarks/check_results.py \
+  benchmarks/results-release-warm.json benchmarks/results-debug-warm.json
+```
+
+The checker recalculates medians from raw samples and rejects missing matrix
+entries, nonfinite or nonpositive timings, fewer than three samples, and library
+or workload source hashes that differ from the current checkout. Any ratio above
+1.0 fails. The [generated C++ workloads](workloads/), [generator](generate.py),
+[measurement harness](run.py), and [gate](check_results.py) are included in this
+directory. Workload snapshots use the default three fixtures and must match the
+generated sources used for release measurements.
+Harness and generator hashes must also match the measurement reports.
+Add `--include-clean` and supply the two clean reports to enforce the same ratio
+for one-case ordinary clean builds as an additional check.

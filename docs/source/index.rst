@@ -39,4 +39,6 @@ The library supports compile-time test discovery, fixture hooks, value/type para
    usage/getting_started
    examples/index
    api/index
+   testing
+   performance
    genindex

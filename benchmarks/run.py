@@ -89,6 +89,10 @@ def main():
                             "platform": platform.platform(), "cpu_count": os.cpu_count(),
                             "repetitions": args.repetitions, "build_jobs": args.jobs,
                             "runtime_repetitions": args.runtime_repetitions,
+                            "warm_schedule": "paired samples; first framework alternates per sample and workload",
+                            "benchmark_tool_sha256": {
+                                str(path.relative_to(source)): hashlib.sha256(path.read_bytes()).hexdigest()
+                                for path in (source / "benchmarks/run.py", source / "benchmarks/generate.py")},
                             "runtime_scope": "whole executable; startup, discovery, execution, console, shutdown",
                             "warm_scope": "one test translation unit; dependencies prebuilt; no linking or cache",
                             "cold_scope": "clean target build; pre-fetched dependencies; compilation and linking"},
@@ -96,6 +100,7 @@ def main():
     for workload in args.workloads:
         for count in args.sizes:
             record = {"test_count": count, "workload": workload, "frameworks": {}}
+            prepared = {}
             for framework in ("annotest", "gtest"):
                 stem = framework if workload == "regular" else f"{framework}_{workload}"
                 target = f"{stem}_bench_{count}"
@@ -108,12 +113,25 @@ def main():
                 if len(entries) != 1:
                     parser.error(f"Expected one compile command for {target}, got {len(entries)}")
                 entry = entries[0]
-                with tempfile.TemporaryDirectory(prefix="annotest-benchmark-") as scratch:
-                    obj = Path(scratch) / "benchmark.o"
-                    command = compile_command(entry, obj)
-                    print(f"Measuring {target}: {args.repetitions} compilations", flush=True)
-                    samples = [measure(command, entry["directory"]) for _ in range(args.repetitions)]
-                    result = {"warm_compile": summarize(samples), "object_bytes": obj.stat().st_size,
+                prepared[framework] = (target, entry)
+            with tempfile.TemporaryDirectory(prefix="annotest-benchmark-") as scratch:
+                objects = {framework: Path(scratch) / f"{framework}.o" for framework in prepared}
+                commands = {framework: compile_command(entry, objects[framework])
+                            for framework, (_, entry) in prepared.items()}
+                samples = {framework: [] for framework in prepared}
+                record["warm_compile_order"] = []
+                print(f"Measuring {workload}, {count} cases: {args.repetitions} paired compilations", flush=True)
+                for repetition in range(args.repetitions):
+                    order = ("annotest", "gtest")
+                    if (repetition + len(results["workloads"])) % 2:
+                        order = tuple(reversed(order))
+                    for framework in order:
+                        record["warm_compile_order"].append(framework)
+                        samples[framework].append(measure(commands[framework], prepared[framework][1]["directory"]))
+                for framework, (target, entry) in prepared.items():
+                    command = commands[framework]
+                    result = {"warm_compile": summarize(samples[framework]),
+                              "object_bytes": objects[framework].stat().st_size,
                               "command": command[:-1] + ["<temporary-object>"],
                               "source_sha256": hashlib.sha256(Path(entry["file"]).read_bytes()).hexdigest()}
                     result["runtime"] = summarize([

@@ -55,8 +55,7 @@ consteval void validate_condition() {
   }
 }
 
-template <std::meta::info func>
-consteval bool not_has_required_parameter() {
+consteval bool not_has_required_parameter(std::meta::info func) {
   auto params = std::meta::parameters_of(func);
   if (params.size() == 1 && std::meta::type_of(params[0]) == ^^test_context&) return true;
   for (auto arg : params) {
@@ -66,9 +65,98 @@ consteval bool not_has_required_parameter() {
   return true;
 }
 
+template <std::meta::info func>
+consteval bool not_has_required_parameter() {
+  return not_has_required_parameter(func);
+}
+
+consteval void validate_test_names(std::span<const internal_test> tests) {
+  std::vector<std::string_view> names;
+  names.reserve(tests.size());
+  for (const auto& entry : tests) names.emplace_back(entry.name);
+  std::ranges::sort(names);
+  for (std::size_t index = 1; index < names.size(); ++index) {
+    if (names[index - 1] == names[index])
+      throw std::logic_error(discovery_format("Duplicate test name: {}", names[index]));
+  }
+}
+
+consteval bool has_basic_annotations(std::meta::info type) {
+  if (!expanded_annotations(type).empty()) return false;
+  for (auto member : inherited_members(type)) {
+    if (std::meta::is_template(member)) return false;
+    auto annotations = expanded_annotations(member);
+    if (annotations.empty()) continue;
+    if (!std::meta::is_function(member) || !std::meta::has_identifier(member) ||
+        annotations.size() != 1) return false;
+    auto annotation_type = std::meta::remove_cv(std::meta::type_of(annotations[0]));
+    if (annotation_type != (^^test<>) && annotation_type != (^^before_each<>) &&
+        annotation_type != (^^after_each<>)) return false;
+  }
+  return true;
+}
+
+consteval suite_discovery get_basic_tests(std::meta::info type) {
+  suite_test result{};
+  result.suite = type;
+  result.name = std::define_static_string(std::meta::has_template_arguments(type)
+                                            ? std::meta::display_string_of(type)
+                                            : std::meta::identifier_of(type));
+  if (std::string_view(result.name).empty() ||
+      std::string_view(result.name).find_first_of("\r\n\t") != std::string_view::npos)
+    throw std::logic_error("Suite names must not contain tabs or line breaks");
+  std::vector<internal_test> tests;
+  std::vector<std::meta::info> before_hooks, after_hooks;
+  for (auto member : inherited_members(type)) {
+    auto annotations = expanded_annotations(member);
+    if (annotations.empty()) continue;
+    auto annotation_type = std::meta::remove_cv(std::meta::type_of(annotations[0]));
+    if (!std::meta::is_public(member))
+      throw std::logic_error(discovery_format(
+          "Annotated test and lifecycle methods must be public: {}",
+          std::meta::identifier_of(member)));
+    if (std::meta::is_deleted(member))
+      throw std::logic_error(discovery_format("Annotated methods must not be deleted: {}",
+                                             std::meta::identifier_of(member)));
+    if (annotation_type == ^^test<>) {
+      auto info = std::meta::extract<test<>>(annotations[0]);
+      if (info.repetitions == 0 || info.repetitions > 1000000)
+        throw std::logic_error("Test repetitions must be between 1 and 1000000");
+      if (!not_has_required_parameter(member))
+        throw std::logic_error(discovery_format(
+            "Test has required arguments without parameterization: {}",
+            std::meta::identifier_of(member)));
+      internal_test entry{};
+      entry.test = entry.raw_test = member;
+      entry.name = std::define_static_string(std::meta::identifier_of(member));
+      entry.disabled = info.disabled;
+      entry.repetitions = info.repetitions;
+      tests.push_back(entry);
+    } else {
+      if (!not_has_required_parameter(member))
+        throw std::logic_error(discovery_format(
+            "Lifecycle hooks must not have required arguments: {}",
+            std::meta::identifier_of(member)));
+      if (annotation_type == ^^before_each<>) {
+        before_hooks.push_back(member);
+        result.before_each = member;
+        result.has_before_each = true;
+      } else {
+        after_hooks.push_back(member);
+        result.after_each = member;
+        result.has_after_each = true;
+      }
+    }
+  }
+  validate_test_names(tests);
+  result.before_hooks = std::define_static_array(before_hooks);
+  result.after_hooks = std::define_static_array(after_hooks);
+  return {result, std::define_static_array(tests)};
+}
+
 // Gets all required information from the testing class
 template <std::meta::info Suite>
-consteval auto get_tests() {
+consteval auto get_extended_tests() {
   static constexpr auto members = std::define_static_array(inherited_members(Suite));
   static constexpr auto suite_annotations = std::define_static_array(expanded_annotations(Suite));
 
@@ -295,11 +383,6 @@ consteval auto get_tests() {
         if (std::string_view(current_test.name).find_first_of("\r\n\t") != std::string_view::npos) {
           throw std::logic_error("Test names must not contain tabs or line breaks");
         }
-        for (const auto& existing : children) {
-          if (std::string_view(existing.name) == current_test.name) {
-            throw std::logic_error(discovery_format("Duplicate test name: {}", current_test.name));
-          }
-        }
         if (current_test.timeout_seconds < 0 || !std::isfinite(current_test.timeout_seconds))
           throw std::logic_error("Test timeout must be finite and nonnegative");
         current_test.tags = std::define_static_array(test_tags);
@@ -307,6 +390,8 @@ consteval auto get_tests() {
       }
     }
   }
+
+  validate_test_names(children);
 
   // Base names are selection aliases for parameterized tests. Reserve them
   // alongside concrete case names so every filter has exactly one meaning.
@@ -349,6 +434,14 @@ consteval auto get_tests() {
   result.before_all_hooks = std::define_static_array(before_all_hooks);
   result.after_all_hooks = std::define_static_array(after_all_hooks);
   return suite_discovery{result, std::define_static_array(children)};
+}
+
+template <std::meta::info Suite>
+consteval auto get_tests() {
+  if constexpr (has_basic_annotations(Suite))
+    return get_basic_tests(Suite);
+  else
+    return get_extended_tests<Suite>();
 }
 
 using test_callback = void (*)(void*);
@@ -775,7 +868,13 @@ struct discovered_test {
   std::span<const operating_system> disallowed_os;
   test_callback body = nullptr;
   int (*run)(void*, int) = nullptr;
+  int (*execute)(void*, std::string_view, test_callback) = nullptr;
 };
+
+template <auto Suite, typename T>
+int execute_discovered_test(void* context, std::string_view name, test_callback body) {
+  return execute_static_fixture<Suite>(*static_cast<fixture_state<T>*>(context), name, body);
+}
 
 template <auto Suite, internal_test Test, typename T>
 int run_discovered_test(void* context, int index) {
@@ -801,10 +900,11 @@ consteval discovered_test describe_test() {
                         .parameter_count = Test.num_parameterizations,
                         .disabled = Test.disabled,
                         .has_required_os = Test.has_requires_os};
-  if constexpr (!Test.runtime_parameters && !Test.dynamic) {
+  if constexpr (!Test.runtime_parameters && !Test.dynamic && Test.parameterized) {
     entry.run = run_discovered_test<Suite, Test, T>;
   } else if constexpr (not_has_required_parameter<Test.test>()) {
     entry.body = invoke_test_method<Test.test, T>;
+    entry.execute = execute_discovered_test<Suite, T>;
   }
   if constexpr (Test.has_requires_os) {
     static constexpr auto annotation =
@@ -951,6 +1051,8 @@ void append_static_cases(execution_suite& output, std::shared_ptr<void> fixture,
 void append_static_case(execution_suite& output, execution_case entry,
                         std::shared_ptr<void> fixture, int (*run)(void*, int), int index = -1,
                         std::string parameters = {});
+void append_regular_case(execution_suite& output, execution_case entry,
+                         std::shared_ptr<void> fixture, const discovered_test& test);
 void validate_case_names(const execution_suite& suite);
 
 int run_plan(std::vector<execution_suite> suites, const runner_options& options, int argc,
@@ -1285,7 +1387,7 @@ void append_suite_instance(std::vector<execution_suite>& suites, std::string pre
                              parameter_description<test>(index));
         }
       } else {
-        append_static_case(output, std::move(entry), fixture, described.run);
+        append_regular_case(output, std::move(entry), fixture, described);
       }
     }
   }

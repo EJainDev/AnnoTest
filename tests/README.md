@@ -57,3 +57,10 @@ JSON discovery (`--list-json`) and execution reports carry schema version 1.
 The downloadable schemas live in `docs/source/_static/`; schema validation is an
 additional check and does not add dependencies to the standard-library-only
 Python integration tests.
+
+The benchmark gate has independent Python tests for complete and incomplete
+matrices, equality, stale library, workload, and tool hashes, malformed samples, and
+ratios calculated from raw data. Run them directly with
+`python3 tests/test_benchmark_gate.py`, or through CTest. Compilation performance
+is measured separately from the functional suite; see
+[the benchmark guide](../benchmarks/README.md) for reproduction commands.
