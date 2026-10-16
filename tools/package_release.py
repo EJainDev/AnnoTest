@@ -21,7 +21,7 @@ def main():
     parser.add_argument('--config', default='Release')
     args = parser.parse_args()
     if not re.fullmatch(r'v[0-9][0-9A-Za-z.+_-]*', args.tag):
-        parser.error('--tag must be a version tag such as v1.0.0')
+        parser.error('--tag must be a version tag such as v0.2.0')
     os_name = {'linux': 'linux', 'darwin': 'macos', 'win32': 'windows'}.get(sys.platform)
     machine = platform.machine().lower()
     architecture = {'amd64': 'x86_64', 'x86_64': 'x86_64', 'arm64': 'arm64',

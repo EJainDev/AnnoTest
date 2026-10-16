@@ -11,7 +11,7 @@ set(CMAKE_CXX_MODULE_STD 1)
 
 project(
   AnnoTest
-  VERSION 1.0.0
+  VERSION 0.2.0
   LANGUAGES CXX)
 
 # CMake 4.3 builds one shared std BMI and does not inherit target options.
