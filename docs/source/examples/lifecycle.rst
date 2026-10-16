@@ -1,71 +1,44 @@
-Lifecycle Hooks
-===============
+Reset fixture state
+===================
 
-Raw Source
-----------
+.. container:: guide-intro
+
+   Populate fixture data before each case so test order cannot change its initial state.
+
+.. container:: guide-prerequisites
+
+   **Before you start** · An existing test project, or the :doc:`bundled-example build <build>`.
+
+Prepare the fixture
+-------------------
+
+Store the vector on the fixture and initialize it in ``before_each``. Put explicit cleanup in ``after_each``.
 
 .. literalinclude:: ../../../examples/example02_lifecycle.cpp
    :language: cpp
+   :lines: 12-20
 
-Breaking It Down
+Keep each invocation independent
+--------------------------------
+
+Keep the default fresh-fixture lifecycle. Every invocation gets a new object and runs the setup hook before its test body.
+
+Run a fresh case
 ----------------
 
-Section 1 — **BeforeAll**
+Build the target, then run the command below:
 
-.. code-block:: cpp
+.. code-block:: sh
 
-   [[= BeforeAll{}]] void setUp() {
-     call_count = 0;
-     std::cout << "[BeforeAll] Setup shared resources\n";
-   }
+   cmake --build build/docs-examples --target example2_lifecycle
+   ./build/docs-examples/examples/example2_lifecycle --test-name LifecycleTests.fresh_fixture
 
-Runs **once** before the first test. If it throws, the entire suite aborts.
+.. admonition:: Expected result
+   :class: guide-result
 
-Section 2 — **BeforeEach**
+   The case sees three values, starting with 1. Parameterized invocations receive the same setup and cleanup. Use RAII for resources released with the fixture.
 
-.. code-block:: cpp
+.. container:: guide-related
 
-   [[= BeforeEach{}]] void resetCounters() { call_count = 0; }
-
-Runs before **every** test. Resets per-test fixture state.
-
-Section 3 — **AfterEach**
-
-.. code-block:: cpp
-
-   [[= AfterEach{}]] void reportCounts() {
-     std::cout << "[AfterEach] counter = " << call_count << "\n";
-   }
-
-Runs after **every** test. If it throws, only a warning is printed (suite continues).
-
-Section 4 — **AfterAll**
-
-.. code-block:: cpp
-
-   [[= AfterAll{}]] void tearDown() {
-     std::cout << "[AfterAll] Cleaning up shared resources\n";
-   }
-
-Runs **once** after the last test. If it throws, only a warning is printed.
-
-Section 5 — **Tests use the hook state**
-
-.. code-block:: cpp
-
-   [[= Test{}]] void test_one() {
-     ++call_count;
-     assertEqual(1, call_count);
-   }
-
-Each test runs with a fresh reset by ``BeforeEach``, so the counter is always 1 at this point.
-
-Execution order:
-
-.. code-block:: text
-
-   BeforeAll()
-     BeforeEach() → test_one() → AfterEach()
-     BeforeEach() → test_two() → AfterEach()
-     BeforeEach() → test_three() → AfterEach()
-   AfterAll()
+   **Keep going** · :doc:`API details </api/testing/annotations>` ·
+   :download:`Complete runnable source <../../../examples/example02_lifecycle.cpp>`

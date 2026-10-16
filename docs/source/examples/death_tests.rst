@@ -1,55 +1,44 @@
-Death Tests
-===========
+Check process termination
+=========================
 
-Raw Source
-----------
+.. container:: guide-intro
+
+   Check a fatal path without terminating the parent test runner.
+
+.. container:: guide-prerequisites
+
+   **Before you start** · An existing test project, or the :doc:`bundled-example build <build>`.
+
+Move the fatal path into a child
+--------------------------------
+
+Put the operation inside the callable passed to ``assert_death``.
 
 .. literalinclude:: ../../../examples/example05_death_tests.cpp
    :language: cpp
+   :lines: 9-12
 
-Breaking It Down
-----------------
+Make replay deterministic
+-------------------------
 
-Section 1 — **assertDeath with exception-triggered death**
+Forward ``argc`` and ``argv`` to ``run_tests``. Keep setup and the code before the check deterministic: Windows workers replay the case to reach the callable.
 
-.. code-block:: cpp
+Run the death check
+-------------------
 
-   [[= Test{"death by exception"}]]
-   void child_crashes() {
-     assertDeath([]() { throw std::runtime_error("crash!"); });
-   }
+Build the target, then run the command below:
 
-The lambda is executed in a child process. If the child throws or exits with non-zero status, ``assertDeath`` succeeds.
+.. code-block:: sh
 
-Section 2 — **assertDeath with std::abort()**
+   cmake --build build/docs-examples --target example5_death_tests
+   ./build/docs-examples/examples/example5_death_tests --test-name DeathTests.nonzero_exit
 
-.. code-block:: cpp
+.. admonition:: Expected result
+   :class: guide-result
 
-   [[= Test{"death by abort"}]]
-   void child_aborts() {
-     assertDeath([]() { std::abort(); });
-   }
+   The child exits with status 2, so the assertion passes and the runner survives. Normal return or exit status zero fails the check. Consult the death-test reference before depending on inherited process state.
 
-Any abnormal exit — exception, ``abort()``, or signal — counts as death.
+.. container:: guide-related
 
-Section 3 — **expectDeath**
-
-.. code-block:: cpp
-
-   [[= Test{"expect death by crash"}]]
-   void expect_child_crashes() {
-     expectDeath([]() { throw std::runtime_error("oops"); });
-   }
-
-Behaves the same as ``assertDeath``, but throws :cpp:class:`Abort` instead of :cpp:class:`Error` on failure (aborts current test, continues suite).
-
-Section 4 — **Surviving process — failure case**
-
-.. code-block:: cpp
-
-   [[= Test{"child survives — should fail"}]]
-   void child_survives() {
-     assertDeath([]() { return; });  // Expected to fail: child exits 0
-   }
-
-If the child exits normally (status 0), the death test **fails**. This demonstrates the negative case.
+   **Keep going** · :doc:`API details </api/testing/death>` ·
+   :download:`Complete runnable source <../../../examples/example05_death_tests.cpp>`

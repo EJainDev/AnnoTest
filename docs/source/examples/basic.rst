@@ -1,38 +1,44 @@
-Basic Tests
-===========
+Check values and exceptions
+===========================
 
-Raw Source
-----------
+.. container:: guide-intro
+
+   Use an exception check when an operation must reject invalid input.
+
+.. container:: guide-prerequisites
+
+   **Before you start** · An existing test project, or the :doc:`bundled-example build <build>`.
+
+Wrap the operation
+------------------
+
+Pass the operation as a lambda so the check can invoke it.
 
 .. literalinclude:: ../../../examples/example01_basic.cpp
    :language: cpp
+   :lines: 17-17
 
-Breaking It Down
-----------------
+Choose the exception contract
+-----------------------------
 
-Section 1 — **Test struct**
+Set the expected exception type to the error the operation promises. Use a named test when its method name is not descriptive enough.
 
-.. code-block:: cpp
+Run the exception case
+----------------------
 
-   struct BasicTests {
-     [[= Test{}]] void addition() { assertEqual(4, 2 + 2); }
+Build the target, then run the command below:
 
-     [[= Test{}]] void boolean_logic() {
-       assertTrue(true);
-       assertFalse(false);
-     }
+.. code-block:: sh
 
-     [[= Test<"subtraction works">{}]] void math() { assertEqual(10, 15 - 5); }
-   };
+   cmake --build build/docs-examples --target example1_basic
+   ./build/docs-examples/examples/example1_basic --test-name BasicTests.exception_check
 
-Each function annotated with ``[[= Test{}]]`` becomes a test case. The function name is the test display name unless a custom name is provided (see ``math``).
+.. admonition:: Expected result
+   :class: guide-result
 
-Section 2 — **Main entry point**
+   The selected case passes because accessing index 10 in a three-element vector throws ``std::out_of_range``. Change the callable to the operation under test.
 
-.. code-block:: cpp
+.. container:: guide-related
 
-   int main(int argc, char** argv) {
-     return test<BasicTests>(argc, argv);
-   }
-
-``test<T>`` discovers all ``Test``-annotated methods via reflection, runs them, and prints results.
+   **Keep going** · :doc:`API details </api/testing/assertions>` ·
+   :download:`Complete runnable source <../../../examples/example01_basic.cpp>`

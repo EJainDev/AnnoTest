@@ -1,29 +1,49 @@
 export module annotest:exceptions;
 
 import std;
+import :diagnostics;
 
 namespace annotest {
-// An exception class for test failures, to distinguish from other exceptions. It does not inherit
-// std::exception to prevent the user from catching it as frequently
-class Error {
+class skip_error {
  public:
-  explicit Error(std::string message) : message_(std::move(message)) {}
-
-  const std::string& message() const { return message_; }
-
- private:
-  std::string message_;
+  std::string reason;
 };
 
-// An exception class for abort messages that should not be treated as test failures (e.g. failed
-// setup)
-class Abort {
- public:
-  explicit Abort(std::string message) : message_(std::move(message)) {}
+export [[noreturn]] inline void skip(std::string reason = "Assumption not met") {
+  throw skip_error{std::move(reason)};
+}
+export inline void assume(bool condition, std::string reason = "Assumption not met") {
+  if (!condition) skip(std::move(reason));
+}
 
-  const std::string& message() const { return message_; }
+// An exception class for test failures, to distinguish from other exceptions. It does not inherit
+// std::exception to prevent the user from catching it as frequently
+class assertion_error {
+ public:
+  assertion_error() = default;
+
+  assertion_error(const assertion_error&) = default;
+  assertion_error& operator=(const assertion_error&) = default;
+
+  assertion_error(assertion_error&&) = default;
+  assertion_error& operator=(assertion_error&&) = default;
+
+  ~assertion_error() = default;
+
+  assertion_error(const std::string_view message, bool recorded = false)
+      : recorded_(recorded), message_(message), stacktrace_(capture_stacktrace()) {}
+
+  std::string message() const {
+    return std::format("Assertion failed with message \"{}\"", message_);
+  }
+
+  bool recorded() const { return recorded_; }
+
+  const stacktrace_type& stacktrace() const { return stacktrace_; }
 
  private:
+  bool recorded_ = false;
   std::string message_;
+  stacktrace_type stacktrace_ = capture_stacktrace();
 };
 }  // namespace annotest

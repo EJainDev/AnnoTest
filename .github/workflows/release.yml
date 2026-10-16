@@ -2,58 +2,34 @@ name: Release
 
 on:
     push:
-        tags:
-            - "v*"
+        tags: ["v*"]
 
 permissions:
-    contents: write
+    contents: read
 
 jobs:
-    release:
+    build:
+        uses: ./.github/workflows/build_and_test.yml
+        with:
+            package: true
+
+    publish:
+        needs: build
         runs-on: ubuntu-24.04
-        container:
-            image: gcc:16.1
+        timeout-minutes: 10
+        permissions:
+            contents: write
         steps:
-            - name: Install CMake
-              run: |
-                  apt update
-                  apt install -y wget tar ninja-build
-
-                  wget https://github.com/Kitware/CMake/releases/download/v4.3.3/cmake-4.3.3-linux-x86_64.tar.gz
-
-                  tar -xzf cmake-4.3.3-linux-x86_64.tar.gz -C /opt
-
-                  ln -s /opt/cmake-4.3.3-linux-x86_64/bin/* /usr/local/bin/
-
-            - name: Checkout Project
-              uses: actions/checkout@v6.0.3
-
-            - name: Build Project
-              uses: threeal/cmake-action@v2.1.0
+            - uses: actions/download-artifact@v4
               with:
-                  build-dir: build
-                  generator: Ninja
-                  c-compiler: gcc
-                  cxx-compiler: g++
-                  options: |
-                      BUILD_TESTS=ON
-                      CMAKE_BUILD_TYPE=Release
-
-            - name: Install package
+                  pattern: package-*
+                  path: dist
+                  merge-multiple: true
+            - name: Verify the complete release artifact set
               run: |
-                  cmake --install build --prefix package
-
-            - name: Add metadata
-              run: |
-                  cp README.md package/
-                  cp LICENSE package/
-
-            - name: Archive
-              run: |
-                  tar -czf annotest-${GITHUB_REF_NAME}.tar.gz package
-
-            - name: Create release
+                  test -f "dist/annotest-${GITHUB_REF_NAME}-linux-x86_64.tar.gz"
+            - name: Publish validated packages together
               uses: softprops/action-gh-release@v2
               with:
-                  files: |
-                      annotest-${GITHUB_REF_NAME}.tar.gz
+                  files: dist/*
+                  fail_on_unmatched_files: true

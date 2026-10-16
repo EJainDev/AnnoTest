@@ -5,3 +5,8 @@ build/
 !.github/
 !.clang*
 !.readthedocs.yaml
+!.devcontainer/
+!.devcontainer/**
+
+__pycache__/
+*.py[cod]

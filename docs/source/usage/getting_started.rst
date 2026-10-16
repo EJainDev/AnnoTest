@@ -1,204 +1,135 @@
 .. _getting_started:
 
-Getting Started
+Write and run your first test
+=============================
+
+.. container:: lesson-intro
+
+   **LESSON 1 OF 5** · Create a project, run one test, and inspect a failure.
+
+In this tutorial, create a small test executable, run it, and inspect a deliberate
+failure. By the end, the executable will also expose its case through CTest.
+
+Before starting
 ---------------
 
-.. _testing_example:
+Use the toolchain from :doc:`/installation`: GCC 16 or newer with C++26 reflection,
+CMake 4.3.3 or newer, and Ninja. The commands below start in an AnnoTest source
+checkout. Git and network access are needed if dependency packages are not
+already available. On Windows, use UCRT64 and append ``.exe`` when running binaries.
 
-Testing Framework
-^^^^^^^^^^^^^^^^^
+Create a project directory inside the checkout:
 
-.. code-block:: cpp
+.. code-block:: sh
 
-    import annotest;
+   mkdir -p build/first-test
 
-    struct AddTest {
-        [[= Test{}]] void basic() {
-            assertEqual(4, 2 + 2);
-        }
+Write one check
+---------------
 
-        [[= Test{.disabled = true}]] void skipped() {}
-
-        [[= Test{}, = Parameterize{tuple(5), tuple(50)} ]] void parameterized(int val) {
-            assertTrue(val == 5 || val == 50);
-        }
-    };
-
-    int main(int argc, char** argv) {
-        return test<AddTest>(argc, argv);
-    }
-
-Using ``import annotest;``
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-AnnoTest is a **C++26 module**, not a header-only library. You never write ``#include <annotest.hpp>``. Instead, you write:
+Save the following as ``build/first-test/main.cpp``:
 
 .. code-block:: cpp
+   :caption: main.cpp
 
-    import annotest;
+   import annotest;
+   using namespace annotest;
 
-This imports the umbrella module, which re-exports all sub-modules: ``annotest:asserts``, ``annotest:expects``, ``annotest:contracts``, ``annotest:exceptions``, ``annotest:death_test``, ``annotest:tuple``, ``annotest:utils``, and ``annotest:posix``.
+   struct ArithmeticTests {
+       [[= test{}]] void addition() {
+           assert_equal(4, 2 + 2);
+       }
+   };
 
-This is **MACRO FREE** 🎉. No preprocessor pollution, no include guards, no translation-unit duplication. The module system gives you a single import point with zero overhead.
+   int main(int argc, char** argv) {
+       return run_tests<ArithmeticTests>(argc, argv);
+   }
 
-.. _design_decisions:
+The annotation marks ``addition`` as a test method. The assertion compares the
+expected value, 4, with the actual expression, ``2 + 2``. The runner receives the
+command line so it can list and select cases.
 
-Design Decisions
-^^^^^^^^^^^^^^^^
+Connect the library
+-------------------
 
-AnnoTest makes deliberate design choices that distinguish it from other C++ testing frameworks.
+Save this as ``build/first-test/CMakeLists.txt``:
 
-Why structs, not classes?
-~~~~~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: cmake
+   :caption: CMakeLists.txt
 
-All test suite structs use **public members** by design:
+   cmake_minimum_required(VERSION 4.3.3)
+   set(CMAKE_CXX_STANDARD 26)
+   set(CMAKE_CXX_STANDARD_REQUIRED ON)
+   if(CMAKE_VERSION VERSION_LESS 4.4)
+     set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
+   else()
+     set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "f35a9ac6-8463-4d38-8eec-5d6008153e7d")
+   endif()
+   set(CMAKE_CXX_MODULE_STD ON)
+   project(FirstTest LANGUAGES CXX)
+   if(CMAKE_VERSION VERSION_LESS 4.4)
+     string(APPEND CMAKE_CXX_FLAGS " -freflection")
+   endif()
 
-.. code-block:: cpp
+   set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+   set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+   add_subdirectory(../.. annotest)
+   enable_testing()
+   add_executable(first_test main.cpp)
+   target_link_libraries(first_test PRIVATE annotest::annotest)
+   annotest_discover_tests(first_test)
 
-    struct AddTest {
-        int counter = 0;  // public — you can read and write directly
+The two-directory relative path points back to the AnnoTest checkout.
+The module settings appear before ``project()`` so CMake can configure the
+standard-library module. The discovery helper registers the executable's cases
+with CTest after building it.
 
-        [[= BeforeEach{}]] void reset() { counter = 0; }
+Build and run
+-------------
 
-        [[= Test{}]] void one() {
-            ++counter;  // direct access, no getters/setters
-            assertTrue(counter == 1);
-        }
-    };
+From the checkout root, configure and build:
 
-**Why?** AnnoTest discovers test members through C++26 reflection (`std::meta::members_of`), which only sees **non-private** members. By using plain structs with public data members, you get:
+.. code-block:: sh
 
-1. **Zero boilerplate** — no getters, no setters, no friend declarations
-2. **Direct state sharing** between ``BeforeEach``, ``AfterEach``, and test methods
-3. **Reflection compatibility** — the library can see all your members without intrusive changes
-4. **No inheritance needed** — composition through struct members is sufficient for test fixtures
+   cmake -S build/first-test -B build/first-test/build -G Ninja \
+     -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Debug
+   cmake --build build/first-test/build --parallel 2
+   ./build/first-test/build/first_test
 
-**You still get encapsulation if you want it** — AnnoTest doesn't prevent you from using private members. It simply doesn't require or use them.
+The run reports one passing case and returns exit status 0. List the case
+without running its body:
 
-Plain old structs (POD)
-~~~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: sh
 
-AnnoTest expects your test suite struct to be **value-initializable** with no constructor logic. The library creates an instance of your struct internally:
+   ./build/first-test/build/first_test --list
 
-.. code-block:: cpp
+The listing identifies ``ArithmeticTests.addition``. Run that same case through
+CTest:
 
-    T suite = {};  // value-initialization, no arguments
+.. code-block:: sh
 
-This means:
+   ctest --test-dir build/first-test/build --output-on-failure
 
-* Use default member initializers, not constructors
-* Keep fixture state simple — plain ints, vectors, strings
-* No virtual functions needed (AnnoTest doesn't use polymorphism)
+CTest reports one test passed.
 
-No inheritance
-~~~~~~~~~~~~~~
+Inspect a failure
+-----------------
 
-Test suites are **not base classes** — you don't extend them. Each ``struct MyTest`` is a standalone unit that gets discovered and run independently. If you need shared state, put it in the struct itself or use ``static`` members.
+Change ``assert_equal(4, 2 + 2)`` to ``assert_equal(5, 2 + 2)`` in ``main.cpp``.
+Rebuild and select the case explicitly:
 
-Data members go in the struct
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: sh
 
-Put your test fixtures **inside** the struct, not in ``main()`` or globals:
+   cmake --build build/first-test/build --parallel 2
+   ./build/first-test/build/first_test --test-name ArithmeticTests.addition
 
-.. code-block:: cpp
+This run returns exit status 1. Its diagnostic identifies the failed equality
+and the source location: the expected value is 5, while the actual result is 4.
+Restore the expected value to 4, rebuild, and run CTest again to finish with a
+passing project.
 
-    // Good — fixture lives with its tests
-    struct AddTest {
-        int x = 10;
-        int y = 20;
+Continue
+--------
 
-        [[= BeforeEach{}]] void reset() { x = 0; y = 0; }
-
-        [[= Test{}]] void sum() { assertEqual(30, x + y); }
-    };
-
-.. code-block:: cpp
-
-    // Bad — state separated from tests
-    int x = 10;
-    int y = 20;
-
-    struct AddTest {
-        [[= BeforeEach{}]] void reset() { x = 0; y = 0; }  // hidden globals
-    };
-
-No private members
-~~~~~~~~~~~~~~~~~~
-
-Don't use private access specifiers in your test structs. AnnoTest's reflection discovery reads all members at compile time and needs them to be visible. Private members are invisible to ``std::meta::members_of`` and will be silently ignored by the framework.
-
-Default members only
-~~~~~~~~~~~~~~~~~~~~
-
-All struct members should have default values. The library value-initializes your struct:
-
-.. code-block:: cpp
-
-    // Good — all members have defaults
-    struct MyTest {
-        int counter = 0;
-        std::vector<int> data{};
-        std::string name = "test";
-
-        [[= BeforeEach{}]] void reset() { counter = 0; data.clear(); }
-    };
-
-    // Bad — no defaults, library can't construct
-    struct BadTest {
-        int counter;  // uninitialized — undefined behavior
-        std::string name;  // empty, but no explicit default
-
-        [[= BeforeEach{}]] void reset() { counter = 0; }
-    };
-
-No constructors
-~~~~~~~~~~~~~~~
-
-The library creates your struct with ``T{}`` (value-initialization). Do not define constructors:
-
-.. code-block:: cpp
-
-    // Bad — AnnoTest can't call this
-    struct BadTest {
-        BadTest() { /* setup */ }
-    };
-
-Use ``BeforeEach`` for setup logic instead:
-
-.. code-block:: cpp
-
-    // Good
-    struct GoodTest {
-        [[= BeforeEach{}]] void setup() { /* setup logic */ }
-    };
-
-CTest integration
-~~~~~~~~~~~~~~~~~
-
-When running tests via CTest, **each test is executed in a separate process**. This means:
-
-* ``BeforeAll`` runs once *per test*, not once per test suite
-* ``AfterAll`` runs once *per test*, not once after all tests
-* ``BeforeEach`` and ``AfterEach`` behave the same as when running standalone
-
-This is a CTest characteristic, not an AnnoTest limitation. To use suite-level lifecycle hooks with guaranteed single execution, run the test executable directly rather than through CTest.
-
-Aggregate initialization
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Your test suite struct is an **aggregate** — it can be initialized with brace-enclosed initializer lists. The library uses this for test discovery and member iteration.
-
-More Examples
-~~~~~~~~~~~~~
-
-See the complete example gallery in :ref:`Getting Started <testing_example>`:
-
-* :doc:`/examples/basic` — basic tests, named tests, disabled tests
-* :doc:`/examples/lifecycle` — BeforeAll, BeforeEach, AfterEach, AfterAll hooks
-* :doc:`/examples/parameterized` — Parameterize with tuple
-* :doc:`/examples/os_annotations` — RequiresOS and DisallowOS for platform-specific tests
-* :doc:`/examples/death_tests` — assertDeath and expectDeath for crash-testing
-* :doc:`/examples/contracts` — C++26 contract testing with assertContractViolation
-* :doc:`/examples/full_suite` — comprehensive demo combining ALL features
-
-.. note:: This library is still under development. Breaking changes may occur.
+Continue with :doc:`/tutorials/fixtures` to grow this project into a basket
+suite with predictable state. The :doc:`/tutorials/index` shows all five lessons.

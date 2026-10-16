@@ -1,11 +1,17 @@
 @PACKAGE_INIT@
 
+include(CMakeFindDependencyMacro)
+find_dependency(StructuralTuple CONFIG HINTS "${CMAKE_CURRENT_LIST_DIR}/../StructuralTuple")
+find_dependency(SerialXML CONFIG HINTS "${CMAKE_CURRENT_LIST_DIR}/../SerialXML")
+
 include("${CMAKE_CURRENT_LIST_DIR}/annotest_targets.cmake")
 
-if (EXISTS "${CMAKE_CURRENT_LIST_DIR}/DiscoverTestsRunner.cmake")
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/DiscoverTestsRunner.cmake")
   include("${CMAKE_CURRENT_LIST_DIR}/DiscoverTestsRunner.cmake")
 endif()
 
 if(NOT TARGET annotest)
   add_library(annotest ALIAS annotest::annotest)
 endif()
+
+check_required_components(AnnoTest)

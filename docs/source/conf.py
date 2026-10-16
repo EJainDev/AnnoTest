@@ -9,6 +9,8 @@
 project = "AnnoTest"
 copyright = "2026, Ekansh Jain"
 author = "Ekansh Jain"
+version = "1.0"
+release = "1.0.0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -23,6 +25,8 @@ exclude_patterns = []
 
 html_theme = "furo"
 html_static_path = ["_static"]
+html_css_files = ["home.css"]
+templates_path = ["_templates"]
 
 html_theme_options = {
     "navigation_with_keys": True,
@@ -36,3 +40,14 @@ html_sidebars = {
         "sidebar/ethical-ads.html",
     ]
 }
+
+
+def setup(app):
+    # Pygments' attribute state does not yet accept C++26 expression annotations.
+    import importlib.util
+    from pathlib import Path
+    spec = importlib.util.spec_from_file_location('annotest_lexer', Path(__file__).with_name('annotest_lexer.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    app.add_lexer('cpp', module.AnnoTestCppLexer)
+    return {'parallel_read_safe': True, 'parallel_write_safe': True}

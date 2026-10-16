@@ -1,222 +1,260 @@
-Testing Annotations and Functions
-=================================
+Annotations and parameter types
+===============================
 
 .. cpp:namespace:: annotest
 
-This page documents all annotations, enums, and the test runner function. For assertion and expectation APIs, see :doc:`assertions`.
+Annotations use C++26 expression syntax: ``[[= test{}]]``.
+Types below are exported by ``import annotest;``.
+Annotated members must be public and callable by the runner.
+Invalid annotation combinations fail discovery or compilation.
 
-.. _design_decisions:
-
-.. _example_gallery:
-
-Design Decisions
+Tests and suites
 ----------------
 
-AnnoTest makes deliberate design choices that distinguish it from other C++ testing frameworks. Read :ref:`design_decisions` in Getting Started for full details.
+.. cpp:struct:: template <fixed_string Name = ""> test
 
-.. important:: Test suite structs must be **public aggregates** with default member initializers. Do not use constructors, private members, or virtual functions.
+   Mark a method as a test. An empty Name uses its C++ identifier; otherwise Name supplies the displayed name.
 
-Enums
------
+   :var disabled: Boolean; defaults to false. Skip unless --run-disabled is active.
+   :var repetitions: Unsigned invocation count; defaults to 1. Valid range is 1–1,000,000. Multiplied by --repeat, with the same limit on the product.
+   :var name: Static name storage derived from Name.
 
-.. cpp:enum-class:: OS
+.. cpp:struct:: template <fixed_string Name = ""> suite
 
-    Represents the different operating systems to enable or disable tests on specific platforms.
+   Configure a suite class.
 
-    .. cpp:enumerator:: Windows
+   :var disabled: Boolean; defaults to false. Applies to all contained cases.
+   :var lifecycle: fixture_lifecycle; defaults to per_test.
+   :var name: Static name storage derived from Name.
 
-        Windows (Win32).
+   Fresh fixtures are constructed for each invocation under per_test. A shared fixture persists across cases in one process.
 
-    .. cpp:enumerator:: Mac
+.. cpp:enum-class:: fixture_lifecycle
 
-        macOS (Apple).
+   Fixture reuse policy.
 
-    .. cpp:enumerator:: Linux
+.. cpp:enumerator:: fixture_lifecycle::per_test
 
-        Linux.
+   Construct and destroy a fixture for each invocation.
 
-    .. cpp:enumerator:: Unknown
+.. cpp:enumerator:: fixture_lifecycle::shared
 
-        Any other platform.
+   Retain a fixture across selected cases within one process.
 
-Annotations
------------
+.. cpp:struct:: nested
 
-.. cpp:struct:: Test
+   Mark a nested class as a child suite. The name and tags inherit the enclosing suite prefix. An inner constructor may accept Parent& or Parent&, test_context&. A shared child requires a shared parent.
 
-    Annotates a function as a test case. The function name is used as the test display name unless a custom name is provided.
+.. cpp:struct:: timeout
 
-    The ``Test`` struct supports an optional string name and a ``disabled`` flag:
+   Per-case subprocess deadline annotation. Applies to a method or suite. --timeout overrides it.
 
-    * ``[[= Test{}]]`` — anonymous test, name derived from function name.
-    * ``[[= Test<\"My Named Test\">{}]]`` — test with a custom display name.
-    * ``[[= Test{.disabled = true}]]`` — skipped test.
+.. cpp:member:: double timeout::seconds
 
-    .. code-block:: cpp
+   Positive finite deadline in seconds, including worker startup. Exceeding it kills the worker process tree and fails the case.
 
-        struct MyTests {
-            [[= Test{}]] void anonymous_test() { assertEqual(1, 1); }
+Lifecycle hooks
+---------------
 
-            [[= Test<"custom name">{}]] void actual_name() { assertTrue(true); }
+.. cpp:struct:: template <typename T = int> before_each
 
-            [[= Test{.disabled = true}]] void skipped() {}
-        };
+   Per-invocation setup. Public inherited hooks execute base-first before the body.
 
-    .. important:: Tests must not use try-catch blocks around any ``assert`` or ``expect`` calls — use the assertion functions directly.
+   Annotated hooks take no required arguments, or test_context&. A hook cannot also be a test or carry another lifecycle annotation.
 
-    See also :ref:`basic example <example_gallery>`.
+.. cpp:struct:: template <typename T = int> after_each
 
-.. cpp:struct:: BeforeEach
+   Per-invocation cleanup. Hooks execute in reverse order after setup or body failure; an earlier cleanup failure does not stop later cleanup.
 
-    Annotates a function to be executed before **each** test in a test suite.
+   Annotated hooks take no required arguments, or test_context&. A hook cannot also be a test or carry another lifecycle annotation.
 
-    .. note:: If this function throws an exception, the test is aborted.
+.. cpp:struct:: before_all
 
-    .. important:: Only one function per suite may be annotated with ``BeforeEach``. If multiple are found, only the last one is used.
+   Public static suite setup, run once before the first participating fixture is constructed.
 
-    .. code-block:: cpp
+   Annotated hooks take no required arguments, or test_context&. A hook cannot also be a test or carry another lifecycle annotation.
 
-        struct FixtureTests {
-            int counter = 0;
+.. cpp:struct:: after_all
 
-            [[= BeforeEach{}]] void reset() { counter = 0; }
+   Public static suite cleanup, run in reverse order after fixtures are destroyed. Runs for each suite whose setup was entered, including failed setup and fail-fast.
 
-            [[= Test{}]] void one() { ++counter; assertTrue(counter == 1); }
-            [[= Test{}]] void two() { ++counter; ++counter; assertTrue(counter == 2); }
-        };
+   Annotated hooks take no required arguments, or test_context&. A hook cannot also be a test or carry another lifecycle annotation.
 
-    See also :ref:`lifecycle example <example_gallery>`.
+Suite hooks receive a context named ``_suite``, retained from setup through
+cleanup. Setup properties are copied to participating cases. Setup failure or
+skip suppresses bodies. Cleanup failures form a separate teardown case in
+ordinary execution and merge into the selected case in isolated execution.
+Each worker and parameterized suite instance has its own suite-hook context.
 
-.. cpp:struct:: AfterEach
+Ordinary listing, filtered cases, disabled cases, and OS-skipped cases do not
+enter suite hooks. Factory discovery may enter hooks to construct its fixture.
+See :doc:`/explanation/execution` for fixture and process lifetimes.
 
-    Annotates a function to be executed after **each** test in a test suite.
+Value parameters
+----------------
 
-    .. note:: If this function throws an exception, only a warning is printed.
+.. cpp:struct:: template <typename... Ts> parameters
 
-    .. important:: Only one function per suite may be annotated with ``AfterEach``.
+   One complete function or constructor argument set. Owns a structural tuple named params.
 
-    See also :ref:`lifecycle example <example_gallery>`.
+.. cpp:function:: template <typename... Ts> parameters<Ts...>::parameters(Ts... args)
 
-.. cpp:struct:: BeforeAll
+   Store the supplied arguments by value.
 
-    Annotates a function to be executed **once** before all tests in a test suite.
+   :param args: Compile-time structural argument values.
 
-    .. note:: If this function throws an exception, the test suite is aborted.
+.. cpp:function:: template <typename... Ts> template <typename... Us> constexpr auto parameters<Ts...>::cross(const parameters<Us...>& other) const
 
-    .. note:: Running with CTest causes this function to be executed before each test case, which may significantly slow down your tests.
+   Return a structural tuple with one parameters set for each element of other. Every set consists of this set's arguments followed by that element.
 
-    See also :ref:`lifecycle example <example_gallery>`.
+   :param other: Values to append individually.
+   :returns: Structural tuple of argument sets. An empty other produces an empty tuple.
 
-.. cpp:struct:: AfterAll
+.. cpp:struct:: template <typename... Params> parameterize
 
-    Annotates a function to be executed **once** after all tests in a test suite.
+   Expand each parameters set into a concrete case with a one-based suffix. Each Params must be a specialization of parameters. May annotate a method or a suite; suite values become constructor arguments.
 
-    .. note:: If this function throws an exception, only a warning is printed.
+   :var N: Static number of parameter sets.
+   :var parameters: Structural tuple of the sets.
 
-    See also :ref:`lifecycle example <example_gallery>`.
+   Construct with parameterize{parameters(...), parameters(...)}, a structural tuple of sets, or structural tuples whose contents are concatenated. Empty case sets are rejected.
 
-Utility Annotations
-^^^^^^^^^^^^^^^^^^^
+Type and combined parameters
+----------------------------
 
-.. cpp:struct:: Parameterize
+.. cpp:struct:: template <typename... Ts> template_params
 
-    Annotates a test case to run with different sets of parameters. Each parameter set is executed as a sub-test.
+   One complete template argument list.
 
-    To use, pass one or more :cpp:func:`tuple` calls, where each tuple represents a **complete** set of parameters for the function — each value corresponds to a function parameter in order.
+.. cpp:type:: template <typename... Ts> template <typename Other> template_params<Ts...>::cross_t
 
-    .. code-block:: cpp
+   Structural tuple containing template_params<Ts..., U> for each U in Other, which must be another template_params specialization.
 
-        [[= Test{}, = Parameterize{tuple(5), tuple(50)} ]]
-        void parameterized(int val) {
-            assertTrue(val == 5 || val == 50);
-        }
+.. cpp:struct:: template <typename... Args> parameterize_template
 
-    With multiple parameters:
+   Expand template_params argument groups into concrete method or suite template specializations.
 
-    .. code-block:: cpp
+   :var N: Static number of type groups.
 
-        [[= Test{}, = Parameterize{tuple(2, 3), tuple(10, 20)} ]]
-        void add(int a, int b) {
-            assertEqual(a + b, a + b);  // parameters injected in order
-        }
+   Annotated method templates must accept an empty template argument list; provide default arguments. Each case still uses its supplied types. Unannotated helper templates do not require defaults.
 
-    See also :ref:`parameterized example <example_gallery>`.
+.. cpp:function:: template <typename... Args> template <typename... Ts> static consteval auto parameterize_template<Args...>::of()
 
-.. cpp:struct:: RequiresOS
+   Combine structural tuple types of template_params groups into one parameterize_template annotation.
 
-    Annotates a test case to run only on specific operating systems.
+   :returns: Annotation holding the concatenated type groups.
 
-    .. code-block:: cpp
+.. cpp:struct:: template <typename T, typename P> parameterize_pair
 
-        [[= Test{}, = RequiresOS{OS::Linux} ]] void testLinux();
+   Pair one template_params type T with one parameters type P. Its params member stores the value arguments.
 
-    If the current OS does not match, the test is skipped with a diagnostic.
+.. cpp:struct:: template <typename... Pairs> parameterize_dual
 
-    Accepts multiple OS values — the test runs if the current OS matches **any** of them:
+   Expand parameterize_pair values into cases supplying both template and function arguments.
 
-    .. code-block:: cpp
+   :var N: Static number of pairs.
+   :var sets: Structural tuple of pairs.
 
-        [[= Test{}, = RequiresOS{OS::Linux, OS::Mac} ]] void cross_platform();
+   Construct from pairs, a structural tuple of pairs, or structural tuples to concatenate.
 
-    See also :ref:`OS annotations example <example_gallery>`.
+Runtime inputs and factories
+----------------------------
 
-.. cpp:struct:: DisallowOS
+.. cpp:struct:: template <auto Provider> parameter_source
 
-    Annotates a test case to be skipped on specific operating systems.
+   Use a runtime provider returning a range of tuples or named_case values. May annotate a method or suite. Providers run during discovery; names and data must be stable across worker re-execution. Empty sets and duplicate names fail discovery. See :doc:`sources` for data types.
 
-    .. code-block:: cpp
+.. cpp:struct:: template <auto Provider = nullptr> test_factory
 
-        [[= Test{}, = DisallowOS{OS::Windows} ]] void test();
+   Mark a method returning a range of dynamic_case values, or use an explicit free/member provider. Factory setup runs once and its fixture persists across children; cleanup runs after the children. Discovery runs the factory. Workers reconstruct it for the selected child.
 
-    Opposite of :cpp:struct:`RequiresOS`. The test runs on any platform **not** listed.
+Tags and naming
+---------------
 
-    Multiple values — the test is skipped if the current OS matches **any** of them:
+.. cpp:struct:: template <fixed_string Name> tag
 
-    .. code-block:: cpp
+   Attach a label to a suite or method. Suite tags are inherited. CLI --tag and --exclude-tag select labels.
 
-        [[= Test{}, = DisallowOS{OS::Windows, OS::Mac} ]] void linux_only();
+.. cpp:struct:: template <auto Generator> name_generator
 
-    See also :ref:`OS annotations example <example_gallery>`.
+   Generate method display names at compile time. A method annotation overrides the suite's generator. Generator accepts std::string_view and returns a string or string view.
 
-Functions
----------
+.. cpp:struct:: template <auto Generator> suite_name_generator
 
-.. cpp:function:: template <std::is_class T> int test(int argc, char** argv, T suite = {})
+   Generate the suite display name at compile time. Generator accepts std::string_view and returns a string or string view.
 
-    The main entry point that runs all tests in a test suite and prints results.
+.. cpp:function:: constexpr std::string readable_name(std::string_view name)
 
-    * ``argc, argv`` — forwarded from ``main()``; the library also recognizes ``--list`` (prints suite + test names) and ``--test-name <Name>`` (runs only that test).
-    * ``suite`` — an optional instance of your test suite struct. By default the library value-initializes it.
+   Replace underscores in a name with spaces.
 
-    Returns **0** if all tests passed (or were skipped) and **1** if any test failed.
+   :param name: Original name.
+   :returns: Owning string containing the readable name.
 
-    .. code-block:: cpp
+Generated names must be nonempty and unique within their scope, with no tabs
+or line breaks. Parameter suffixes identify each concrete case.
 
-        int main(int argc, char** argv) {
-            return test<MyTests>(argc, argv);
-        }
+Runtime conditions
+------------------
 
-    .. note:: The ``--test-name`` filter matches full qualified names (``Suite.test_name``) and simple names (``test_name``). Test names containing spaces, semicolons, equals signs, or other shell/CMake-special characters may cause issues with ``annotest_discover_tests()`` CMake integration. Use only alphanumeric, underscore, hyphen, and space characters in test names.
+.. cpp:struct:: template <auto Predicate> enabled_if
 
-.. cpp:function:: template <typename... Ts> constexpr auto tuple(Ts... args)
+   Run only when the predicate returns true. Predicates take no arguments or const test_context& and return a Boolean-convertible value. May annotate methods or suites.
 
-    Creates a compile-time tuple for use with :cpp:struct:`Parameterize`.
+.. cpp:function:: constexpr enabled_if::enabled_if(const char* reason = "Execution condition not met")
 
-    .. code-block:: cpp
+   Store a reason of at most 255 bytes. Empty reasons use the runner's default message. Longer reasons are invalid in a constant annotation.
 
-        auto t = tuple(5, 10);    // Tuple<int, int>
-        auto u = tuple(3.14);     // Tuple<double>
+   :param reason: Reason recorded when the condition skips a case.
 
-    See also :ref:`parameterized example <example_gallery>`.
+.. cpp:struct:: template <auto Predicate> disabled_if
 
-.. cpp:function:: template <typename E> consteval auto getMembers()
+   Skip when the predicate returns true. Predicates take no arguments or const test_context& and return a Boolean-convertible value. May annotate methods or suites.
 
-    Returns the compile-time reflection members of a type. Used internally for test discovery.
+.. cpp:function:: constexpr disabled_if::disabled_if(const char* reason = "Execution condition matched")
 
-.. cpp:function:: template <typename E> consteval auto getAnnotations()
+   Store a reason of at most 255 bytes. Empty reasons use the runner's default message. Longer reasons are invalid in a constant annotation.
 
-    Returns the compile-time annotations on a reflection entity.
+   :param reason: Reason recorded when the condition skips a case.
 
-.. cpp:function:: template <typename E> consteval auto getNonstaticDataMembers()
+Conditions execute before fixture construction and extensions, once per
+executed repetition. Inherited suite conditions precede method conditions;
+evaluation stops at the first skip. Annotation-disabled and OS-skipped cases
+bypass conditions. ``--run-disabled`` does not bypass them.
+A predicate exception fails the case in the condition phase; skip(reason)
+propagates a skip. Ordinary listing does not evaluate predicates. Factory
+conditions run during discovery before fixture construction and must be
+consistent during worker replay.
 
-    Returns the compile-time non-static data members of a type.
+Operating-system restrictions
+-----------------------------
+
+.. cpp:enum-class:: operating_system
+
+   Platform identifiers: windows, macos, linux_os, unknown.
+
+.. cpp:struct:: template <int N> requires_os
+
+   Run when any listed OS matches. The os member is an array of N operating_system values. Class template argument deduction infers N from the initializer. Bodies must still compile on every target platform.
+
+.. cpp:struct:: template <int N> disallows_os
+
+   Skip when any listed OS matches. The os member is an array of N operating_system values. Class template argument deduction infers N from the initializer. Bodies must still compile on every target platform.
+
+Name storage
+------------
+
+.. cpp:struct:: template <std::size_t N> fixed_string
+
+   Structural string-literal wrapper used by test, suite, and tag template arguments. N includes the terminating null character.
+
+.. cpp:member:: template <std::size_t N> char fixed_string<N>::value[N]
+
+   Inline copied string storage.
+
+.. cpp:function:: template <std::size_t N> constexpr fixed_string<N>::fixed_string(const char (&str)[N])
+
+   Copy all N characters into value.
+
+.. cpp:function:: template <std::size_t N> static constexpr bool fixed_string<N>::is_empty()
+
+   Return whether N equals one.

@@ -1,133 +1,103 @@
 .. _contract_handling:
 
-Contract Handling
-=================
+Contract checks
+===============
 
 .. cpp:namespace:: annotest
 
-C++26 contracts are runtime checks enforced at function entry (`pre`), function exit (`post`), or inline (`contract_assert`). AnnoTest provides contract assertion helpers and a hook for custom violation handling.
+Include ``<annotest_contract.h>`` in exactly one translation unit per
+executable to install the contract violation handler. That header imports
+AnnoTest. Code containing contracts must use GCC observe semantics:
 
-.. note:: C++26 contracts are **compiler builtin** features — they are part of the C++26 standard. GCC 16 implements the full contract runtime API.
+.. code-block:: cmake
 
-Contract Builtin Statements
----------------------------
+   target_compile_options(my_tests PRIVATE
+     -fcontracts -fcontract-evaluation-semantic=observe)
 
-Three contract builtins are available:
+Observe semantics continue after violations. The callable must remain safe
+when its contracts are violated. Unexpected violations fail the active case.
 
-.. code-block:: cpp
+.. cpp:function:: template <typename Func> auto assert_contract_violation(Func f, const std::source_location& loc = std::source_location::current())
 
-    int foo(int x) pre(x > 0) pre(x < 100) post(r: r > 0) {
-        contract_assert(x != 50);  // inline invariant
-        return -x;
-    }
+   Invoke a callable once and require an observed violation. The violation flag is reset before the call and consumed afterward. A mismatch records a fatal assertion and unwinds.
 
-.. list-table::
-   :widths: 25 25 50
-   :stub-columns: 1
-   :header-rows: 1
+   :param f: Nullary callable returning void or a value.
+   :returns: The callable's result by value, or void for a void callable.
 
-   * - Statement
-     - Placement
-     - Purpose
-   * - ``pre(boolean_expr)``
-     - Function signature (before ``post``)
-     - Validates parameters on function entry. Multiple clauses allowed.
-   * - ``contract_assert(boolean_expr)``
-     - Inline in function body
-     - Asserts an invariant at runtime. Replaces ``assert()`` — no user message.
-   * - ``post(r : boolean_expr)``
-     - Function signature (after ``pre()``)
-     - Validates return value on exit. ``r`` is user-chosen, binds to return value.
+   Exceptions from the callable propagate.
 
-Example:
+.. cpp:function:: template <typename F> decltype(auto) assert_contract_violation(F&& callable, std::string_view message, std::source_location location = std::source_location::current())
 
-.. code-block:: cpp
+   Message overload with the same check behavior.
 
-    // Pre: parameter must be positive
-    // Post: return value must be positive
-    int safe_divide(int a, int b) pre(a > 0) pre(b > 0) post(r: r > 0) {
-        return a / b;
-    }
+   :param callable: Nullary callable.
+   :param message: Diagnostic context.
+   :param location: Call-site source location.
+   :returns: The underlying check's result.
 
-Testing Contracts
------------------
+.. cpp:function:: template <typename Func> auto assert_no_contract_violation( Func f, const std::source_location& loc = std::source_location::current())
 
-See the `example gallery <examples/index.html>`__ for usage examples. For the full function signatures, see Assertions.
+   Invoke a callable once and require no observed violation. The violation flag is reset before the call and consumed afterward. A mismatch records a fatal assertion and unwinds.
 
-See also :ref:`getting_started`.
+   :param f: Nullary callable returning void or a value.
+   :returns: The callable's result by value, or void for a void callable.
 
-Contract Handler Header
-------------------------
+   Exceptions from the callable propagate.
 
-Include the following header to install AnnoTest's default contract violation handler:
+.. cpp:function:: template <typename F> decltype(auto) assert_no_contract_violation(F&& callable, std::string_view message, std::source_location location = std::source_location::current())
 
-.. code-block:: cpp
+   Message overload with the same check behavior.
 
-   #include <annotest_contract.h>
+   :param callable: Nullary callable.
+   :param message: Diagnostic context.
+   :param location: Call-site source location.
+   :returns: The underlying check's result.
 
-When a contract is violated, the handler:
+.. cpp:function:: template <typename Func> auto expect_contract_violation(Func f, const std::source_location& loc = std::source_location::current())
 
-1. Extracts the violation location (file, line, function).
-2. Sets :cpp:var:`annotest::contract_violation_occurred` to ``true``.
-3. Calls a :cpp:var:`custom_handler` if one has been registered.
+   Invoke a callable once and require an observed violation. The violation flag is reset before the call and consumed afterward. A mismatch records a nonfatal expectation.
 
-Enforcement Modes
------------------
+   :param f: Nullary callable returning void or a value.
+   :returns: The callable's result by value, or void for a void callable.
 
-C++26 contracts support four enforcement modes (configured per-executable at compile time):
+   Exceptions from the callable propagate.
 
-.. list-table::
-   :widths: 25 45 30
-   :stub-columns: 1
-   :header-rows: 1
+.. cpp:function:: template <typename F> decltype(auto) expect_contract_violation(F&& callable, std::string_view message, std::source_location location = std::source_location::current())
 
-   * - Mode
-     - Behavior
-     - Use case
-   * - ``ignore``
-     - Removes all contract statements at compile time.
-     - Production (max performance)
-   * - ``observe``
-     - Calls handler (if present), then **continues** execution. Slight runtime overhead.
-     - Production with slight overhead
-   * - ``enforce``
-     - Calls handler (if present), then calls ``std::terminate``.
-     - Default. For debugging.
-   * - ``quick_enforce``
-     - Calls ``std::terminate`` directly, **without** calling the handler.
-     - Debugging without handler overhead
+   Message overload with the same check behavior.
 
-Global State
-------------
+   :param callable: Nullary callable.
+   :param message: Diagnostic context.
+   :param location: Call-site source location.
+   :returns: The underlying check's result.
 
-The ``annotest:contracts`` module exports two global variables:
+.. cpp:function:: template <typename Func> auto expect_no_contract_violation( Func f, const std::source_location& loc = std::source_location::current())
 
-.. cpp:var:: bool contract_violation_occurred
+   Invoke a callable once and require no observed violation. The violation flag is reset before the call and consumed afterward. A mismatch records a nonfatal expectation.
 
-    Tracks whether any contract violation has occurred during test execution.
-    The library checks this flag after assert/expect calls to avoid double-reporting.
+   :param f: Nullary callable returning void or a value.
+   :returns: The callable's result by value, or void for a void callable.
 
-.. cpp:var:: std::atomic<void (*)(const std::contracts::contract_violation&)> custom_handler
+   Exceptions from the callable propagate.
 
-    A callable function pointer for custom contract violation handling.
-    Set to ``nullptr`` by default. When non-null, the default handler delegates
-    to this function after setting :cpp:var:`contract_violation_occurred` to ``true``.
+.. cpp:function:: template <typename F> decltype(auto) expect_no_contract_violation(F&& callable, std::string_view message, std::source_location location = std::source_location::current())
 
-Example:
+   Message overload with the same check behavior.
 
-.. code-block:: cpp
+   :param callable: Nullary callable.
+   :param message: Diagnostic context.
+   :param location: Call-site source location.
+   :returns: The underlying check's result.
 
-   #include <annotest_contract.h>
+Handler state
+-------------
 
-   void my_handler(const std::contracts::contract_violation& v) {
-       std::cerr << "Contract violated at "
-                 << v.location().file_name()
-                 << ":" << v.location().line_number() << "\n";
-   }
+.. cpp:var:: inline bool contract_violation_occurred = false
 
-   int main() {
-       annotest::custom_handler = my_handler;
-       return test<MySuite>(__argc, __argv);
-   }
+   Flag set by the installed handler before calling custom_handler. The runner resets it before each case. Contract-check helpers reset and consume it around their callable.
 
-See also :ref:`getting_started`.
+.. cpp:var:: inline std::atomic<void (*)(const std::contracts::contract_violation&)> custom_handler
+
+   Optional callback, initially null. Called with the violation after the default handler sets the flag. Assign a compatible function pointer through the atomic.
+
+For a runnable procedure, see :doc:`/examples/contracts`.

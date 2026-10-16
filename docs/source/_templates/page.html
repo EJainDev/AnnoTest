@@ -1,0 +1,28 @@
+{% extends "!page.html" %}
+
+{% block content %}
+{% set sections = [('tutorials/index', 'Tutorials'), ('examples/index', 'How-to guides'), ('api/index', 'Reference'), ('explanation/index', 'Explanation'), ('project/index', 'Project')] %}
+<nav class="documentation-sections" aria-label="Documentation sections">
+  {% for path, label in sections %}
+  <a href="{{ pathto(path) }}"{% if pagename == path or (parents and parents[0].link == pathto(path)) %} aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</nav>
+{% if pagename != 'index' %}
+<nav class="annotest-breadcrumbs" aria-label="Breadcrumb">
+  <ol>
+    <li><a href="{{ pathto('index') }}">Home</a></li>
+    {% for parent in parents %}
+    {% if parent.link != pathto('index') %}<li><a href="{{ parent.link }}">{{ parent.title }}</a></li>{% endif %}
+    {% endfor %}
+    <li aria-current="page">{{ title }}</li>
+  </ol>
+</nav>
+{% endif %}
+{% if pagename.startswith('examples/') and pagename != 'examples/index' %}
+<div class="task-guide">{{ super() }}</div>
+{% elif pagename.startswith('tutorials/') and pagename != 'tutorials/index' or pagename == 'usage/getting_started' %}
+<div class="tutorial-lesson">{{ super() }}</div>
+{% else %}
+{{ super() }}
+{% endif %}
+{% endblock %}

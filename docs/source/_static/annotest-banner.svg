@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="440" viewBox="0 0 1440 440" role="img" aria-labelledby="title desc">
+  <title id="title">AnnoTest</title>
+  <desc id="desc">Annotation-based testing for C++26. Reflection. Modules. Clear intent.</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#080e24"/><stop offset="1" stop-color="#111d40"/></linearGradient>
+    <linearGradient id="accent" x2="1" y2="1"><stop stop-color="#38bdf8"/><stop offset="1" stop-color="#9b78ff"/></linearGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse"><path d="M48 0H0V48" fill="none" stroke="#b4c8ff" stroke-opacity=".045"/></pattern>
+  </defs>
+  <rect width="1440" height="440" rx="24" fill="url(#bg)"/>
+  <rect width="1440" height="440" rx="24" fill="url(#grid)"/>
+  <g fill="none" stroke="url(#accent)">
+    <path d="M0 402C350 245 459 535 852 352S1230 202 1440 252" opacity=".3"/>
+    <path d="M0 426C355 269 480 514 878 377S1240 229 1440 281" opacity=".22"/>
+    <path d="M1200 -40L1455 220M1130 -40L1455 290M1060 -40L1455 360" opacity=".12"/>
+  </g>
+  <g transform="translate(78 118)" fill="none" stroke="url(#accent)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M30 0H0V174H30M148 0H178V174H148"/>
+    <path d="M55 85L80 110L126 61" stroke-width="12"/>
+  </g>
+  <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
+    <text x="320" y="113" fill="#8fb6ff" font-size="17" font-weight="650" letter-spacing="4">C++26 · REFLECTION · MODULES</text>
+    <text x="314" y="228" fill="#f5f7ff" font-size="102" font-weight="750" letter-spacing="-4">Anno<tspan fill="url(#accent)">Test</tspan></text>
+    <text x="320" y="287" fill="#c4cfe8" font-size="29">Annotation-based testing. Clear intent.</text>
+    <rect x="320" y="321" width="76" height="4" rx="2" fill="url(#accent)"/>
+  </g>
+  <g transform="translate(1100 125)" fill="none" stroke="url(#accent)" stroke-width="2" opacity=".6">
+    <path d="M0 0L87 48V146L0 194L-87 146V48ZM-87 48L0 98L87 48M0 98V194"/>
+    <circle cx="0" cy="0" r="5" fill="#38bdf8"/>
+    <circle cx="87" cy="146" r="5" fill="#9b78ff"/>
+  </g>
+</svg>

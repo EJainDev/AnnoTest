@@ -1,50 +1,44 @@
-Parameterized Tests
-===================
+Test several input sets
+=======================
 
-Raw Source
-----------
+.. container:: guide-intro
+
+   Cover several input/output pairs without copying the test body.
+
+.. container:: guide-prerequisites
+
+   **Before you start** · An existing test project, or the :doc:`bundled-example build <build>`.
+
+Describe the input rows
+-----------------------
+
+Make the inputs and expected result arguments of one method. Supply each complete row with ``parameters(...)``.
 
 .. literalinclude:: ../../../examples/example03_parameterized.cpp
    :language: cpp
+   :lines: 13-18
 
-Breaking It Down
+Extend the table
 ----------------
 
-Section 1 — **Parameterize with single parameters**
+Add another tuple to cover a new input. Keep its expected result in the tuple so the assertion body stays unchanged.
 
-.. code-block:: cpp
+Run one row or the whole table
+------------------------------
 
-   [[= Test{}, = Parameterize{tuple(2, 3), tuple(5, 7), tuple(-1, -3)}]]
-   void addition(int a, int b) {
-     assertEqual(a + b, a + b);
-     assertTrue(a != 0 && b != 0);
-   }
+Build the target, then run the command below:
 
-Each ``tuple()`` call is a complete parameter set. The parameters are injected **in order** into the test function's arguments. Three sub-runs: ``(2,3)``, ``(5,7)``, and ``(-1,-3)``.
+.. code-block:: sh
 
-Section 2 — **Parameterize with multiple parameters**
+   cmake --build build/docs-examples --target example3_parameterized
+   ./build/docs-examples/examples/example3_parameterized --test-name ParameterizedTests.addition.2
 
-.. code-block:: cpp
+.. admonition:: Expected result
+   :class: guide-result
 
-   [[= Test{}, = Parameterize{tuple(1.0), tuple(2.5), tuple(0.001)}]]
-   void floating_point(double x) {
-     assertNear(x, x);
-     assertTrue(x >= 0.0);
-   }
+   The second row checks 5 + 7 against 12. Select ``ParameterizedTests.addition`` to run all three rows. Use ``--list`` to see the individual numeric suffixes.
 
-Each tuple creates one sub-run with a single value.
+.. container:: guide-related
 
-Section 3 — **Parameterized tests with hooks**
-
-.. code-block:: cpp
-
-   [[= BeforeEach{}]] void reset() { set_count = 0; }
-
-   [[= Test{}, = Parameterize{tuple(100), tuple(200), tuple(300)}]]
-   void counting(int val) {
-     ++set_count;
-     assertEqual(val, val);
-     assertTrue(val % 100 == 0);
-   }
-
-BeforeEach runs before **each parameter set**, not each test. AfterEach runs after each set too. The counter resets to 0 before each of the 3 parameter sets.
+   **Keep going** · :doc:`API details </api/testing/annotations>` ·
+   :download:`Complete runnable source <../../../examples/example03_parameterized.cpp>`

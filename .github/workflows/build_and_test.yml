@@ -1,40 +1,121 @@
-name: Build
+name: Build and Test
 on:
     push:
         branches: [main]
+        paths:
+            - 'CMakeLists.txt'
+            - 'CMakePresets.json'
+            - 'cmake/**'
+            - '.devcontainer/**'
+            - 'README.md'
+            - 'CONTRIBUTING.md'
+            - 'include/**'
+            - '.github/workflows/**'
+            - 'tests/**'
+            - 'examples/**'
+            - 'benchmarks/**'
+            - 'tools/**'
+            - 'docs/**'
     pull_request:
         branches: [main]
+        paths:
+            - 'CMakeLists.txt'
+            - 'CMakePresets.json'
+            - 'cmake/**'
+            - '.devcontainer/**'
+            - 'README.md'
+            - 'CONTRIBUTING.md'
+            - 'include/**'
+            - '.github/workflows/**'
+            - 'tests/**'
+            - 'examples/**'
+            - 'benchmarks/**'
+            - 'tools/**'
+            - 'docs/**'
+
+    workflow_dispatch:
+
+    workflow_call:
+        inputs:
+            package:
+                description: Build Linux release archive after validation
+                type: boolean
+                default: false
+
+permissions:
+    contents: read
 
 jobs:
     build-and-test:
+        timeout-minutes: 45
         runs-on: ubuntu-24.04
-        container:
-            image: gcc@sha256:47c649664b62db94d186b16936e203bb07ab1d10a0ef860cee198e594f636757
         steps:
-            - name: Install CMake
-              run: |
-                  apt update
-                  apt install -y wget tar ninja-build
-
-                  wget https://github.com/Kitware/CMake/releases/download/v4.3.3/cmake-4.3.3-linux-x86_64.tar.gz
-
-                  tar -xzf cmake-4.3.3-linux-x86_64.tar.gz -C /opt
-
-                  ln -s /opt/cmake-4.3.3-linux-x86_64/bin/* /usr/local/bin/
-
-            - name: Checkout Project
+            - name: Checkout
               uses: actions/checkout@v6.0.3
 
-            - name: Build Project
-              uses: threeal/cmake-action@v2.1.0
+            - name: Build and test in Dev Container
+              uses: devcontainers/ci@v0.3
               with:
-                  build-dir: build
-                  generator: Ninja
-                  c-compiler: gcc
-                  cxx-compiler: g++
-                  options: |
-                      BUILD_TESTS=ON
-                      CMAKE_BUILD_TYPE=Release
+                  push: never
+                  env: |
+                      PACKAGE_RELEASE=${{ inputs.package || false }}
+                      RELEASE_TAG=${{ github.ref_name }}
+                  runCmd: |
+                      set -eu
+                      cmake --preset test-release-gcc-16-1 \
+                        -DBUILD_EXAMPLES=ON \
+                        -DCMAKE_INSTALL_INCLUDEDIR=include/annotest-sdk \
+                        -DCMAKE_INSTALL_LIBDIR=lib/annotest-sdk
+                      cmake --build --preset build-test-release --parallel 2
+                      ctest --test-dir build/test-release --output-on-failure --no-tests=error \
+                        --parallel 2 --output-junit test-results.xml
+                      python3 tools/check_installation.py --build-dir build/test-release
 
-            - name: Test Project
-              uses: threeal/ctest-action@v1.1.0
+                      python3 -m venv /tmp/annotest-docs
+                      /tmp/annotest-docs/bin/python -m pip install -r docs/requirements.txt
+                      /tmp/annotest-docs/bin/python -m sphinx -W --keep-going -b html \
+                        docs/source build/docs/html
+
+                      cmake -S . -B build/coverage -G Ninja \
+                        -DBUILD_TESTS=ON -DBUILD_EXAMPLES=OFF -DCMAKE_BUILD_TYPE=Debug \
+                        '-DCMAKE_CXX_FLAGS=--coverage -O0 -g' \
+                        -DCMAKE_EXE_LINKER_FLAGS=--coverage
+                      cmake --build build/coverage --parallel 2
+                      find build/coverage -name '*.gcda' -delete
+                      ctest --test-dir build/coverage --output-on-failure --no-tests=error --parallel 2
+                      python3 tools/collect_coverage.py build/coverage build/coverage/gcov-json
+                      python3 tools/coverage_audit.py build/coverage/gcov-json --minimum-percent 95 \
+                        --output build/coverage/reachable-source-coverage.json
+
+                      if [ "$PACKAGE_RELEASE" = "true" ]; then
+                        python3 tools/package_release.py --build-dir build/test-release \
+                          --tag "$RELEASE_TAG" --platform linux-x86_64
+                      fi
+
+            - name: Test Report
+              if: ${{ !cancelled() }}
+              uses: dorny/test-reporter@v3
+              with:
+                  name: C++ Tests
+                  path: build/test-release/test-results.xml
+                  reporter: java-junit
+                  use-actions-summary: true
+                  fail-on-error: true
+                  list-tests: failed
+                  list-suites: failed
+                  max-annotations: 50
+
+            - uses: actions/upload-artifact@v4
+              if: inputs.package
+              with:
+                  name: package-linux-x86_64
+                  path: dist/*
+                  if-no-files-found: error
+
+            - name: Coverage report
+              if: ${{ !cancelled() }}
+              uses: actions/upload-artifact@v4
+              with:
+                  name: reachable-source-coverage
+                  path: build/coverage/reachable-source-coverage.json
+                  if-no-files-found: warn

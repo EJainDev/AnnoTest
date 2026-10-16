@@ -1,67 +1,44 @@
-OS Annotations
-==============
+Skip platform-specific tests
+============================
 
-Raw Source
-----------
+.. container:: guide-intro
+
+   Skip a case when its behavior is only applicable on particular operating systems.
+
+.. container:: guide-prerequisites
+
+   **Before you start** · An existing test project, or the :doc:`bundled-example build <build>`.
+
+Declare the supported systems
+-----------------------------
+
+Attach ``requires_os`` to allow only the listed systems, or ``disallows_os`` to exclude them.
 
 .. literalinclude:: ../../../examples/example04_os_annotations.cpp
    :language: cpp
+   :lines: 9-12
 
-Breaking It Down
-----------------
+Keep the body portable
+----------------------
 
-Section 1 — **Single OS requirement**
+Keep the body compilable on every build platform. An execution filter does not remove unsupported C++ from compilation.
 
-.. code-block:: cpp
+Run the platform case
+---------------------
 
-   [[= Test{}, = RequiresOS{OS::Linux}]]
-   void linux_only() {
-     assertEqual(1, 1);
-     std::cout << "Running on Linux\n";
-   }
+Build the target, then run the command below:
 
-The test runs **only** on Linux. On Windows or macOS it is silently skipped with a diagnostic message.
+.. code-block:: sh
 
-Section 2 — **Multiple OS requirement (OR logic)**
+   cmake --build build/docs-examples --target example4_os_annotations
+   ./build/docs-examples/examples/example4_os_annotations --test-name PlatformTests.linux_only
 
-.. code-block:: cpp
+.. admonition:: Expected result
+   :class: guide-result
 
-   [[= Test{}, = RequiresOS{OS::Linux, OS::Windows}]]
-   void linux_or_windows() {
-     assertEqual(2, 1 + 1);
-   }
+   On Linux the selected case passes. Elsewhere it is reported as skipped. Several entries in ``requires_os`` allow any one of the listed systems.
 
-Accepts multiple OS values. The test runs if the current OS matches **any** of them.
+.. container:: guide-related
 
-Section 3 — **DisallowOS (inverse)**
-
-.. code-block:: cpp
-
-   [[= Test{}, = DisallowOS{OS::Windows}]]
-   void not_windows() {
-     assertEqual(1, 1);
-   }
-
-The test is skipped on listed platforms, runs on all others.
-
-Section 4 — **Disallowed with multiple platforms**
-
-.. code-block:: cpp
-
-   [[= Test{}, = DisallowOS{OS::Windows, OS::Mac}]]
-   void linux_only_by_exclusion() {
-     assertEqual(1, 1);
-   }
-
-Skipped on both Windows and macOS, runs on Linux.
-
-Section 5 — **Mixed features**
-
-.. code-block:: cpp
-
-   [[= Test<"cross-platform math">{}, = RequiresOS{OS::Linux, OS::Mac, OS::Windows}]]
-   void always_runs() {
-     assertEqual(5, 2 + 3);
-   }
-
-OS annotations work alongside ``Test`` with a custom display name. The test has a custom name and runs on all platforms.
+   **Keep going** · :doc:`API details </api/testing/annotations>` ·
+   :download:`Complete runnable source <../../../examples/example04_os_annotations.cpp>`

@@ -1,5 +1,5 @@
 {
-    "cmakeExplorer.buildDir": "build",
+    "cmakeExplorer.buildDir": "build/test-debug",
     "cmakeExplorer.extraCtestRunArgs": "",
     "conventionalCommits.scopes": [
         "testing",

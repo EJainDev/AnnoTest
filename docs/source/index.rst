@@ -1,43 +1,85 @@
 AnnoTest
 ========
 
-.. raw:: html
+.. container:: annotest-hero
 
-   <div align="center">
+   .. image:: _static/annotest-banner.svg
+      :alt: AnnoTest — annotation-based testing for C++26
+      :width: 100%
 
-.. image:: https://img.shields.io/badge/github--repo-blue?logo=github
-   :target: https://github.com/EJainDev/AnnoTest
-.. image:: https://shields.io/badge/License-MIT-green
-   :target: https://github.com/EJainDev/AnnoTest/blob/main/LICENSE
-.. image:: https://github.com/EJainDev/AnnoTest/actions/workflows/build_and_test.yml/badge.svg
-   :target: https://github.com/EJainDev/AnnoTest/actions/workflows/build_and_test.yml
-.. image:: https://img.shields.io/badge/C%2B%2B-26-blue
-.. image:: https://img.shields.io/github/last-commit/EJainDev/AnnoTest
-   :alt: GitHub last commit
+Tests are ordinary C++ methods
+------------------------------
 
-.. raw:: html
-
-   </div>
-
-What is AnnoTest?
------------------
-
-AnnoTest is a C++26 **annotation-based unit testing library**. It leverages C++26 reflection and the module system to let you mark test functions with ``[[=Test{}]]`` annotations instead of relying on macros or boilerplate.
-
-The library provides a familiar, Python/Java-inspired API with compile-time test discovery, parameterized tests, OS-level annotations, and death tests.
+Annotate methods, import one module, and let C++26 reflection discover the tests.
+Check values, manage fixtures, and collect results without test registration macros.
 
 .. code-block:: cpp
 
-    [[= Test{}]] void my_test();
+   import annotest;
+   using namespace annotest;
 
-.. note:: This library is still under development. Breaking changes may occur.
+   struct ArithmeticTests {
+       [[= test{}]] void addition() {
+           assert_equal(4, 2 + 2);
+       }
+   };
+
+   int main(int argc, char** argv) {
+       return run_tests<ArithmeticTests>(argc, argv);
+   }
+
+:doc:`Build your first test → <usage/getting_started>` ·
+:doc:`Look up the API <api/index>`
+
+What do you want to do?
+-----------------------
+
+.. raw:: html
+
+   <nav class="annotest-cards" aria-label="Documentation paths">
+     <a class="annotest-card" href="tutorials/index.html"><small>LEARN</small><strong>Tutorials</strong><span>Build a first test project and follow a complete workflow with expected results.</span><em>Start learning →</em></a>
+     <a class="annotest-card" href="examples/index.html"><small>SOLVE A TASK</small><strong>How-to guides</strong><span>Choose a fixture, supply inputs, check failures, or collect a report.</span><em>Find your task →</em></a>
+     <a class="annotest-card" href="api/index.html"><small>LOOK IT UP</small><strong>Reference</strong><span>Find declarations, parameters, defaults, constraints, and failure behavior.</span><em>Check the details →</em></a>
+     <a class="annotest-card" href="explanation/index.html"><small>UNDERSTAND</small><strong>Explanation</strong><span>Understand discovery, fixture lifetimes, failure control flow, and processes.</span><em>Explore the model →</em></a>
+   </nav>
+
+Common destinations
+-------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 48 52
+
+   * - I need to…
+     - Go to
+   * - Add AnnoTest to a CMake project
+     - :doc:`installation`
+   * - Find an assertion or matcher
+     - :doc:`api/testing/assertions` · :doc:`api/testing/matchers`
+   * - Check annotation syntax
+     - :doc:`api/testing/annotations`
+   * - Run selected tests or write reports
+     - :doc:`api/testing/command_line`
+   * - Compare compilation with GoogleTest
+     - :doc:`performance`
+   * - Find a symbol by name
+     - :ref:`genindex`
+
+.. note::
+
+   The supported toolchain uses GCC 16 or newer with C++26 reflection,
+   CMake 4.3.3 or newer, and Ninja. See :doc:`installation` for setup.
+
+`Source code <https://github.com/EJainDev/AnnoTest>`_ ·
+`Report an issue <https://github.com/EJainDev/AnnoTest/issues>`_ ·
+:doc:`Contribute <project/index>`
 
 .. toctree::
+   :hidden:
    :maxdepth: 2
-   :caption: Contents:
 
-   installation
-   usage/getting_started
+   tutorials/index
    examples/index
    api/index
-   genindex
+   explanation/index
+   project/index
