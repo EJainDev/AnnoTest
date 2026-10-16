@@ -185,10 +185,8 @@ Release
      - 14.559
      - 0.404
 
-Download :download:`Debug raw samples <../../benchmarks/results-debug-warm.json>`
-and :download:`Release raw samples <../../benchmarks/results-release-warm.json>`.
-Reports include all compilation and whole-executable runtime samples, RSS,
-object sizes, exact commands, and source hashes.
+The measurement harness writes raw samples, RSS, object sizes, compiler commands,
+and source hashes to the build directory when the commands below are run.
 
 Reproduce the measurements
 --------------------------
@@ -234,9 +232,6 @@ Recorded medians for one regular case, from three serial clean builds:
      - 103.331
      - 2.357
 
-Download :download:`Debug clean-build samples <../../benchmarks/results-debug-clean.json>`
-and :download:`Release clean-build samples <../../benchmarks/results-release-clean.json>`.
-
 To record the one-case regular clean-build comparison for both configurations:
 
 .. code-block:: sh
@@ -254,10 +249,6 @@ retains output, while GoogleTest's default runner writes it directly. The
 harness discards stdout. Runtime samples measure these default behaviors and
 their output retention costs; they do not measure per-assertion latency or
 parallel workers. Process peak RSS includes launch overhead.
-
-The `full recorded results
-<https://github.com/EJainDev/AnnoTest/blob/improved-features/benchmarks/RESULTS.md>`_
-include compilation, runtime, and clean-build tables.
 
 The `benchmark sources, generator, measurement harness, and gate
 <https://github.com/EJainDev/AnnoTest/tree/improved-features/benchmarks>`_ are

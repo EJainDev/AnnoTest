@@ -262,21 +262,9 @@ setup/cleanup, and integer equality checks. All expected test bodies are verifie
 | 1 MiB output per case | 72 | 2.637 | 3.178 | 3.538 | 5.589 |
 | 1 MiB output per case | 240 | 3.827 | 5.253 | 5.886 | 14.559 |
 
-The [C++ workloads](benchmarks/workloads/), [generator](benchmarks/generate.py),
-[harness](benchmarks/run.py), [release gate](benchmarks/check_results.py),
-[Debug raw samples](benchmarks/results-debug-warm.json), and
-[Release raw samples](benchmarks/results-release-warm.json) are included in the
-repository. [Full results](benchmarks/RESULTS.md) include runtime measurements;
-the [performance documentation](docs/source/performance.rst) explains measurement
-scope and reproduction. Results apply to these workloads and configuration.
-
-Clean target builds, measured separately with three serial samples for one regular
-case, took 73.304 s (AnnoTest) versus 2.363 s (GoogleTest) in Debug and
-103.331 s versus 2.357 s in Release. These builds rebuild AnnoTest, its dependencies,
-and the standard-library module from source; the installed GoogleTest binary stays
-prebuilt. Dependencies are already fetched and configured. See the
-[clean-build samples](benchmarks/results-debug-clean.json) and
-[Release clean-build samples](benchmarks/results-release-clean.json).
+See the [benchmark guide and sources](benchmarks/) for reproduction commands and
+the [performance documentation](docs/source/performance.rst) for measurement scope
+and separate clean-build results. Results apply to these workloads and configuration.
 
 ## CMake integration
 
