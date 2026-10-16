@@ -3,7 +3,7 @@ AnnoTest
 
 .. container:: annotest-hero
 
-   .. image:: _static/annotest-banner.svg
+   .. image:: _static/AnnoTest.png
       :alt: AnnoTest — annotation-based testing for C++26
       :width: 100%
 
