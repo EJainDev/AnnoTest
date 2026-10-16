@@ -101,4 +101,5 @@ sources, and CMake package configuration. Use the corresponding GCC toolchain
 and runtime to build consumers. Linux, macOS, and Windows are supported by
 source builds.
 
-See :ref:`getting_started` for the public API.
+Continue with :ref:`getting_started` for a guided first test, or use
+:doc:`/api/index` to look up the public API.

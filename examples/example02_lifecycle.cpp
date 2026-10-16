@@ -1,4 +1,4 @@
-// The runner shares one suite object. Reset per-test state in before_each.
+// Each invocation gets a fresh fixture. Prepare per-test state in before_each.
 // Hooks run around each test, including each parameterized instance.
 import annotest;
 import std;

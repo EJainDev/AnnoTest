@@ -15,10 +15,10 @@ AnnoTest
 .. raw:: html
 
    <nav class="annotest-cards" aria-label="Documentation shortcuts">
-     <a class="annotest-card" href="installation.html"><strong>Install AnnoTest →</strong><span>Set up the compiler and connect a CMake project.</span></a>
-     <a class="annotest-card" href="usage/getting_started.html"><strong>Write your first test →</strong><span>Define a suite, make an assertion, and run it.</span></a>
-     <a class="annotest-card" href="examples/index.html"><strong>Explore examples →</strong><span>Working fixtures, parameters, matchers, and reports.</span></a>
-     <a class="annotest-card" href="api/index.html"><strong>Browse the API →</strong><span>Annotations, assertions, execution, and command-line options.</span></a>
+     <a class="annotest-card" href="tutorials/index.html"><strong>Tutorials →</strong><span>Learn the workflow by building and running your first test.</span></a>
+     <a class="annotest-card" href="examples/index.html"><strong>How-to guides →</strong><span>Solve a testing task with practical steps and focused examples.</span></a>
+     <a class="annotest-card" href="api/index.html"><strong>API reference →</strong><span>Look up annotations, assertions, execution, and command-line options.</span></a>
+     <a class="annotest-card" href="explanation/index.html"><strong>Explanation →</strong><span>Understand discovery, fixture lifetimes, and process isolation.</span></a>
    </nav>
 
 A complete test
@@ -61,10 +61,8 @@ and :doc:`performance` for compile-time benchmarks.
    :maxdepth: 2
    :caption: Documentation
 
-   installation
-   usage/getting_started
+   tutorials/index
    examples/index
    api/index
-   testing
-   performance
+   explanation/index
    genindex

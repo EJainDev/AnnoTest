@@ -1,27 +1,25 @@
-Named and Parameterized Suites
-==============================
+Test fixture configurations
+===========================
 
-``name_generator<&function>{}`` on a suite supplies the naming convention for
-its test methods. A method annotation overrides the suite convention.
-``suite_name_generator<&function>{}`` generates the suite name. Both functions
-receive ``std::string_view`` and return a string or string view usable during
-constant evaluation. ``readable_name`` replaces underscores with spaces.
+Run every method in a fixture for each configuration, such as several constructor argument pairs.
+See :ref:`howto-examples-build` for the example build setup.
 
-``parameterize{parameters(...), ...}`` on a suite supplies constructor arguments
-for each suite invocation. Every invocation runs all selected methods with fresh
-fixtures by default. Numeric suffixes identify the suite invocations.
-
-``parameter_source<&provider>{}`` accepts runtime tuples or named ``case_of``
-values. Named cases become suite suffixes. Constructors may receive the supplied
-arguments followed by ``test_context&``.
-
-On a class template with default template arguments,
-``parameterize_template<template_params<...>, ...>{}`` selects the concrete suite
-types. Invoke the default specialization with ``run_tests<Suite<>>(argc, argv)``. Each
-specialization has a distinct suite name.
+1. Move configuration values into the constructor and attach matching ``parameterize`` tuples to the suite.
 
 .. literalinclude:: ../../../examples/example11_named_suites.cpp
    :language: cpp
+   :lines: 7-17
 
-Build and run ``example11_named_suites``. Use ``--list`` to see the generated
-suite and method names; pass the complete displayed name to ``--test-name``.
+2. Use ``name_generator`` and ``suite_name_generator`` when readable displayed names help distinguish configurations. List the names before selecting one.
+
+3. Build the target and run the selected case or group:
+
+.. code-block:: sh
+
+   cmake --build build/docs-examples --target example11_named_suites
+   ./build/docs-examples/examples/example11_named_suites --list
+
+The addition suite has configurations (2, 3) and (10, 20), each with two methods. Copy a complete displayed name into ``--test-name`` to run one case. The source also includes a class-template suite.
+
+See :doc:`/api/testing/execution` for API details.
+:download:`Runnable source <../../../examples/example11_named_suites.cpp>`.

@@ -1,126 +1,133 @@
 .. _getting_started:
 
-Getting Started
-===============
+Write and run your first test
+=============================
 
-.. _testing_example:
+In this tutorial, create a small test executable, run it, and inspect a deliberate
+failure. By the end, the executable will also expose its case through CTest.
 
-Write and run a suite
----------------------
+Before starting
+---------------
 
-AnnoTest is a C++26 module. Import it, use the ``annotest`` namespace, annotate
-public methods with ``test``, and forward the command line to ``run_tests``:
+Use the toolchain from :doc:`/installation`: GCC 16 or newer with C++26 reflection,
+CMake 4.3.3 or newer, and Ninja. The commands below start in an AnnoTest source
+checkout. Git and network access are needed if dependency packages are not
+already available. On Windows, use UCRT64 and append ``.exe`` when running binaries.
 
-.. code-block:: cpp
-
-    import annotest;
-    using namespace annotest;
-
-    struct AddTests {
-        [[= test{}]] void basic() { assert_equal(4, 2 + 2); }
-        [[= test{.disabled = true}]] void skipped() {}
-        [[= test{}, = parameterize{parameters(5), parameters(50)}]]
-        void parameterized(int value) { assert_true(value == 5 || value == 50); }
-    };
-
-    int main(int argc, char** argv) {
-        return run_tests<AddTests>(argc, argv);
-    }
-
-``run_tests`` constructs a fresh fixture for each test invocation by default.
-Public static and const methods are supported. Test methods may receive
-``test_context&``; other required arguments need a parameterization annotation.
-Inaccessible or deleted annotated methods, missing
-arguments, empty parameterizations, duplicate names, and names with tabs or line
-breaks are compile-time errors. Private unannotated helpers remain allowed.
-Named tests use ``test<"custom name">{}``; suites
-can use ``suite<"custom suite">{}`` and can be disabled.
-
-Fixture lifecycle
------------------
-
-A fixture without supplied constructor arguments must be default-constructible
-or accept ``test_context&``. By default, a fresh instance is constructed for every
-test and parameterized invocation. Constructors and destructors manage fixture
-resources. ``suite{.lifecycle = fixture_lifecycle::shared}`` retains the fixture
-across cases. Nested and parameterized suites can supply constructor arguments;
-see :doc:`/api/testing/execution` and :doc:`/examples/named_suites`.
-This example uses the default fresh fixture:
-
-.. code-block:: cpp
-
-    struct FixtureTests {
-        int value = 0;
-        [[= before_each{}]] void setup() { value = 10; }
-        [[= after_each{}]] void cleanup() { value = 0; }
-        [[= test{}]] void increment() { assert_equal(11, ++value); }
-    };
-
-Multiple hooks are allowed: setup runs base-first and cleanup runs in reverse
-order. Duplicate annotations and combining a hook with ``test`` on the same
-method are compile-time errors. A fatal assertion or exception in setup prevents
-the body from running. A failed expectation records a failure and continues setup
-and the test body. Cleanup runs after setup or body failure. Hook exceptions
-fail the test, and later cleanup hooks still run. Tests disabled or excluded by
-OS requirements do not run hooks; runtime skips still run cleanup.
-Data members may be private; annotated test and hook methods must be public.
-
-A failed assertion records a failure and unwinds the current test body. A failed
-expectation records a failure and continues. Both make the run return 1, and later
-tests still execute. Uncaught exceptions and unexpected contract violations also
-fail tests. See :doc:`/api/testing/assertions` and :doc:`/api/testing/contracts`.
-
-Command line and CTest
-----------------------
+Create a project directory inside the checkout:
 
 .. code-block:: sh
 
-    ./my_tests --list
-    ./my_tests --test-name AddTests.basic
-    ./my_tests --test-name AddTests.parameterized.2 --xml-output report.xml
+   mkdir -p build/first-test
 
-Windows executables have an ``.exe`` suffix. Filters use fully qualified names;
-parameterized cases have one-based numeric suffixes. ``--help`` describes the
-supported options. Test failures, invalid arguments, unknown names, and report
-write failures return 1; successful runs return 0.
-See :doc:`/api/testing/command_line` for the complete option reference.
+Write one check
+---------------
 
-``annotest_discover_tests(my_tests)`` lists the executable after building it and
-registers each case with CTest. Each selected case runs in its own process, with
-its own suite instance and per-test hooks. Running the executable directly
-runs the suite in a single process.
+Save the following as ``build/first-test/main.cpp``:
 
-Discovery fails the build if listing fails, times out, is malformed, contains
-no cases, or repeats a fully qualified name. CTest fails visibly if the executable
-or discovery manifest is missing, with an instruction to build the target.
-Quotes, semicolons, brackets, dollar signs, and surrounding spaces in names are
-preserved. ``DISCOVERY_TIMEOUT`` accepts a positive integer in seconds:
+.. code-block:: cpp
+   :caption: main.cpp
+
+   import annotest;
+   using namespace annotest;
+
+   struct ArithmeticTests {
+       [[= test{}]] void addition() {
+           assert_equal(4, 2 + 2);
+       }
+   };
+
+   int main(int argc, char** argv) {
+       return run_tests<ArithmeticTests>(argc, argv);
+   }
+
+The annotation marks ``addition`` as a test method. The assertion compares the
+expected value, 4, with the actual expression, ``2 + 2``. The runner receives the
+command line so it can list and select cases.
+
+Connect the library
+-------------------
+
+Save this as ``build/first-test/CMakeLists.txt``:
 
 .. code-block:: cmake
+   :caption: CMakeLists.txt
 
-    annotest_discover_tests(my_tests DISCOVERY_TIMEOUT 60)
+   cmake_minimum_required(VERSION 4.3.3)
+   set(CMAKE_CXX_STANDARD 26)
+   set(CMAKE_CXX_STANDARD_REQUIRED ON)
+   if(CMAKE_VERSION VERSION_LESS 4.4)
+     set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
+   else()
+     set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "f35a9ac6-8463-4d38-8eec-5d6008153e7d")
+   endif()
+   set(CMAKE_CXX_MODULE_STD ON)
+   project(FirstTest LANGUAGES CXX)
+   if(CMAKE_VERSION VERSION_LESS 4.4)
+     string(APPEND CMAKE_CXX_FLAGS " -freflection")
+   endif()
 
-The default timeout is 30 seconds. Multi-config generators use separate manifests;
-select a configuration with ``ctest -C Debug`` or ``ctest -C Release``.
+   set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+   set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+   add_subdirectory(../.. annotest)
+   enable_testing()
+   add_executable(first_test main.cpp)
+   target_link_libraries(first_test PRIVATE annotest::annotest)
+   annotest_discover_tests(first_test)
 
-Reports and platform behavior
------------------------------
+The two-directory relative path points back to the AnnoTest checkout.
+The module settings appear before ``project()`` so CMake can configure the
+standard-library module. The discovery helper registers the executable's cases
+with CTest after building it.
 
-``--xml-output`` writes XML containing totals, timing, failures, and captured
-stdout/stderr, including C stdio. Background writers must finish before the test ends.
-Windows command-line names and report paths support UTF-8.
-
-XML preserves valid Unicode. Forbidden XML control bytes and malformed UTF-8
-are represented as visible ``\xNN`` escapes in the report. Captured runtime
-data and console diagnostics retain their original bytes.
-
-Stack traces use ``std::stacktrace`` when the toolchain supports it; otherwise
-native backtraces are used, with raw frame addresses on Windows.
-:doc:`/api/testing/death` explains the Windows replay model and POSIX isolation.
-
-More examples
+Build and run
 -------------
 
-Runnable examples are in :doc:`/examples/index`, including typed and dual
-parameterization, named and parameterized suites, OS filtering, death checks,
-contracts, and reports.
+From the checkout root, configure and build:
+
+.. code-block:: sh
+
+   cmake -S build/first-test -B build/first-test/build -G Ninja \
+     -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Debug
+   cmake --build build/first-test/build --parallel 2
+   ./build/first-test/build/first_test
+
+The run reports one passing case and returns exit status 0. List the case
+without running its body:
+
+.. code-block:: sh
+
+   ./build/first-test/build/first_test --list
+
+The listing identifies ``ArithmeticTests.addition``. Run that same case through
+CTest:
+
+.. code-block:: sh
+
+   ctest --test-dir build/first-test/build --output-on-failure
+
+CTest reports one test passed.
+
+Inspect a failure
+-----------------
+
+Change ``assert_equal(4, 2 + 2)`` to ``assert_equal(5, 2 + 2)`` in ``main.cpp``.
+Rebuild and select the case explicitly:
+
+.. code-block:: sh
+
+   cmake --build build/first-test/build --parallel 2
+   ./build/first-test/build/first_test --test-name ArithmeticTests.addition
+
+This run returns exit status 1. Its diagnostic identifies the failed equality
+and the source location: the expected value is 5, while the actual result is 4.
+Restore the expected value to 4, rebuild, and run CTest again to finish with a
+passing project.
+
+Continue
+--------
+
+Use :doc:`/examples/lifecycle` to prepare fixture state before each case, or
+:doc:`/examples/parameterized` to check several input sets.
+For the distinction between fixture instances and processes, read
+:doc:`/explanation/execution`.
