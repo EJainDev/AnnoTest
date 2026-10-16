@@ -1,5 +1,7 @@
 # AnnoTest
 
+![AnnoTest — annotation-based testing for C++26](docs/source/_static/annotest-banner.svg)
+
 [![Build and Test](https://github.com/EJainDev/AnnoTest/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/EJainDev/AnnoTest/actions/workflows/build_and_test.yml)
 [![Documentation](https://readthedocs.org/projects/annotest/badge/?version=stable)](https://annotest.readthedocs.io/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgray)](LICENSE)
