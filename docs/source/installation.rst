@@ -3,6 +3,12 @@
 Installing
 ==========
 
+.. index::
+   single: requirements
+   single: GCC
+   single: CMake
+   single: Ninja
+
 Requirements
 ------------
 
@@ -14,6 +20,11 @@ and MSVC are not supported toolchains for these features.
 Python 3 is needed for the self-tests and installation smoke checks. Git and
 network access are needed when CMake fetches StructuralTuple and SerialXML at
 the pinned commits. Installed dependency packages can be used instead.
+
+.. index::
+   single: Linux
+   single: macOS
+   single: Windows
 
 Platform setup
 --------------
@@ -42,6 +53,9 @@ Build and run from UCRT64. The binaries are native Windows ``.exe`` files.
 Keep the UCRT64 ``bin`` directory on ``PATH`` when running outside this shell
 so that GCC runtime DLLs can be found.
 
+.. index::
+   single: installation
+
 Build and install
 -----------------
 
@@ -59,6 +73,11 @@ Use ``g++-16`` on macOS. Standalone builds enable examples by default; embedded
 builds default to the library only. Self-tests are opt-in. Set
 ``BUILD_TESTS=OFF`` and ``BUILD_EXAMPLES=OFF`` for a library-only build.
 ``CMAKE_INSTALL_INCLUDEDIR`` and ``CMAKE_INSTALL_LIBDIR`` support custom layouts.
+
+.. index::
+   single: CMake integration
+   single: annotest_discover_tests
+   single: FetchContent
 
 Installed consumer
 ------------------
@@ -92,6 +111,9 @@ Pass ``-DCMAKE_PREFIX_PATH=/path/to/annotest`` when configuring the consumer.
 The package installs its module sources and contract-handler header, and exports
 the reflection flags and required link libraries. Prefixes can be relocated.
 The same target and discovery helper are available with ``FetchContent``.
+
+.. index::
+   single: release packages
 
 Release packages
 ----------------

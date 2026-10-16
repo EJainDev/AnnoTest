@@ -3,6 +3,14 @@ Testing Annotations and Functions
 
 All public API names below are in ``annotest``. Annotation names are lowercase.
 
+.. index::
+   single: test
+   single: suite
+   single: run_tests
+   single: disabled tests
+   single: test names
+   single: repetitions
+
 Tests and suites
 ----------------
 
@@ -17,6 +25,15 @@ the combined count must not exceed 1,000,000. Discovery lists each case once.
 ``run_tests<T>(argc, argv)`` discovers the annotations, constructs a suite,
 runs the selected cases, and returns 0 on success or 1 on failure. See
 :doc:`/usage/getting_started` for filtering, reporting, and CTest integration.
+
+.. index::
+   single: before_each
+   single: after_each
+   single: before_all
+   single: after_all
+   single: fixture lifecycle
+   single: setup hooks
+   single: cleanup hooks
 
 Lifecycle
 ---------
@@ -58,6 +75,16 @@ Fixtures are fresh for each test and parameterized invocation by default.
 Constructors and destructors manage fixture resources. See :doc:`execution` for
 nested fixtures, dynamic factories, context resources, and extension callbacks.
 
+.. index::
+   single: parameterize
+   single: parameters
+   single: parameterize_template
+   single: template_params
+   single: parameterize_pair
+   single: parameterize_dual
+   single: parameterized tests
+   single: typed tests
+
 Parameterization
 ----------------
 
@@ -80,6 +107,12 @@ without defaults are ignored.
 and function arguments. ``parameterize_dual`` expands those pairs into cases.
 See :doc:`/examples/dual_parameters`.
 
+.. index::
+   single: requires_os
+   single: disallows_os
+   single: operating_system
+   single: operating system filters
+
 Operating systems
 -----------------
 
@@ -88,6 +121,11 @@ Operating systems
 ``disallows_os{operating_system::windows}`` skips a test when any listed OS matches. These
 annotations control execution; the body must compile on every target platform.
 See :doc:`/examples/os_annotations`.
+
+.. index::
+   single: enabled_if
+   single: disabled_if
+   single: conditional execution
 
 Execution conditions
 --------------------
@@ -122,6 +160,12 @@ still enumerate their cases during discovery. Dynamic factories must evaluate
 conditions before constructing their fixture during discovery; a disabled factory
 is listed and reported as one skipped factory entry. Factory conditions must
 therefore give consistent results during discovery and worker re-execution.
+
+.. index::
+   single: name_generator
+   single: suite_name_generator
+   single: readable_name
+   single: parameterized suites
 
 Naming and suite parameters
 ---------------------------

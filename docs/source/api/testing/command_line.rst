@@ -1,3 +1,6 @@
+.. index::
+   single: command-line options
+
 Command-Line Reference
 ======================
 
@@ -5,6 +8,15 @@ Forward ``argc`` and ``argv`` to ``run_tests<Suites...>(argc, argv)`` or
 ``run_registered_tests(argc, argv)``. Long options with values accept either
 ``--option value`` or ``--option=value``. Boolean flags accept ``=0`` and ``=1``;
 supplying a flag without a value enables it. Positional arguments are rejected.
+
+.. index::
+   single: help (--help)
+   single: listing tests (--list)
+   single: JSON discovery (--list-json)
+   single: selecting tests (--test-name)
+   single: filters (--filter, --exclude)
+   single: tags (--tag, --exclude-tag)
+   single: running disabled tests (--run-disabled)
 
 Selection
 ---------
@@ -53,6 +65,16 @@ needed to discover names. See :doc:`annotations` for discovery-time conditions.
     ./my_tests --test-name AddTests.basic AddTests.parameterized.2
     ./my_tests --filter 'AddTests.*' --exclude '*.slow' --tag fast
 
+.. index::
+   single: repeat (--repeat)
+   single: shuffle (--shuffle)
+   single: seed (--seed)
+   single: fail-fast (--fail-fast)
+   single: sharding (--shard-count, --shard-index)
+   single: isolation (--isolate)
+   single: jobs (--jobs)
+   single: timeouts (--timeout)
+
 Execution
 ---------
 
@@ -99,6 +121,13 @@ in scheduling order. Under fail-fast, active batches finish before scheduling st
     ./my_tests --shuffle --seed 42 --repeat 3
     ./my_tests --jobs 4 --timeout 10 --shard-count 2 --shard-index 0
 
+.. index::
+   single: XML reports (--xml-output)
+   single: JSON reports (--json-output)
+   single: brief output (--brief)
+   single: debugger breakpoint (--break-on-failure)
+   single: captured output
+
 Reporting
 ---------
 
@@ -124,6 +153,12 @@ See :doc:`execution` for report structures and listener callbacks.
 .. code-block:: sh
 
     ./my_tests --xml-output report.xml --json-output report.json --brief
+
+.. index::
+   single: environment variables
+   single: ANNOTEST_FILTER
+   single: ANNOTEST_JOBS
+   single: ANNOTEST_TIMEOUT
 
 Environment variables
 ---------------------
@@ -160,12 +195,19 @@ accumulate across both sources. Each filter or tag variable supplies one value.
 Boolean variables accept only ``0`` and ``1``. Other variables use their option's
 value format. Empty variables are ignored.
 
+.. index::
+   single: exit status
+
 Exit status
 -----------
 
 Successful runs, successful listing, and ``--help`` return 0. Test failures,
 discovery errors, unknown explicit names, invalid options, and report write failures
 return 1. Skipped tests do not fail a run unless cleanup also fails.
+
+.. index::
+   single: JSON schemas
+   single: discovery metadata
 
 JSON formats
 ------------

@@ -1,5 +1,16 @@
 .. _contract_handling:
 
+.. index::
+   single: contracts
+   single: assert_contract_violation
+   single: expect_contract_violation
+   single: assert_no_contract_violation
+   single: expect_no_contract_violation
+   single: annotest_contract.h
+   single: observe semantics
+   single: custom_handler
+   single: contract_violation_occurred
+
 Contract Handling
 =================
 

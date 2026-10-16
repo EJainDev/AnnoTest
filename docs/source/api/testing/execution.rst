@@ -1,6 +1,13 @@
 Execution and extension APIs
 ============================
 
+.. index::
+   single: nested
+   single: nested fixtures
+   single: fixture_lifecycle
+   single: skip
+   single: assume
+
 Fixtures and suites
 -------------------
 
@@ -61,6 +68,16 @@ including worker startup and kills the worker process tree. Crashes and timeouts
 become failed cases; later cases continue unless fail-fast is active. Results are
 reported in scheduling order. Active batches complete before fail-fast takes effect.
 
+.. index::
+   single: parameter_source
+   single: case_of
+   single: named_case
+   single: csv_cases
+   single: line_cases
+   single: test_factory
+   single: dynamic_case
+   single: runtime parameter sources
+
 Runtime sources and context
 ---------------------------
 
@@ -81,6 +98,12 @@ Test methods, constructors, and hooks may receive ``test_context&``.
 The context provides case metadata, temporary directories, and shared resources.
 See :doc:`context` for fields, lifetimes, and resource-store operations.
 
+.. index::
+   single: scoped_trace
+   single: scoped_message
+   single: fail
+   single: add_failure_message
+
 Diagnostics and matchers
 ------------------------
 
@@ -92,6 +115,12 @@ stream printing or a type-name fallback. ``fail`` is fatal;
 ``assert_that`` and ``expect_that`` accept composable matchers.
 See :doc:`matchers` for comparisons, strings, ranges, members, pointers,
 alternatives, exceptions, numeric tolerances, and custom predicates.
+
+.. index::
+   single: test_listener
+   single: add_listener
+   single: clear_listeners
+   single: listeners
 
 Listeners and reports
 ---------------------
@@ -146,6 +175,12 @@ a ``testsuites`` root with aggregate totals; single-suite reports retain the
 ``testsuite`` root. Execution and output capture are process-wide; simultaneous
 or recursive in-process runners are rejected. Use subprocess workers for parallelism.
 
+.. index::
+   single: register_test
+   single: run_registered_tests
+   single: clear_registered_tests
+   single: runtime registration
+
 Runtime registration
 --------------------
 
@@ -161,6 +196,12 @@ hooks. Factories return ``std::unique_ptr<Fixture>`` and may accept
 registrations with the same fixture type and suite name; annotated tests of that
 type in the same suite share them too. Repeat the
 same registration in each worker invocation when using subprocess execution.
+
+.. index::
+   single: test_result
+   single: test_info
+   single: assertion_event
+   single: suite_result
 
 Reporter data and output options
 --------------------------------

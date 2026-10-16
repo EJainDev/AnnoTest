@@ -4,6 +4,9 @@ How a test becomes an execution
 A test method, a fixture instance, and a process have different lifetimes.
 Understanding those boundaries helps keep state and cleanup predictable.
 
+.. index::
+   single: test discovery
+
 Discovery identifies cases
 --------------------------
 
@@ -16,6 +19,11 @@ Runtime providers and factories finish expanding cases during discovery.
 Listing therefore does not execute ordinary test bodies, but it can call a
 provider or construct the fixture needed for a factory. Stable discovery names
 matter when a worker process later reconstructs the selected case.
+
+.. index::
+   single: fresh fixtures
+   single: shared fixtures
+   single: resource lifetimes
 
 Fixtures bound mutable state
 ----------------------------
@@ -34,6 +42,10 @@ they prepare resources around the suite execution while per-test fixtures
 remain fresh. They run in each isolated worker's own process. They are not a
 cross-process singleton.
 
+.. index::
+   single: fatal failures
+   single: nonfatal failures
+
 Failures change control flow
 ----------------------------
 
@@ -45,6 +57,10 @@ can guard a prerequisite for subsequent operations.
 Both kinds make the run fail. Cleanup still runs, and later cases run unless a
 selection or stopping option prevents them. A runtime skip also performs
 cleanup; a case excluded before execution does not run its per-test hooks.
+
+.. index::
+   single: worker processes
+   single: process isolation
 
 Processes isolate execution
 ---------------------------

@@ -1,3 +1,7 @@
+.. index::
+   single: test_context
+   single: current_test
+
 Test Context and Resources
 ==========================
 
@@ -14,6 +18,9 @@ context and throws ``std::logic_error`` when no test is active.
             assert_true(std::filesystem::exists(context.temp_dir()));
         }
     };
+
+.. index::
+   single: test metadata
 
 Fields
 ------
@@ -44,6 +51,9 @@ Fields
      - ``resource_scope``
      - A store of shared resource references.
 
+.. index::
+   single: constructor contexts
+
 Constructor contexts
 --------------------
 
@@ -56,6 +66,10 @@ different object from the fixture's constructor context.
 Suite-hook contexts retain their temporary directories and resources until all
 ``after_all`` hooks finish. They are distinct from per-test and constructor contexts.
 
+.. index::
+   single: temp_dir
+   single: temporary directories
+
 Temporary directories
 ---------------------
 
@@ -64,6 +78,11 @@ creates a unique temporary directory; later calls on the same context return
 the same path. The directory and its contents are removed during context cleanup.
 An invocation's directory is cleaned up after its extension cleanup hooks.
 A fixture constructor's context retains its directory until fixture destruction.
+
+.. index::
+   single: resource_scope
+   single: get_or_create
+   single: resource store
 
 Resource store
 --------------
@@ -88,6 +107,10 @@ while another ``std::shared_ptr`` owns it.
         "counter", [] { return std::make_shared<int>(99); });
     assert_equal(value, same);
     assert_equal(7, *same);
+
+.. index::
+   single: record_property
+   single: report properties
 
 Report properties
 -----------------

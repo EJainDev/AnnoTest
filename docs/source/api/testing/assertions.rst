@@ -1,5 +1,38 @@
 .. _assertions_and_expectations:
 
+.. index::
+   single: assertions
+   single: expectations
+   single: assert_equal
+   single: expect_equal
+   single: assert_not_equal
+   single: expect_not_equal
+   single: assert_true
+   single: expect_true
+   single: assert_false
+   single: expect_false
+   single: assert_near
+   single: expect_near
+   single: assert_less
+   single: expect_less
+   single: assert_less_equal
+   single: expect_less_equal
+   single: assert_greater
+   single: expect_greater
+   single: assert_greater_equal
+   single: expect_greater_equal
+   single: assert_contains
+   single: expect_contains
+   single: assert_null
+   single: expect_null
+   single: assert_throws
+   single: expect_throws
+   single: assert_throws_exact
+   single: expect_throws_exact
+   single: assert_no_throw
+   single: expect_no_throw
+   single: wrap
+
 Assertions and Expectations
 ===========================
 
@@ -65,6 +98,18 @@ explained in :doc:`contracts`.
         expect_true(true);  // Runs after successful checks and failed expectations.
     }
 
+.. index::
+   single: failure messages
+   single: has_failure
+   single: has_fatal_failure
+   single: has_nonfatal_failure
+   single: current_failures
+   single: capture_failures
+   single: assert_failure
+   single: expect_failure
+   single: assert_no_fatal_failure
+   single: expect_no_fatal_failure
+
 Messages and failure inspection
 -------------------------------
 
@@ -89,6 +134,10 @@ Join those threads before the callable returns.
 ``assert_no_fatal_failure`` and ``expect_no_fatal_failure`` run a callable and
 report a fatal assertion from it as a failed check.
 
+.. index::
+   single: test_thread
+   single: helper threads
+
 Helper threads
 --------------
 
@@ -99,6 +148,19 @@ that creates them, and listener assertion callbacks are serialized.
 ``test_thread(callable)`` returns a ``std::jthread`` that joins on destruction.
 Fatal assertions unwind its callable; unexpected exceptions are recorded as
 failures on the active case. Nonfatal expectations continue within the thread.
+
+.. index::
+   single: string comparisons
+   single: diagnostic printers
+   single: print_to
+   single: assert_streq
+   single: expect_streq
+   single: assert_strne
+   single: expect_strne
+   single: assert_strcaseeq
+   single: expect_strcaseeq
+   single: assert_strcasene
+   single: expect_strcasene
 
 String comparisons and diagnostic printers
 ------------------------------------------
@@ -145,6 +207,11 @@ Assertion diagnostics invoke printers only on failure.
 
 Diagnostics include evaluated operand values. Use the optional message or
 ``scoped_trace`` to include expression names or input context.
+
+.. index::
+   single: assert_all
+   single: expect_all
+   single: grouped assertions
 
 Grouped assertions
 ------------------

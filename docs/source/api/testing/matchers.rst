@@ -1,3 +1,8 @@
+.. index::
+   single: matchers
+   single: assert_that
+   single: expect_that
+
 Matchers
 ========
 
@@ -11,6 +16,22 @@ A failed assertion unwinds the current body; a failed expectation continues.
 
     assert_that(7, all_of(gt(0), lt(10)));
     expect_that(std::string{"ready"}, starts_with("rea"), "service status");
+
+.. index::
+   single: eq
+   single: ne
+   single: lt
+   single: le
+   single: gt
+   single: ge
+   single: anything
+   single: is_true
+   single: is_false
+   single: is_null
+   single: not_null
+   single: all_of
+   single: any_of
+   single: negate
 
 Comparison and composition
 --------------------------
@@ -42,6 +63,14 @@ Comparison and composition
 arguments matches none. ``eq`` compares C-string pointers by identity. Use
 :doc:`string assertions <assertions>` for C-string content equality.
 
+.. index::
+   single: starts_with
+   single: ends_with
+   single: has_substr
+   single: matches_regex
+   single: contains_regex
+   single: regular expressions
+
 Strings and regular expressions
 -------------------------------
 
@@ -56,6 +85,15 @@ Patterns use the default ``std::regex`` syntax. Invalid patterns throw
 
     assert_that(std::string{"item-42"}, matches_regex("item-[0-9]+"));
     expect_that(std::string{"count: 42"}, contains_regex("[0-9]+"));
+
+.. index::
+   single: is_empty
+   single: contains
+   single: each
+   single: size_is
+   single: elements_are
+   single: unordered_elements_are
+   single: range matchers
 
 Ranges
 ------
@@ -88,6 +126,13 @@ Both element-list matchers with no arguments match only empty ranges.
     assert_that(std::vector{1, 2, 3}, elements_are(eq(1), eq(2), eq(3)));
     assert_that(std::vector{2, 1}, unordered_elements_are(gt(0), eq(1)));
 
+.. index::
+   single: field
+   single: property
+   single: pointee
+   single: optional_value
+   single: variant_with
+
 Members, pointers, and alternatives
 ------------------------------------
 
@@ -104,6 +149,12 @@ compatible callable. ``property(member, inner)`` has the same behavior.
     assert_that(Item{3}, field(&Item::count, gt(0)));
     assert_that(std::optional{7}, optional_value(eq(7)));
     assert_that(std::variant<int, std::string>{7}, variant_with<int>(eq(7)));
+
+.. index::
+   single: near
+   single: ulp_near
+   single: is_nan
+   single: numeric tolerance
 
 Numeric tolerance
 -----------------
@@ -124,6 +175,10 @@ and NaN do not. ``is_nan()`` checks for NaN directly.
     assert_that(100.5, near(100.0, 0.01, 0.01));
     assert_that(std::nextafter(1.0, 2.0), ulp_near(1.0, 1));
 
+.. index::
+   single: throws
+   single: does_not_throw
+
 Exceptions
 ----------
 
@@ -139,6 +194,11 @@ These matchers propagate ``skip(reason)`` as a test skip.
                 throws<std::runtime_error>(property(
                     [](const std::runtime_error& error) { return error.what(); },
                     has_substr("row"))));
+
+.. index::
+   single: satisfies
+   single: match_result
+   single: custom matchers
 
 Custom matchers
 ---------------

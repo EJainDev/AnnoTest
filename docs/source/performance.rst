@@ -1,6 +1,10 @@
 Performance
 ===========
 
+.. index::
+   single: compilation benchmarks
+   single: GoogleTest comparison
+
 Test-file compilation
 ---------------------
 
@@ -206,6 +210,10 @@ Run the benchmark on an idle machine, without concurrent builds:
    done
    python3 benchmarks/check_results.py \
      build/benchmark-Debug.json build/benchmark-Release.json
+
+.. index::
+   single: clean builds
+   single: runtime measurements
 
 Clean builds and runtime
 ------------------------

@@ -1,5 +1,10 @@
 .. _death_tests:
 
+.. index::
+   single: death tests
+   single: assert_death
+   single: expect_death
+
 Death Tests
 ===========
 
@@ -14,6 +19,9 @@ Linux and macOS
 
 The child inherits the parent's memory and file descriptors. Changes to ordinary
 child memory do not change the parent.
+
+.. index::
+   single: Windows replay
 
 Windows
 -------
@@ -38,6 +46,14 @@ Example
 
 .. literalinclude:: ../../../../examples/example05_death_tests.cpp
    :language: cpp
+
+.. index::
+   single: assert_exit
+   single: expect_exit
+   single: exited_with_code
+   single: killed_by_signal
+   single: exit_status
+   single: stderr matching
 
 Exit status and stderr
 ----------------------

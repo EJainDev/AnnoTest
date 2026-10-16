@@ -1,6 +1,11 @@
 Validation
 ==========
 
+.. index::
+   single: self-tests
+   single: CTest
+   single: installation checks
+
 Run the self-tests
 ------------------
 
@@ -30,6 +35,9 @@ waiting, and worker protocol errors. Installation checks build separate consumer
 from a relocated prefix and through FetchContent, including CTest discovery.
 Runnable examples are also registered in CTest.
 
+.. index::
+   single: branch coverage
+
 Branch coverage
 ---------------
 
@@ -52,6 +60,9 @@ those platforms.
    python3 tools/collect_coverage.py build/coverage build/coverage/gcov-json
    python3 tools/coverage_audit.py build/coverage/gcov-json --minimum-percent 95 \
      --output build/coverage/reachable-source-coverage.json
+
+.. index::
+   single: building documentation
 
 Documentation
 -------------
