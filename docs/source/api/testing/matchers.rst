@@ -1,216 +1,350 @@
-.. index::
-   single: matchers
-   single: assert_that
-   single: expect_that
-
 Matchers
 ========
 
-All matchers are in the ``annotest`` namespace. Pass a value and a matcher to
-``assert_that(actual, matcher, message = "")`` or
-``expect_that(actual, matcher, message = "")``. Both accept an optional
-``std::source_location`` after the message, defaulted to the call site.
-A failed assertion unwinds the current body; a failed expectation continues.
+.. cpp:namespace:: annotest
 
-.. code-block:: cpp
+Matchers are callable objects passed to :cpp:func:`assert_that` or
+:cpp:func:`expect_that`. Factories below return a matcher by value and own their
+arguments by value. The value under test is passed by const reference.
+Requirements are checked when a matcher is applied to a value.
 
-    assert_that(7, all_of(gt(0), lt(10)));
-    expect_that(std::string{"ready"}, starts_with("rea"), "service status");
+Applying matchers
+-----------------
 
-.. index::
-   single: eq
-   single: ne
-   single: lt
-   single: le
-   single: gt
-   single: ge
-   single: anything
-   single: is_true
-   single: is_false
-   single: is_null
-   single: not_null
-   single: all_of
-   single: any_of
-   single: negate
+.. cpp:function:: template <typename T, typename M> void assert_that(const T& value, const M& match, std::string_view message = {}, std::source_location location = std::source_location::current())
 
-Comparison and composition
---------------------------
+   Apply a matcher once. A mismatch records a fatal assertion and unwinds the callable.
 
-.. list-table:: Value matchers
-   :header-rows: 1
-   :widths: 40 60
+   :param value: Value under test.
+   :param match: Callable accepting the value and returning an object with matched and explanation members, normally match_result. Wrap Boolean predicates with satisfies.
+   :param message: Optional diagnostic context.
+   :param location: Call-site source location.
+   :returns: Nothing.
 
-   * - Matcher
-     - Matches when
-   * - ``eq(expected)``, ``ne(expected)``
-     - The value is equal or unequal to ``expected`` using its comparison operators.
-   * - ``lt(bound)``, ``le(bound)``, ``gt(bound)``, ``ge(bound)``
-     - The value satisfies the corresponding ordering relation with ``bound``.
-   * - ``anything()``
-     - Always.
-   * - ``is_true()``, ``is_false()``
-     - Conversion of the value to bool produces true or false.
-   * - ``is_null()``, ``not_null()``
-     - The value compares equal or unequal to ``nullptr``.
-   * - ``all_of(m1, m2, ...)``
-     - Every matcher succeeds; evaluation stops at the first mismatch.
-   * - ``any_of(m1, m2, ...)``
-     - At least one matcher succeeds; evaluation stops at the first match.
-   * - ``negate(inner)``
-     - ``inner`` does not match.
+.. cpp:function:: template <typename T, typename M> void expect_that(const T& value, const M& match, std::string_view message = {}, std::source_location location = std::source_location::current())
 
-``all_of()`` with no arguments matches every value; ``any_of()`` with no
-arguments matches none. ``eq`` compares C-string pointers by identity. Use
-:doc:`string assertions <assertions>` for C-string content equality.
+   Apply a matcher once. A mismatch records a nonfatal expectation and returns.
 
-.. index::
-   single: starts_with
-   single: ends_with
-   single: has_substr
-   single: matches_regex
-   single: contains_regex
-   single: regular expressions
+   :param value: Value under test.
+   :param match: Callable accepting the value and returning an object with matched and explanation members, normally match_result. Wrap Boolean predicates with satisfies.
+   :param message: Optional diagnostic context.
+   :param location: Call-site source location.
+   :returns: Nothing.
+
+Comparison
+----------
+
+.. cpp:function:: template <typename T> auto eq(T expected)
+
+   Matches ``actual == expected``. C-string pointers use pointer identity; content checks are in :doc:`assertions`.
+
+   :param expected: Owned expected value.
+   :returns: A matcher object.
+
+.. cpp:function:: template <typename T> auto ne(T value)
+
+   Matches ``actual != value``.
+
+   :param value: Owned comparison value.
+   :returns: A matcher object.
+
+.. cpp:function:: template <typename T> auto lt(T value)
+
+   Matches ``actual < value``.
+
+   :param value: Exclusive upper bound.
+   :returns: A matcher object.
+
+.. cpp:function:: template <typename T> auto le(T value)
+
+   Matches ``actual <= value``.
+
+   :param value: Inclusive upper bound.
+   :returns: A matcher object.
+
+.. cpp:function:: template <typename T> auto gt(T value)
+
+   Matches ``actual > value``.
+
+   :param value: Exclusive lower bound.
+   :returns: A matcher object.
+
+.. cpp:function:: template <typename T> auto ge(T value)
+
+   Matches ``actual >= value``.
+
+   :param value: Inclusive lower bound.
+   :returns: A matcher object.
+
+.. cpp:function:: auto anything()
+
+   Matches every value.
+
+   :returns: A matcher object.
+
+.. cpp:function:: auto is_true()
+
+   Matches values that convert to true.
+
+   :returns: A matcher object.
+
+.. cpp:function:: auto is_false()
+
+   Matches values that convert to false.
+
+   :returns: A matcher object.
+
+.. cpp:function:: auto is_null()
+
+   Matches values equal to nullptr.
+
+   :returns: A matcher object.
+
+.. cpp:function:: auto not_null()
+
+   Matches values unequal to nullptr.
+
+   :returns: A matcher object.
+
+Composition
+-----------
+
+.. cpp:function:: template <typename M> auto negate(M inner)
+
+   Matches when the inner matcher does not.
+
+   :param inner: Matcher to invert.
+   :returns: A matcher object.
+
+.. cpp:function:: template <typename... Ms> auto all_of(Ms... inners)
+
+   Matches when all inner matchers succeed, stopping at the first mismatch. With no arguments, always matches.
+
+   :param inners: Zero or more matchers.
+   :returns: A matcher object.
+
+.. cpp:function:: template <typename... Ms> auto any_of(Ms... inners)
+
+   Matches when any inner matcher succeeds, stopping at the first match. With no arguments, never matches.
+
+   :param inners: Zero or more matchers.
+   :returns: A matcher object.
 
 Strings and regular expressions
 -------------------------------
 
-``starts_with(prefix)``, ``ends_with(suffix)``, and ``has_substr(text)`` accept
-narrow strings and string views. Matching is case-sensitive.
-``matches_regex(pattern)`` requires the entire string to match;
-``contains_regex(pattern)`` searches for a matching substring.
-Patterns use the default ``std::regex`` syntax. Invalid patterns throw
-``std::regex_error`` when the matcher is constructed.
+.. cpp:function:: auto starts_with(std::string prefix)
 
-.. code-block:: cpp
+   Matches a narrow string or string view with the specified prefix; case-sensitive.
 
-    assert_that(std::string{"item-42"}, matches_regex("item-[0-9]+"));
-    expect_that(std::string{"count: 42"}, contains_regex("[0-9]+"));
+   :param prefix: Owned prefix string.
+   :returns: A matcher object.
 
-.. index::
-   single: is_empty
-   single: contains
-   single: each
-   single: size_is
-   single: elements_are
-   single: unordered_elements_are
-   single: range matchers
+.. cpp:function:: auto ends_with(std::string suffix)
+
+   Matches a narrow string or string view with the specified suffix; case-sensitive.
+
+   :param suffix: Owned suffix string.
+   :returns: A matcher object.
+
+.. cpp:function:: auto has_substr(std::string text)
+
+   Matches a narrow string or string view containing the specified substring; case-sensitive.
+
+   :param text: Owned substring.
+   :returns: A matcher object.
+
+.. cpp:function:: auto matches_regex(std::string pattern)
+
+   Requires a full-string match using the default std::regex syntax. Construction throws std::regex_error for an invalid pattern.
+
+   :param pattern: Regular expression.
+   :returns: A matcher object.
+
+.. cpp:function:: auto contains_regex(std::string pattern)
+
+   Searches for a matching substring using the default std::regex syntax. Construction throws std::regex_error for an invalid pattern.
+
+   :param pattern: Regular expression.
+   :returns: A matcher object.
 
 Ranges
 ------
 
-.. list-table:: Range matchers
-   :header-rows: 1
-   :widths: 40 60
+.. cpp:function:: auto is_empty()
 
-   * - Matcher
-     - Behavior
-   * - ``is_empty()``
-     - Checks whether the range is empty.
-   * - ``contains(inner)``
-     - Matches if at least one element matches ``inner``.
-   * - ``each(inner)``
-     - Requires every element to match. An empty range matches.
-   * - ``size_is(inner)``
-     - Applies ``inner`` to the size of a sized range.
-   * - ``elements_are(m1, m2, ...)``
-     - Requires exactly one element per matcher, in the specified order.
-   * - ``unordered_elements_are(m1, m2, ...)``
-     - Requires exactly one distinct element per matcher, in any order.
+   Matches an empty range.
 
-``unordered_elements_are`` supports overlapping matchers. Each matcher must
-match a different element; an element cannot satisfy multiple positions.
-Both element-list matchers with no arguments match only empty ranges.
+   :returns: A matcher object.
 
-.. code-block:: cpp
+.. cpp:function:: template <typename M> auto contains(M inner)
 
-    assert_that(std::vector{1, 2, 3}, elements_are(eq(1), eq(2), eq(3)));
-    assert_that(std::vector{2, 1}, unordered_elements_are(gt(0), eq(1)));
+   Matches when at least one range element matches inner.
 
-.. index::
-   single: field
-   single: property
-   single: pointee
-   single: optional_value
-   single: variant_with
+   :param inner: Element matcher.
+   :returns: A matcher object.
 
-Members, pointers, and alternatives
-------------------------------------
+.. cpp:function:: template <typename M> auto each(M inner)
 
-``field(member, inner)`` applies ``inner`` to the result of invoking ``member``
-on the object. It accepts a data-member pointer, member-function pointer, or
-compatible callable. ``property(member, inner)`` has the same behavior.
-``pointee(inner)`` requires a non-null pointer and matches the pointed-to value.
-``optional_value(inner)`` requires an engaged optional and matches its value.
-``variant_with<T>(inner)`` requires the variant to hold ``T`` and matches that value.
+   Matches when every element matches inner. Empty ranges match.
 
-.. code-block:: cpp
+   :param inner: Element matcher.
+   :returns: A matcher object.
 
-    struct Item { int count; };
-    assert_that(Item{3}, field(&Item::count, gt(0)));
-    assert_that(std::optional{7}, optional_value(eq(7)));
-    assert_that(std::variant<int, std::string>{7}, variant_with<int>(eq(7)));
+.. cpp:function:: template <typename M> auto size_is(M inner)
 
-.. index::
-   single: near
-   single: ulp_near
-   single: is_nan
-   single: numeric tolerance
+   Applies inner to the size of a sized range.
 
-Numeric tolerance
------------------
+   :param inner: Matcher for the range size.
+   :returns: A matcher object.
 
-``near(expected, absolute, relative = 0)`` matches exact equality or a difference
-no greater than ``max(absolute, relative * max(abs(actual), abs(expected)))``.
-Supply ``expected`` and both tolerances with the same numeric type.
-Negative tolerances throw ``std::invalid_argument``. Unequal nonfinite operands
-do not match; equal infinities match, and NaN never matches.
+.. cpp:function:: template <typename... Ms> auto elements_are(Ms... inners)
 
-``ulp_near(expected, distance = 4)`` accepts a floating-point expected value and
-matches values within ``distance`` representable floating-point steps. A distance
-of zero requires exact equality. Equal infinities match; unequal nonfinite values
-and NaN do not. ``is_nan()`` checks for NaN directly.
+   Requires exactly one element per matcher, in order. No matchers accepts only an empty range.
 
-.. code-block:: cpp
+   :param inners: Ordered element matchers.
+   :returns: A matcher object.
 
-    assert_that(100.5, near(100.0, 0.01, 0.01));
-    assert_that(std::nextafter(1.0, 2.0), ulp_near(1.0, 1));
+.. cpp:function:: template <typename... Ms> auto unordered_elements_are(Ms... inners)
 
-.. index::
-   single: throws
-   single: does_not_throw
+   Requires a one-to-one assignment of elements to matchers, allowing overlapping matchers. Counts must be equal. No matchers accepts only an empty range.
 
-Exceptions
-----------
+   :param inners: Element matchers; each must match a distinct element.
+   :returns: A matcher object.
 
-``throws<E>()`` invokes a callable and matches an exception of type ``E`` or a
-derived type. ``throws<E>(inner)`` also applies ``inner`` to the caught exception.
-Returning normally or throwing another exception type does not match.
-``does_not_throw()`` matches a callable that returns normally.
-These matchers propagate ``skip(reason)`` as a test skip.
+Members and alternatives
+------------------------
 
-.. code-block:: cpp
+.. cpp:function:: template <typename Member, typename M> auto field(Member member, M inner)
 
-    assert_that([] { throw std::runtime_error("invalid row"); },
-                throws<std::runtime_error>(property(
-                    [](const std::runtime_error& error) { return error.what(); },
-                    has_substr("row"))));
+   Applies inner to ``std::invoke(member, actual)``.
 
-.. index::
-   single: satisfies
-   single: match_result
-   single: custom matchers
+   :param member: Data-member pointer, member-function pointer, or compatible callable.
+   :param inner: Matcher for the extracted value.
+   :returns: A matcher object.
+
+.. cpp:function:: template <typename Member, typename M> auto property(Member member, M inner)
+
+   Equivalent to field; applies inner to the invoked member or accessor.
+
+   :param member: Invocable accessor.
+   :param inner: Matcher for the extracted value.
+   :returns: A matcher object.
+
+.. cpp:function:: template <typename M> auto pointee(M inner)
+
+   Requires a non-null pointer and applies inner to its dereferenced value.
+
+   :param inner: Pointee matcher.
+   :returns: A matcher object.
+
+.. cpp:function:: template <typename M> auto optional_value(M inner)
+
+   Requires an engaged optional and applies inner to its value.
+
+   :param inner: Contained-value matcher.
+   :returns: A matcher object.
+
+.. cpp:function:: template <typename T, typename M> auto variant_with(M inner)
+
+   Requires a variant holding T and applies inner to its value.
+
+   :param T: Required alternative type.
+   :param inner: Alternative matcher.
+   :returns: A matcher object.
+
+Floating-point values
+---------------------
+
+.. cpp:function:: template <typename T> auto near(T expected, T absolute, T relative = T{})
+
+   Matches exact equality or a difference no larger than ``max(absolute, relative * max(abs(actual), abs(expected)))``. NaN never matches; equal infinities match.
+
+   :param expected: Expected numeric value.
+   :param absolute: Absolute tolerance.
+   :param relative: Relative tolerance; defaults to zero.
+   :returns: A matcher object.
+
+.. cpp:function:: template <std::floating_point T> auto ulp_near(T expected, unsigned distance = 4)
+
+   Matches floating-point values within the specified number of representable steps. NaN never matches; signed zeroes match.
+
+   :param expected: Expected floating-point value.
+   :param distance: Maximum ULP distance; defaults to four.
+   :returns: A matcher object.
+
+.. cpp:function:: auto is_nan()
+
+   Matches a floating-point NaN.
+
+   :returns: A matcher object.
+
+Callables and exceptions
+------------------------
+
+.. cpp:function:: template <typename E> auto throws()
+
+   Invokes a nullary callable and matches an exception caught as const E&. The overload with an inner matcher applies it to that exception. No exception or a different type mismatches. A library skip propagates.
+
+   :param E: Expected exception type.
+   :returns: A matcher object.
+
+.. cpp:function:: template <typename E, typename M> auto throws(M inner)
+
+   Invokes a nullary callable and matches an exception caught as const E&. The overload with an inner matcher applies it to that exception. No exception or a different type mismatches. A library skip propagates.
+
+   :param E: Expected exception type.
+   :param inner: Optional exception matcher.
+   :returns: A matcher object.
+
+.. cpp:function:: auto does_not_throw()
+
+   Invokes a nullary callable and matches normal completion. A library skip propagates.
+
+   :returns: A matcher object.
 
 Custom matchers
 ---------------
 
-``satisfies(predicate, description = "predicate satisfied")`` wraps a callable
-that accepts the tested value and returns a bool-convertible value or ``match_result``.
-``match_result`` contains ``bool matched`` and ``std::string explanation``.
-A failed check includes the explanation in its diagnostic.
-Calling a matcher directly returns ``match_result`` without recording a failure.
+.. cpp:function:: template <typename F> auto satisfies(F predicate, std::string description = "predicate satisfied")
 
-.. code-block:: cpp
+   Construct a matcher from a predicate.
 
-    auto even = satisfies([](int value) { return value % 2 == 0; }, "an even number");
-    assert_that(4, even);
-    assert_true(even(6).matched);
+   :param predicate: Callable accepting const T& and returning a Boolean-like value or match_result.
+   :param description: Explanation used for Boolean-like predicate results.
+   :returns: matcher<F> owning both arguments.
+
+.. cpp:struct:: match_result
+
+   Outcome and diagnostic text returned by a matcher.
+
+.. cpp:member:: bool match_result::matched
+
+   Whether the value matched.
+
+.. cpp:member:: std::string match_result::explanation
+
+   Diagnostic text describing the comparison.
+
+.. cpp:function:: explicit match_result::operator bool() const
+
+   Return matched.
+
+.. cpp:struct:: template <typename F> matcher
+
+   Callable wrapper owning a predicate and a fallback description.
+
+.. cpp:member:: template <typename F> F matcher<F>::predicate
+
+   Stored predicate.
+
+.. cpp:member:: template <typename F> std::string matcher<F>::description
+
+   Explanation for a predicate returning a Boolean-like value.
+
+.. cpp:function:: template <typename F> template <typename T> match_result matcher<F>::operator()(const T& value) const
+
+   Invoke the predicate. Return its match_result unchanged, or convert its Boolean-like result and attach description.
+
+   :param value: Value under test.
+   :returns: Match outcome and explanation.

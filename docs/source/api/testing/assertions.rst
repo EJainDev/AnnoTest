@@ -1,240 +1,666 @@
 .. _assertions_and_expectations:
 
-.. index::
-   single: assertions
-   single: expectations
-   single: assert_equal
-   single: expect_equal
-   single: assert_not_equal
-   single: expect_not_equal
-   single: assert_true
-   single: expect_true
-   single: assert_false
-   single: expect_false
-   single: assert_near
-   single: expect_near
-   single: assert_less
-   single: expect_less
-   single: assert_less_equal
-   single: expect_less_equal
-   single: assert_greater
-   single: expect_greater
-   single: assert_greater_equal
-   single: expect_greater_equal
-   single: assert_contains
-   single: expect_contains
-   single: assert_null
-   single: expect_null
-   single: assert_throws
-   single: expect_throws
-   single: assert_throws_exact
-   single: expect_throws_exact
-   single: assert_no_throw
-   single: expect_no_throw
-   single: wrap
-
-Assertions and Expectations
+Assertions and expectations
 ===========================
 
-A failed ``assert_*`` records a failure and unwinds the current body; a failed
-``expect_*`` records a failure and continues. Both fail the case and allow later
-cases to run. Use ``capture_failures`` to inspect assertion failures.
-For composable value checks with ``assert_that`` and ``expect_that``, see
-:doc:`matchers`.
+.. cpp:namespace:: annotest
 
-.. list-table:: Checks in the annotest namespace
-   :header-rows: 1
+A successful check returns normally. A failed ``assert_*`` records a fatal failure
+and unwinds its callable; a failed ``expect_*`` records a nonfatal failure and
+returns. Both fail the case. Arguments are evaluated once; values are formatted
+on failure. Unless an entry states otherwise, checks return ``void``.
 
-   * - Purpose
-     - Assertion
-     - Expectation
-   * - Equality
-     - ``assert_equal(expected, actual)``
-     - ``expect_equal(expected, actual)``
-   * - Inequality
-     - ``assert_not_equal(expected, actual)``
-     - ``expect_not_equal(expected, actual)``
-   * - Truth
-     - ``assert_true(value)``, ``assert_false(value)``
-     - ``expect_true(value)``, ``expect_false(value)``
-   * - Numeric tolerance
-     - ``assert_near(expected, actual, tolerance)``
-     - ``expect_near(expected, actual, tolerance)``
-   * - Ordering
-     - ``assert_less``, ``assert_less_equal``, ``assert_greater``, ``assert_greater_equal``
-     - Corresponding ``expect_*`` helpers
-   * - Containment
-     - ``assert_contains(container, value)``
-     - ``expect_contains(container, value)``
-   * - Null pointer
-     - ``assert_null(pointer)``
-     - ``expect_null(pointer)``
-   * - Exception matching
-     - ``assert_throws<E>(callable)``, ``assert_throws_exact<E>(callable)``
-     - ``expect_throws<E>(callable)``, ``expect_throws_exact<E>(callable)``
-   * - Contract violation
-     - ``assert_contract_violation``, ``assert_no_contract_violation``
-     - Corresponding ``expect_*`` helpers
-   * - Process death
-     - ``assert_death(callable)``
-     - ``expect_death(callable)``
+The ``loc`` or ``location`` argument defaults to the calling source location.
+Message overloads add user context without changing the comparison.
+The basic overloads take their operands by value except where shown.
 
-``assert_death`` and ``expect_death`` support Linux, macOS, and Windows; see
-:doc:`death` for the Windows replay requirements. The tolerance default is 0.001.
-Exception helpers default to ``std::exception`` and match derived types;
-``*_throws_exact`` requires the precise exception type. All checks accept an
-optional source location, defaulted to the call site.
+Equality and ordering
+---------------------
 
-Checks evaluate their operands/callables once. Diagnostic formatting is deferred
-until a check fails. ``wrap`` allows deferred or referenced values; see the basic
-example. Contract checks require the handler header and observe semantics
-explained in :doc:`contracts`.
+.. cpp:function:: void assert_equal(auto expected, auto actual, const std::source_location& loc = std::source_location::current())
 
-.. code-block:: cpp
+   Succeeds when ``expected != actual`` is false. C-string operands compare pointer identity; use ``assert_streq`` for content.
 
-    [[= test{}]] void checks() {
-        expect_equal(4, 2 + 2);
-        assert_throws<std::runtime_error>([] { throw std::runtime_error("example"); });
-        expect_true(true);  // Runs after successful checks and failed expectations.
-    }
+   :param expected: Expected value; must support comparison with actual.
+   :param actual: Observed value.
+   :returns: Nothing.
 
-.. index::
-   single: failure messages
-   single: has_failure
-   single: has_fatal_failure
-   single: has_nonfatal_failure
-   single: current_failures
-   single: capture_failures
-   single: assert_failure
-   single: expect_failure
-   single: assert_no_fatal_failure
-   single: expect_no_fatal_failure
+.. cpp:function:: template <typename T, typename U> void assert_equal(T&& first, U&& second, std::string_view message, std::source_location location = std::source_location::current())
 
-Messages and failure inspection
--------------------------------
+   Message overload. The check has the same operands and behavior as the overload above.
 
-Pass a message after the check arguments and before the optional source location:
-``expect_equal(expected, actual, "row 7")``. The message appears in the failure
-diagnostic. This form also applies to truth, ordering, containment, tolerance,
-null, exception, and contract checks, and to ``assert_no_throw`` and
-``expect_no_throw``.
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
 
-``has_failure()``, ``has_fatal_failure()``, and ``has_nonfatal_failure()`` inspect
-the active case. ``current_failures()`` returns its recorded failures, including
-type, message, phase, and source location.
+.. cpp:function:: void expect_equal(auto expected, auto actual, const std::source_location& loc = std::source_location::current())
 
-``capture_failures(callable)`` records a callable's assertion failures in a
-returned vector without failing the surrounding test. Fatal assertions unwind
-the callable. Nested captures are independent; other exceptions propagate.
-Pass ``true`` as the second argument to capture failures from helper threads too.
-Join those threads before the callable returns.
+   Succeeds when ``expected != actual`` is false. C-string operands compare pointer identity; use ``assert_streq`` for content.
 
-``assert_failure(callable, failure_types::assertion, "message fragment")`` and
-``expect_failure`` check that a callable produces a matching failure.
-``assert_no_fatal_failure`` and ``expect_no_fatal_failure`` run a callable and
-report a fatal assertion from it as a failed check.
+   :param expected: Expected value; must support comparison with actual.
+   :param actual: Observed value.
+   :returns: Nothing.
 
-.. index::
-   single: test_thread
-   single: helper threads
+.. cpp:function:: template <typename T, typename U> void expect_equal(T&& first, U&& second, std::string_view message, std::source_location location = std::source_location::current())
 
-Helper threads
---------------
+   Message overload. The check has the same operands and behavior as the overload above.
 
-Assertions from helper threads attach to the active case in arrival order.
-Join helper threads before the test returns. Scoped traces belong to the thread
-that creates them, and listener assertion callbacks are serialized.
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
 
-``test_thread(callable)`` returns a ``std::jthread`` that joins on destruction.
-Fatal assertions unwind its callable; unexpected exceptions are recorded as
-failures on the active case. Nonfatal expectations continue within the thread.
+.. cpp:function:: void assert_not_equal(auto expected, auto actual, const std::source_location& loc = std::source_location::current())
 
-.. index::
-   single: string comparisons
-   single: diagnostic printers
-   single: print_to
-   single: assert_streq
-   single: expect_streq
-   single: assert_strne
-   single: expect_strne
-   single: assert_strcaseeq
-   single: expect_strcaseeq
-   single: assert_strcasene
-   single: expect_strcasene
+   Succeeds when ``expected == actual`` is false.
 
-String comparisons and diagnostic printers
-------------------------------------------
+   :param expected: Value that actual must differ from.
+   :param actual: Observed value.
+   :returns: Nothing.
 
-``assert_streq`` / ``expect_streq`` compare C strings by content, and
-``assert_strne`` / ``expect_strne`` check that their contents differ.
-``assert_strcaseeq`` / ``expect_strcaseeq`` and
-``assert_strcasene`` / ``expect_strcasene`` ignore ASCII letter case.
-These helpers accept narrow or wide C strings, followed by an optional message
-and source location. Two null pointers are equal; null and an empty string are
-different. Comparisons stop at the first null terminator. Unicode case folding
-is not performed. ``assert_equal`` and ``expect_equal`` continue to use ordinary
-operator equality, including pointer identity for C strings.
+.. cpp:function:: template <typename T, typename U> void assert_not_equal(T&& first, U&& second, std::string_view message, std::source_location location = std::source_location::current())
 
-.. code-block:: cpp
+   Message overload. The check has the same operands and behavior as the overload above.
 
-    char first[] = "hello", second[] = "hello";
-    assert_streq(first, second);       // Content equality.
-    assert_not_equal(first, second);   // Distinct addresses.
-    expect_strcaseeq("HELLO", "hello", "response header");
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
 
-String assertion failures show quoted, escaped values and the first differing
-character index for equality checks. Wide strings are encoded as UTF-8;
-invalid wide code units remain visible in escaped form. Null C strings are
-printed as ``nullptr``. Character arrays are bounded when printed directly.
-Ordering failures include the comparison operator and both operands.
-Generic C-string equality failures also show pointer addresses to distinguish
-different buffers containing identical text.
+.. cpp:function:: void expect_not_equal(auto expected, auto actual, const std::source_location& loc = std::source_location::current())
 
-Define ``void print_to(const T&, std::ostream*)`` in the same namespace as your
-type, or as a friend, to supply a diagnostic printer. Argument-dependent lookup
-finds it before the standard formatter, range printer, or stream fallback.
-The same printer is used inside ranges and first-difference diagnostics.
-Assertion diagnostics invoke printers only on failure.
+   Succeeds when ``expected == actual`` is false.
 
-.. code-block:: cpp
+   :param expected: Value that actual must differ from.
+   :param actual: Observed value.
+   :returns: Nothing.
 
-    struct Point {
-        int x, y;
-        friend void print_to(const Point& point, std::ostream* out) {
-            *out << "Point(" << point.x << ", " << point.y << ")";
-        }
-    };
+.. cpp:function:: template <typename T, typename U> void expect_not_equal(T&& first, U&& second, std::string_view message, std::source_location location = std::source_location::current())
 
-Diagnostics include evaluated operand values. Use the optional message or
-``scoped_trace`` to include expression names or input context.
+   Message overload. The check has the same operands and behavior as the overload above.
 
-.. index::
-   single: assert_all
-   single: expect_all
-   single: grouped assertions
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
 
-Grouped assertions
+.. cpp:function:: void assert_less(auto a, auto b, const std::source_location& loc = std::source_location::current())
+
+   Succeeds when ``a < b``.
+
+   :param a: Left comparison operand.
+   :param b: Right comparison operand.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T, typename U> void assert_less(T&& first, U&& second, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+.. cpp:function:: void expect_less(auto a, auto b, const std::source_location& loc = std::source_location::current())
+
+   Succeeds when ``a < b``.
+
+   :param a: Left comparison operand.
+   :param b: Right comparison operand.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T, typename U> void expect_less(T&& first, U&& second, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+.. cpp:function:: void assert_less_equal(auto a, auto b, const std::source_location& loc = std::source_location::current())
+
+   Succeeds when ``a <= b``.
+
+   :param a: Left comparison operand.
+   :param b: Right comparison operand.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T, typename U> void assert_less_equal(T&& first, U&& second, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+.. cpp:function:: void expect_less_equal(auto a, auto b, const std::source_location& loc = std::source_location::current())
+
+   Succeeds when ``a <= b``.
+
+   :param a: Left comparison operand.
+   :param b: Right comparison operand.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T, typename U> void expect_less_equal(T&& first, U&& second, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+.. cpp:function:: void assert_greater(auto a, auto b, const std::source_location& loc = std::source_location::current())
+
+   Succeeds when ``a > b``.
+
+   :param a: Left comparison operand.
+   :param b: Right comparison operand.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T, typename U> void assert_greater(T&& first, U&& second, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+.. cpp:function:: void expect_greater(auto a, auto b, const std::source_location& loc = std::source_location::current())
+
+   Succeeds when ``a > b``.
+
+   :param a: Left comparison operand.
+   :param b: Right comparison operand.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T, typename U> void expect_greater(T&& first, U&& second, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+.. cpp:function:: void assert_greater_equal(auto a, auto b, const std::source_location& loc = std::source_location::current())
+
+   Succeeds when ``a >= b``.
+
+   :param a: Left comparison operand.
+   :param b: Right comparison operand.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T, typename U> void assert_greater_equal(T&& first, U&& second, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+.. cpp:function:: void expect_greater_equal(auto a, auto b, const std::source_location& loc = std::source_location::current())
+
+   Succeeds when ``a >= b``.
+
+   :param a: Left comparison operand.
+   :param b: Right comparison operand.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T, typename U> void expect_greater_equal(T&& first, U&& second, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+Truth, null, and containment
+----------------------------
+
+.. cpp:function:: void assert_true(auto value, const std::source_location& loc = std::source_location::current())
+
+   Succeeds when the value tests true in a Boolean context.
+
+   :param value: Expression supporting Boolean testing.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T> void assert_true(T&& value, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+.. cpp:function:: void expect_true(auto value, const std::source_location& loc = std::source_location::current())
+
+   Succeeds when the value tests true in a Boolean context.
+
+   :param value: Expression supporting Boolean testing.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T> void expect_true(T&& value, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+.. cpp:function:: void assert_false(auto value, const std::source_location& loc = std::source_location::current())
+
+   Succeeds when the value tests false in a Boolean context.
+
+   :param value: Expression supporting Boolean testing.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T> void assert_false(T&& value, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+.. cpp:function:: void expect_false(auto value, const std::source_location& loc = std::source_location::current())
+
+   Succeeds when the value tests false in a Boolean context.
+
+   :param value: Expression supporting Boolean testing.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T> void expect_false(T&& value, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+.. cpp:function:: void assert_null(auto ptr, const std::source_location& loc = std::source_location::current())
+
+   Succeeds when the pointer compares equal to ``nullptr``.
+
+   :param ptr: Nullable pointer.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T> void assert_null(T&& value, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+.. cpp:function:: void expect_null(auto ptr, const std::source_location& loc = std::source_location::current())
+
+   Succeeds when the pointer compares equal to ``nullptr``.
+
+   :param ptr: Nullable pointer.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T> void expect_null(T&& value, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+.. cpp:function:: void assert_contains(auto const& container, auto const& value, const std::source_location& loc = std::source_location::current())
+
+   Succeeds when ``std::find`` finds an equal element before the end of the container.
+
+   :param container: Iterable container.
+   :param value: Element to find.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T, typename U> void assert_contains(T&& first, U&& second, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+.. cpp:function:: void expect_contains(auto const& container, auto const& value, const std::source_location& loc = std::source_location::current())
+
+   Succeeds when ``std::find`` finds an equal element before the end of the container.
+
+   :param container: Iterable container.
+   :param value: Element to find.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T, typename U> void expect_contains(T&& first, U&& second, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+Numeric tolerance
+-----------------
+
+.. cpp:function:: template <typename T, typename U, typename K = std::common_type_t<T, U>> void assert_near(T expected, U actual, K tol = static_cast<K>(0.001), const std::source_location& loc = std::source_location::current())
+
+   Succeeds when ``std::abs(expected - actual) <= tol``. The default tolerance is ``static_cast<K>(0.001)``; integral common types therefore default to zero.
+
+   :param expected: Expected numeric value.
+   :param actual: Observed numeric value.
+   :param tol: Inclusive absolute tolerance; K defaults to the operands' common type.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T, typename U, typename K> void assert_near(T expected, U actual, K tolerance, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+.. cpp:function:: template <typename T, typename U, typename K = std::common_type_t<T, U>> void expect_near(T expected, U actual, K tol = static_cast<K>(0.001), const std::source_location& loc = std::source_location::current())
+
+   Succeeds when ``std::abs(expected - actual) <= tol``. The default tolerance is ``static_cast<K>(0.001)``; integral common types therefore default to zero.
+
+   :param expected: Expected numeric value.
+   :param actual: Observed numeric value.
+   :param tol: Inclusive absolute tolerance; K defaults to the operands' common type.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T, typename U, typename K> void expect_near(T expected, U actual, K tolerance, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+C-string content
+----------------
+
+.. cpp:function:: template <typename T, typename U> void assert_streq(T expected, U actual, std::string_view message = {}, std::source_location location = std::source_location::current())
+
+   Succeeds when null-terminated strings have equal contents. Two null pointers are equal; null differs from an empty string.
+
+   :param expected: Narrow or wide C string; both operands must use the same character type.
+   :param actual: Observed C string.
+   :param message: Optional diagnostic context.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T, typename U> void expect_streq(T expected, U actual, std::string_view message = {}, std::source_location location = std::source_location::current())
+
+   Succeeds when null-terminated strings have equal contents. Two null pointers are equal; null differs from an empty string.
+
+   :param expected: Narrow or wide C string; both operands must use the same character type.
+   :param actual: Observed C string.
+   :param message: Optional diagnostic context.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T, typename U> void assert_strne(T expected, U actual, std::string_view message = {}, std::source_location location = std::source_location::current())
+
+   Succeeds when C-string contents differ, including null versus non-null.
+
+   :param expected: Narrow or wide C string.
+   :param actual: C string of the same character type.
+   :param message: Optional diagnostic context.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T, typename U> void expect_strne(T expected, U actual, std::string_view message = {}, std::source_location location = std::source_location::current())
+
+   Succeeds when C-string contents differ, including null versus non-null.
+
+   :param expected: Narrow or wide C string.
+   :param actual: C string of the same character type.
+   :param message: Optional diagnostic context.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T, typename U> void assert_strcaseeq(T expected, U actual, std::string_view message = {}, std::source_location location = std::source_location::current())
+
+   Succeeds when contents match after ASCII case folding. Unicode case folding is not performed.
+
+   :param expected: Narrow or wide C string.
+   :param actual: C string of the same character type.
+   :param message: Optional diagnostic context.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T, typename U> void expect_strcaseeq(T expected, U actual, std::string_view message = {}, std::source_location location = std::source_location::current())
+
+   Succeeds when contents match after ASCII case folding. Unicode case folding is not performed.
+
+   :param expected: Narrow or wide C string.
+   :param actual: C string of the same character type.
+   :param message: Optional diagnostic context.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T, typename U> void assert_strcasene(T expected, U actual, std::string_view message = {}, std::source_location location = std::source_location::current())
+
+   Succeeds when contents differ after ASCII case folding.
+
+   :param expected: Narrow or wide C string.
+   :param actual: C string of the same character type.
+   :param message: Optional diagnostic context.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename T, typename U> void expect_strcasene(T expected, U actual, std::string_view message = {}, std::source_location location = std::source_location::current())
+
+   Succeeds when contents differ after ASCII case folding.
+
+   :param expected: Narrow or wide C string.
+   :param actual: C string of the same character type.
+   :param message: Optional diagnostic context.
+   :returns: Nothing.
+
+Exceptions
+----------
+
+.. cpp:function:: template <typename E = std::exception> void assert_throws(auto func, const std::source_location& loc = std::source_location::current())
+
+   Invokes the callable once. Succeeds if an exception caught by ``const E&`` is thrown, including derived types. No exception or a different type fails. A library skip propagates.
+
+   :param func: Nullary callable.
+   :param E: Expected exception type; defaults to std::exception.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename E = std::exception, typename F> void assert_throws(F&& callable, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+.. cpp:function:: template <typename E = std::exception> void expect_throws(auto func, const std::source_location& loc = std::source_location::current())
+
+   Invokes the callable once. Succeeds if an exception caught by ``const E&`` is thrown, including derived types. No exception or a different type fails. A library skip propagates.
+
+   :param func: Nullary callable.
+   :param E: Expected exception type; defaults to std::exception.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename E = std::exception, typename F> void expect_throws(F&& callable, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+.. cpp:function:: template <typename E> void assert_throws_exact(auto f, const std::source_location& loc = std::source_location::current())
+
+   Invokes the callable once. Succeeds only if the dynamic exception type is exactly E. A derived type, another exception, or no exception fails. A library skip propagates.
+
+   :param f: Nullary callable.
+   :param E: Exact exception type; specify E explicitly for the overload without a message.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename E = std::exception, typename F> void assert_throws_exact(F&& callable, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+.. cpp:function:: template <typename E> void expect_throws_exact(auto f, const std::source_location& loc = std::source_location::current())
+
+   Invokes the callable once. Succeeds only if the dynamic exception type is exactly E. A derived type, another exception, or no exception fails. A library skip propagates.
+
+   :param f: Nullary callable.
+   :param E: Exact exception type; specify E explicitly for the overload without a message.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename E = std::exception, typename F> void expect_throws_exact(F&& callable, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+Failure inspection
 ------------------
 
-``assert_all("label", block1, block2, ...)`` executes independent callable blocks
-in order. A fatal assertion ends its block, and later blocks still run. After
-all blocks finish, the group unwinds if any new failure was recorded.
-``expect_all`` runs the same blocks and continues after the group even when
-they fail. Labels are optional; groups may be empty or nested and accept
-move-only callables.
+.. cpp:function:: bool has_failure()
 
-.. code-block:: cpp
+   Return whether the active case has any recorded failure.
 
-    assert_all("response",
-        [&] {
-            assert_not_equal(response, nullptr);
-            assert_equal(200, response->status);
-        },
-        [&] { assert_streq(version, "1.0"); });
+.. cpp:function:: bool has_fatal_failure()
 
-Original failure types and assertion locations are retained, with the group
-label added as trace context. Standard and unknown exceptions are recorded as
-errors and do not prevent later blocks from running. A skip immediately aborts
-the group and remaining blocks. Groups do not duplicate recorded failures and
-work inside ``capture_failures``; intercepted inner failures do
-not fail the surrounding group.
+   Return whether the active case has a recorded fatal assertion failure.
+
+.. cpp:function:: bool has_nonfatal_failure()
+
+   Return whether the active case has a recorded expectation failure.
+
+.. cpp:function:: std::vector<failure_result> current_failures()
+
+   Return a snapshot of recorded failures for the active case. Each entry contains a category, message, phase, and optional source location; see :doc:`results`.
+
+.. cpp:function:: template <typename F> std::vector<failure_result> capture_failures(F&& callable, bool all_threads = false)
+
+   Invoke the callable and return intercepted failures without failing the surrounding case. A fatal assertion ends the callable. Nested captures are independent; exceptions other than assertion control flow propagate.
+
+   :param callable: Nullary callable to inspect.
+   :param all_threads: Also intercept helper-thread failures when true. Join all such threads before the callable returns.
+   :returns: Captured failure records.
+   :throws std::logic_error: Another all-thread capture is already active.
+
+   Intercepted failures do not appear in current_failures() or its Boolean query helpers.
+
+.. cpp:function:: template <typename F> void assert_failure(F&& callable, failure_types type, std::string_view substring = {}, std::source_location location = std::source_location::current())
+
+   Capture failures from a callable and require a failure of the selected type whose message contains the supplied substring.
+
+   :param callable: Nullary callable.
+   :param type: Required failure category; see :cpp:enum:`failure_types`.
+   :param substring: Required message fragment; an empty string accepts any message.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename F> void expect_failure(F&& callable, failure_types type, std::string_view substring = {}, std::source_location location = std::source_location::current())
+
+   Capture failures from a callable and require a failure of the selected type whose message contains the supplied substring.
+
+   :param callable: Nullary callable.
+   :param type: Required failure category; see :cpp:enum:`failure_types`.
+   :param substring: Required message fragment; an empty string accepts any message.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename F> void assert_no_fatal_failure(F&& callable, std::source_location location = std::source_location::current())
+
+   Run a callable and fail this check if it records a fatal assertion. Nonfatal failures remain recorded.
+
+   :param callable: Nullary callable.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename F> void expect_no_fatal_failure(F&& callable, std::source_location location = std::source_location::current())
+
+   Run a callable and fail this check if it records a fatal assertion. Nonfatal failures remain recorded.
+
+   :param callable: Nullary callable.
+   :returns: Nothing.
+
+Explicit failures and exception guards
+--------------------------------------
+
+.. cpp:function:: void fail(std::string_view message = "Explicit failure", std::source_location location = std::source_location::current())
+
+   Record a fatal failure and unwind the callable.
+
+   :param message: Diagnostic text; defaults to ``Explicit failure``.
+   :returns: Does not return normally.
+
+.. cpp:function:: void add_failure_message(std::string_view message, std::source_location location = std::source_location::current())
+
+   Record a nonfatal expectation failure and continue.
+
+   :param message: Diagnostic text.
+   :returns: Nothing.
+
+.. cpp:function:: void assert_no_throw(auto callable, std::source_location location = std::source_location::current())
+
+   Invoke a callable once and require it to complete without an exception. A library skip propagates.
+
+   :param callable: Nullary callable.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename F> void assert_no_throw(F&& callable, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+.. cpp:function:: void expect_no_throw(auto callable, std::source_location location = std::source_location::current())
+
+   Invoke a callable once and require it to complete without an exception. A library skip propagates.
+
+   :param callable: Nullary callable.
+   :returns: Nothing.
+
+.. cpp:function:: template <typename F> void expect_no_throw(F&& callable, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload. The check has the same operands and behavior as the overload above.
+
+   :param message: User context appended to the failure diagnostic.
+   :param location: Source location, defaulted to the call site.
+
+Assertion groups
+----------------
+
+.. cpp:function:: template <typename... Fs> void assert_all(std::string_view name, Fs&&... blocks)
+
+   Run callable blocks in order. A fatal assertion ends its block; later blocks still run. Standard and unknown exceptions become errors. A skip stops the group. Recorded failures retain their original locations and categories.
+
+   :param blocks: Zero or more nullary callables; move-only callables are accepted.
+   :param name: Group label added as trace context.
+   :returns: Nothing. Unwinds after all blocks if a new failure was recorded.
+
+.. cpp:function:: template <typename... Fs> void assert_all(Fs&&... blocks)
+
+   Run callable blocks in order. A fatal assertion ends its block; later blocks still run. Standard and unknown exceptions become errors. A skip stops the group. Recorded failures retain their original locations and categories.
+
+   :param blocks: Zero or more nullary callables; move-only callables are accepted.
+   :returns: Nothing. Unwinds after all blocks if a new failure was recorded.
+
+.. cpp:function:: template <typename... Fs> void expect_all(std::string_view name, Fs&&... blocks)
+
+   Run callable blocks in order. A fatal assertion ends its block; later blocks still run. Standard and unknown exceptions become errors. A skip stops the group. Recorded failures retain their original locations and categories.
+
+   :param blocks: Zero or more nullary callables; move-only callables are accepted.
+   :param name: Group label added as trace context.
+   :returns: Nothing. Continues after the group even if blocks failed.
+
+.. cpp:function:: template <typename... Fs> void expect_all(Fs&&... blocks)
+
+   Run callable blocks in order. A fatal assertion ends its block; later blocks still run. Standard and unknown exceptions become errors. A skip stops the group. Recorded failures retain their original locations and categories.
+
+   :param blocks: Zero or more nullary callables; move-only callables are accepted.
+   :returns: Nothing. Continues after the group even if blocks failed.
+
+Deferred calls and diagnostic context
+-------------------------------------
+
+.. cpp:function:: auto wrap(auto f, auto&&... args)
+
+   Bind a callable and arguments into a nullary callable. The callable and decayed argument tuple are stored by value; use ``std::ref`` for referenced arguments.
+
+   :param f: Callable invoked with the stored arguments.
+   :param args: Arguments forwarded into tuple storage.
+   :returns: Mutable callable returning the bound invocation's result.
+
+.. cpp:class:: scoped_trace
+
+   Add thread-local diagnostic context until destruction. Traces are included in failures on the creating thread. The type is noncopyable.
+
+.. cpp:function:: explicit scoped_trace::scoped_trace(std::string message, std::source_location location = std::source_location::current())
+
+   Push a message and its source location. Destruction removes it.
+
+   :param message: Context to attach to subsequent failures.
+   :param location: Location of the trace declaration.
+
+.. cpp:type:: scoped_message = scoped_trace
+
+   Alias for :cpp:class:`scoped_trace`.
+
+Diagnostic printers
+-------------------
+
+Define ``void print_to(const T&, std::ostream*)`` in the value's namespace
+(or as a friend). Argument-dependent lookup selects it before standard
+formatting, range printing, or stream insertion. It also applies inside ranges.
+Printers run only on a failing check. Invalid wide characters are escaped and
+valid wide strings are encoded as UTF-8.
+
+For matcher-based checks, see :doc:`matchers`. Contract and process checks are
+specified in :doc:`contracts` and :doc:`death`.

@@ -1,125 +1,101 @@
-.. index::
-   single: test_context
-   single: current_test
-
-Test Context and Resources
+Test context and resources
 ==========================
 
-Test methods, fixture constructors, and lifecycle hooks may accept
-``annotest::test_context&``. ``annotest::current_test()`` returns the active test
-context and throws ``std::logic_error`` when no test is active.
+.. cpp:namespace:: annotest
 
-.. code-block:: cpp
+Contexts provide metadata and resource ownership for an invocation, fixture
+constructor, or suite hook. Contexts are injected as ``test_context&`` into
+supported methods, hooks, and constructors.
 
-    struct ContextTests {
-        [[= test{}]] void metadata(test_context& context) {
-            assert_equal(context.name, current_test().name);
-            record_property("input", "sample");
-            assert_true(std::filesystem::exists(context.temp_dir()));
-        }
-    };
+.. cpp:struct:: test_context
 
-.. index::
-   single: test metadata
+   Metadata and resources for a test scope. Constructor contexts remain valid through fixture destruction; suite-hook contexts remain valid through after_all.
 
-Fields
-------
+.. cpp:member:: std::string test_context::suite
 
-.. list-table:: test_context fields
-   :header-rows: 1
-   :widths: 25 35 40
+   Full suite name, including enclosing names and parameter suffixes.
 
-   * - Field
-     - Type
-     - Description
-   * - ``suite``
-     - ``std::string``
-     - The full suite name, including enclosing and parameterized suite names.
-   * - ``name``
-     - ``std::string``
-     - The case name within its suite.
-   * - ``tags``
-     - ``std::vector<std::string>``
-     - The case's tags, including inherited suite tags.
-   * - ``parameters``
-     - ``std::string``
-     - The available formatted parameter description.
-   * - ``repetition``
-     - ``unsigned``
-     - The zero-based index across annotation and command-line repetitions.
-   * - ``resources``
-     - ``resource_scope``
-     - A store of shared resource references.
+.. cpp:member:: std::string test_context::name
 
-.. index::
-   single: constructor contexts
+   Case name within its suite; _suite for suite hooks.
 
-Constructor contexts
---------------------
+.. cpp:member:: std::string test_context::parameters
 
-A fixture accepting ``test_context&`` receives a context owned by that fixture.
-It remains valid through the fixture's destructor. Shared fixtures retain this
-context across cases; the runner refreshes its identity fields before each case.
-``current_test()`` refers to the active invocation's context, which may be a
-different object from the fixture's constructor context.
+   Formatted parameter description, when available.
 
-Suite-hook contexts retain their temporary directories and resources until all
-``after_all`` hooks finish. They are distinct from per-test and constructor contexts.
+.. cpp:member:: std::vector<std::string> test_context::tags
 
-.. index::
-   single: temp_dir
-   single: temporary directories
+   Case labels, including inherited suite tags.
 
-Temporary directories
----------------------
+.. cpp:member:: unsigned test_context::repetition = 0
 
-``context.temp_dir()`` returns ``const std::filesystem::path&``. The first call
-creates a unique temporary directory; later calls on the same context return
-the same path. The directory and its contents are removed during context cleanup.
-An invocation's directory is cleaned up after its extension cleanup hooks.
-A fixture constructor's context retains its directory until fixture destruction.
+   Zero-based combined invocation index across annotation and CLI repetitions.
 
-.. index::
-   single: resource_scope
-   single: get_or_create
-   single: resource store
+.. cpp:member:: std::unique_ptr<temporary_directory> test_context::directory
 
-Resource store
---------------
+   Lazily initialized temporary-directory owner. Prefer temp_dir() for access.
 
-``context.resources.get_or_create<T>(key, factory)`` returns
-``std::shared_ptr<T>``. The factory is called without arguments when the key is
-first requested and must return a non-null ``std::shared_ptr<T>``.
-Later requests with the same key and type return the stored pointer.
-Reusing a key with a different type throws ``std::logic_error``; a null factory
-result throws ``std::invalid_argument``. Factory exceptions propagate.
+.. cpp:member:: resource_scope test_context::resources
 
-``resources.clear()`` releases the store's references in reverse registration
-order. The store also clears during context cleanup. A resource remains alive
-while another ``std::shared_ptr`` owns it.
+   Resource store for this context.
 
-.. code-block:: cpp
+.. cpp:function:: const std::filesystem::path& test_context::temp_dir()
 
-    auto& resources = current_test().resources;
-    auto value = resources.get_or_create<int>(
-        "counter", [] { return std::make_shared<int>(7); });
-    auto same = resources.get_or_create<int>(
-        "counter", [] { return std::make_shared<int>(99); });
-    assert_equal(value, same);
-    assert_equal(7, *same);
+   Create a unique temporary directory on first access; subsequent accesses return the same path.
 
-.. index::
-   single: record_property
-   single: report properties
+   :returns: Borrowed path, valid until context cleanup.
+   :throws std::filesystem::filesystem_error: The filesystem operation fails.
+   :throws std::runtime_error: A unique directory could not be created.
 
-Report properties
------------------
+   Invocation cleanup removes the directory after extension cleanup. Constructor contexts retain it until fixture destruction.
 
-``record_property(std::string name, std::string value)`` adds a property to the
-active case. Properties appear in XML and JSON reports and in
-``test_result::properties``. The function throws ``std::logic_error`` when no
-test is active. Convert numeric values to strings before recording them.
+.. cpp:function:: test_context& current_test()
 
-.. code-block:: cpp
+   Access the active invocation context. This may differ from a fixture's constructor context. Shared constructor contexts have their identity refreshed before each case.
 
-    record_property("rows", std::to_string(42));
+   :returns: Reference to the active test_context.
+   :throws std::logic_error: No case is active.
+
+.. cpp:function:: void record_property(std::string name, std::string value)
+
+   Append a report property to the active case. Duplicate names are retained. Suite-setup properties are copied into participating cases.
+
+   :param name: Property name.
+   :param value: Property text; convert numeric values to strings first.
+   :returns: Nothing.
+   :throws std::logic_error: No test is active.
+
+Resource ownership
+------------------
+
+.. cpp:class:: resource_scope
+
+   Noncopyable store of shared references, keyed by string. Context cleanup releases entries in reverse registration order.
+
+.. cpp:function:: template <typename T, typename Factory> std::shared_ptr<T> resource_scope::get_or_create(std::string key, Factory factory)
+
+   Return an existing entry, or call the factory without arguments and retain its pointer.
+
+   :param key: Unique key within this store.
+   :param factory: Nullary callable returning a non-null std::shared_ptr<T>. Called only for a new key.
+   :returns: Shared ownership of the resource.
+   :throws std::logic_error: An existing key has a different type.
+   :throws std::invalid_argument: The factory returns null.
+
+   Factory exceptions propagate. Resources may outlive the context if another shared_ptr retains ownership.
+
+.. cpp:function:: void resource_scope::clear()
+
+   Release the store's references in reverse registration order.
+
+.. cpp:class:: temporary_directory
+
+   Noncopyable owner of a unique directory. Destruction recursively removes its contents using the nonthrowing filesystem cleanup overload.
+
+.. cpp:function:: temporary_directory::temporary_directory()
+
+   Create a unique directory under std::filesystem::temp_directory_path(). Filesystem errors propagate; exhausting the creation attempts throws std::runtime_error.
+
+.. cpp:function:: const std::filesystem::path& temporary_directory::path() const
+
+   Return the directory path by reference, valid for this object's lifetime.

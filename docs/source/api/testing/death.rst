@@ -1,70 +1,107 @@
 .. _death_tests:
 
-.. index::
-   single: death tests
-   single: assert_death
-   single: expect_death
+Process and exit checks
+=======================
 
-Death Tests
-===========
+.. cpp:namespace:: annotest
 
-``annotest::assert_death(callable)`` and ``annotest::expect_death(callable)`` run a
-callable in a child process on Linux, macOS, and Windows. A nonzero exit, signal,
-or uncaught exception counts as death. Returning normally or exiting with status
-zero fails the check. Assertion failure unwinds the body; expectation failure
-records a failure and continues.
+Process checks run a callable in a child process on Linux, macOS, and Windows.
+A fatal check unwinds its callable on mismatch; an expectation records a
+nonfatal failure. Call these checks inside a runner that receives main's
+unaltered argc and argv.
 
-Linux and macOS
----------------
+.. cpp:function:: void assert_death(auto func, const std::source_location& loc = std::source_location::current())
 
-The child inherits the parent's memory and file descriptors. Changes to ordinary
-child memory do not change the parent.
+   Require a nonzero exit, signal termination, or uncaught exception. Normal return or exit code zero mismatches.
 
-.. index::
-   single: Windows replay
+   :param func: Nullary callable executed in the child.
+   :returns: Nothing.
 
-Windows
--------
+.. cpp:function:: template <typename F> void assert_death(F&& callable, std::string stderr_pattern, std::source_location location = std::source_location::current())
 
-Windows relaunches the current executable and runs the selected test.
-It repeats setup and the test body up to the selected death check,
-skipping earlier death callables. Named tests, parameterized cases, and multiple
-checks in one test are supported. Nested checks are supported on every platform.
-For a nested Windows check, the child replays its enclosing death callables to
-reach the selected inner callable. Startup failures or exceptions before reaching
-that callable fail the death check.
+   Require a nonzero exit, signal termination, or uncaught exception. Normal return or exit code zero mismatches.
 
-Use these helpers inside ``run_tests`` and forward ``argc`` and ``argv`` from
-``main``. Setup and code before the death check must be deterministic and safe to
-repeat, including enclosing callables for nested checks. State from earlier tests
-and parent-only resources are not inherited. Pointers into the parent process
-cannot be used in the child.
-Replayed setup and body output can appear in captured output.
+   :param callable: Nullary callable executed in the child.
+   :param stderr_pattern: Regular expression searched in captured child stderr.
+   :returns: Nothing.
+   :throws std::regex_error: The stderr pattern is invalid.
 
-Example
--------
+.. cpp:function:: void expect_death(auto func, const std::source_location& loc = std::source_location::current())
 
-.. literalinclude:: ../../../../examples/example05_death_tests.cpp
-   :language: cpp
+   Require a nonzero exit, signal termination, or uncaught exception. Normal return or exit code zero mismatches.
 
-.. index::
-   single: assert_exit
-   single: expect_exit
-   single: exited_with_code
-   single: killed_by_signal
-   single: exit_status
-   single: stderr matching
+   :param func: Nullary callable executed in the child.
+   :returns: Nothing.
 
-Exit status and stderr
-----------------------
+.. cpp:function:: template <typename F> void expect_death(F&& callable, std::string stderr_pattern, std::source_location location = std::source_location::current())
 
-``assert_exit(callable, exited_with_code(7), "message.*")`` checks the child's
-exit code and searches its captured stderr with a regular expression.
-``expect_exit`` records a nonfatal failure on mismatch. ``exited_with_code(0)``
-accepts a callable returning normally. On POSIX systems,
-``killed_by_signal(signal_number)`` checks signal termination. Custom predicates
-receive ``exit_status{code, signal}``.
+   Require a nonzero exit, signal termination, or uncaught exception. Normal return or exit code zero mismatches.
 
-``assert_death(callable, "message.*")`` and ``expect_death`` combine nonzero exit
-or signal termination with a stderr match. Exceptions continue to count as
-process death. Invalid regular expressions raise ``std::regex_error``.
+   :param callable: Nullary callable executed in the child.
+   :param stderr_pattern: Regular expression searched in captured child stderr.
+   :returns: Nothing.
+   :throws std::regex_error: The stderr pattern is invalid.
+
+.. cpp:function:: template <typename F, typename Predicate> void assert_exit(F&& callable, Predicate predicate, std::string stderr_pattern = ".*", std::source_location location = std::source_location::current())
+
+   Require the exit predicate to match and the stderr regex search to succeed. A normal return has exit code zero.
+
+   :param callable: Nullary callable executed in the child.
+   :param predicate: Callable accepting exit_status and returning a Boolean-like result.
+   :param stderr_pattern: Pattern searched in captured child stderr; defaults to .*, which accepts any content.
+   :param location: Call-site source location.
+   :returns: Nothing.
+   :throws std::regex_error: The pattern is invalid.
+
+.. cpp:function:: template <typename F, typename Predicate> void expect_exit(F&& callable, Predicate predicate, std::string stderr_pattern = ".*", std::source_location location = std::source_location::current())
+
+   Require the exit predicate to match and the stderr regex search to succeed. A normal return has exit code zero.
+
+   :param callable: Nullary callable executed in the child.
+   :param predicate: Callable accepting exit_status and returning a Boolean-like result.
+   :param stderr_pattern: Pattern searched in captured child stderr; defaults to .*, which accepts any content.
+   :param location: Call-site source location.
+   :returns: Nothing.
+   :throws std::regex_error: The pattern is invalid.
+
+.. cpp:struct:: exit_status
+
+   Exit information passed to a custom exit predicate.
+
+.. cpp:member:: int exit_status::code = -1
+
+   Child exit code when available.
+
+.. cpp:member:: int exit_status::signal = 0
+
+   Terminating POSIX signal; zero when not signal-terminated.
+
+.. cpp:function:: auto exited_with_code(int expected)
+
+   Construct an exit predicate requiring signal == 0 and code == expected.
+
+   :param expected: Required exit code, including zero.
+   :returns: Predicate accepting exit_status.
+
+.. cpp:function:: auto killed_by_signal(int expected)
+
+   Construct an exit predicate requiring signal == expected. Signal termination is supported on POSIX platforms.
+
+   :param expected: Required signal number.
+   :returns: Predicate accepting exit_status.
+
+Platform requirements
+---------------------
+
+On Linux and macOS, a forked child inherits memory and file descriptors.
+Changes to ordinary child memory do not update the parent.
+
+Windows relaunches the current executable and replays the selected case up to
+the selected check, skipping earlier death callables. Setup and preceding code
+must be deterministic and safe to repeat. Parent-only pointers and state
+from earlier cases are unavailable. Replay output may appear in captured output.
+Failure to reach the selected callable fails the check.
+
+Nested checks are supported. A Windows nested child replays enclosing callables
+to reach the selected inner check. For a worked procedure, see
+:doc:`/examples/death_tests`.

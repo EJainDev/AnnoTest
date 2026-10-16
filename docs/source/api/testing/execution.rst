@@ -1,217 +1,90 @@
-Execution and extension APIs
-============================
+Runner and registration
+=======================
 
-.. index::
-   single: nested
-   single: nested fixtures
-   single: fixture_lifecycle
-   single: skip
-   single: assume
+.. cpp:namespace:: annotest
 
-Fixtures and suites
--------------------
+.. cpp:function:: template <typename... Ts> int run_tests(int argc, char** argv)
 
-``run_tests<SuiteA, SuiteB>(argc, argv)`` discovers and runs multiple suites.
-By default, a fresh fixture is constructed for each test invocation, including
-every parameterized case and repetition.
-``suite{.lifecycle = fixture_lifecycle::shared}`` retains the fixture across cases.
-Constructors and destructors manage fixture resources. Public static
-``before_all``/``after_all`` hooks manage resources across fresh fixtures; see
-:doc:`annotations` for nesting, failures, discovery, and worker semantics.
+   Discover annotated suites, combine them with runtime registrations, execute the selection, and write requested reports. Ts must contain one or more class types.
 
-``nested{}`` creates a child suite with the outer name prefix and tags. Enclosing
-fixtures are constructed and their setup hooks run before inner fixtures, even
-when only one inner case is selected. An inner constructor may accept ``Parent&``
-or ``Parent&, test_context&``. Teardown unwinds the chain in reverse order.
-A shared nested fixture requires its enclosing fixture to be shared; discovery
-rejects a shared child under a ``per_test`` parent before constructing fixtures.
+   :param argc: Argument count from main.
+   :param argv: Argument vector from main; forward unchanged for subprocess replay.
+   :returns: 0 on success, listing, or help; 1 on test failure, invalid arguments, discovery errors, or report failure.
 
-Public annotated base methods are inherited unless hidden by derived methods.
-Multiple hooks run base-first for setup and in reverse order for cleanup;
-cleanup continues after a hook fails. Duplicate annotations on one method are
-rejected. Composed annotations are marker types carrying test and tag annotations.
+   Execution and output capture are process-wide. Recursive or simultaneous in-process runners are rejected. Use workers for parallel execution. Option syntax is in :doc:`command_line`.
 
-``skip(reason)`` and ``assume(condition, reason)`` abort the body without a failure;
-cleanup still runs. A cleanup failure takes precedence over a skip.
+.. cpp:function:: int run_registered_tests(int argc, char** argv)
 
-Selection and execution
------------------------
+   Run runtime registrations without discovering annotated suite types.
 
-See :doc:`command_line` for option syntax, defaults, limits, environment variables,
-and exit status.
-
-``tag<"name">{}`` labels suites or methods. ``--filter`` and ``--exclude`` match
-fully qualified names using ``*`` and ``?``; ``--tag`` and ``--exclude-tag`` select
-labels. All four options may be repeated. ``--run-disabled`` includes tests
-disabled by ``test{.disabled = true}`` or ``suite{.disabled = true}``.
-
-``--repeat N``, ``--shuffle --seed N`` and ``--fail-fast`` control execution.
-``test{.repetitions = N}`` repeats each concrete case within each CLI repetition.
-The context's ``repetition`` index is zero-based across the combined invocations;
-reports store its one-based value in the ``repetition`` property. Shared fixtures
-retain their state; ordinary fixtures are fresh on each invocation. Fail-fast
-stops subsequent repetitions after a failure. Isolated workers execute exactly
-one invocation each.
-
-``--shard-count N --shard-index I`` creates deterministic, disjoint partitions
-using full names. Indices start at zero.
-
-``enabled_if`` and ``disabled_if`` evaluate runtime predicates before fixture
-construction and extension setup; see :doc:`annotations`. Skips retain a reason
-in XML/JSON and listener results. Ordinary conditions are evaluated in the worker
-when execution is isolated, so they observe the worker's environment and the
-invocation's repetition index.
-
-``--isolate`` re-executes each case in a subprocess. ``--jobs N`` schedules up to N
-workers. ``timeout{seconds}`` or ``--timeout SECONDS`` enforces a hard deadline
-including worker startup and kills the worker process tree. Crashes and timeouts
-become failed cases; later cases continue unless fail-fast is active. Results are
-reported in scheduling order. Active batches complete before fail-fast takes effect.
-
-.. index::
-   single: parameter_source
-   single: case_of
-   single: named_case
-   single: csv_cases
-   single: line_cases
-   single: test_factory
-   single: dynamic_case
-   single: runtime parameter sources
-
-Runtime sources and context
----------------------------
-
-``parameter_source<&provider>{}`` on a test uses a provider returning a range of
-tuples or ``case_of("name", args...)`` objects. ``csv_cases(path, header)`` parses
-quoted CSV fields into named string-column cases. ``line_cases(path)`` produces
-named string cases. Providers run during discovery and must return stable data
-across worker invocations. Empty case sets and duplicate names fail discovery.
-
-``test_factory{}`` on a method returning ``dynamic_case{name, callable}`` values
-creates a factory fixture. Its setup runs once and its state is preserved across
-children; cleanup runs once after the children. ``test_factory<&provider>{}``
-can also reference a free or member provider. Factories run during discovery and
-must produce deterministic names. Isolated workers reconstruct a factory for
-their selected case.
-
-Test methods, constructors, and hooks may receive ``test_context&``.
-The context provides case metadata, temporary directories, and shared resources.
-See :doc:`context` for fields, lifetimes, and resource-store operations.
-
-.. index::
-   single: scoped_trace
-   single: scoped_message
-   single: fail
-   single: add_failure_message
-
-Diagnostics and matchers
-------------------------
-
-``scoped_trace`` and ``scoped_message`` add user context to failures. Comparisons
-provide first-difference diagnostics for ranges. Values lacking a formatter use
-stream printing or a type-name fallback. ``fail`` is fatal;
-``add_failure_message`` records a nonfatal failure.
-
-``assert_that`` and ``expect_that`` accept composable matchers.
-See :doc:`matchers` for comparisons, strings, ranges, members, pointers,
-alternatives, exceptions, numeric tolerances, and custom predicates.
-
-.. index::
-   single: test_listener
-   single: add_listener
-   single: clear_listeners
-   single: listeners
-
-Listeners and reports
----------------------
-
-``add_listener(listener, suite_prefix = "")`` accepts a
-``std::shared_ptr<test_listener>`` and registers discovery, suite, test,
-assertion, result, and run-completion callbacks. ``before_test`` and ``after_test``
-provide extension hooks around fixture construction and teardown. Override
-``on_run_end`` to implement a custom reporter. Clear registrations with
-``clear_listeners()``. In isolated runs, extension hooks execute in workers and
-assertion events with source locations and result callbacks execute in the parent.
-Only entered extension setup callbacks are unwound. Observer exceptions become
-separate failure entries without discarding finished tests or their XML report.
-
-The optional scope selects the named suite and its nested suites. An empty scope
-selects all suites. Passing a null listener throws ``std::invalid_argument``.
-Override any of the following ``test_listener`` methods:
-
-.. list-table:: Listener callbacks
-   :header-rows: 1
-   :widths: 55 45
-
-   * - Callback
-     - Receives or performs
-   * - ``on_discovery(suite, name)``
-     - Discovered suite and case names as ``std::string_view``.
-   * - ``on_test_discovered(const test_info&)``
-     - Names, source location, parameters, tags, and disabled status.
-   * - ``on_suite_start(suite)``, ``on_suite_end(suite)``
-     - The suite name as ``std::string_view``.
-   * - ``on_test_start(suite, name)``
-     - Suite and case names as ``std::string_view``.
-   * - ``on_assertion(const assertion_event&)``
-     - A failure message, phase, and optional source location.
-   * - ``on_test_end(const test_result&)``
-     - The completed case result.
-   * - ``on_run_end(std::span<const test_result>)``
-     - Completed results within the listener's scope.
-   * - ``on_suite_result(const suite_result&)``
-     - Final suite counts and duration, including fixture teardown failures.
-   * - ``before_test()``, ``after_test()``
-     - Extension setup and cleanup around fixture execution.
-
-Extension setup follows registration order; cleanup runs in reverse order.
-Cleanup runs for each listener whose setup was entered, including a listener
-whose setup threw. Result arguments are borrowed for the duration of the callback;
-copy any data needed after it returns.
-
-``record_property(name, value)`` adds test metadata to reports. Reports contain one
-case per skip, with a reason, and failure phase attributes. Multiple suites have
-a ``testsuites`` root with aggregate totals; single-suite reports retain the
-``testsuite`` root. Execution and output capture are process-wide; simultaneous
-or recursive in-process runners are rejected. Use subprocess workers for parallelism.
-
-.. index::
-   single: register_test
-   single: run_registered_tests
-   single: clear_registered_tests
-   single: runtime registration
+   :param argc: Argument count from main.
+   :param argv: Argument vector from main.
+   :returns: Same exit status as run_tests.
 
 Runtime registration
 --------------------
 
-``register_test("suite", "name", callable, tags)`` registers a callable before
-execution. ``run_registered_tests(argc, argv)`` runs registered tests alone;
-``run_tests<Suite>(argc, argv)`` combines them with annotated suites. Clear registrations
-with ``clear_registered_tests()``.
+.. cpp:function:: template <typename Body> void register_test(std::string suite, std::string name, Body body, std::vector<std::string> tags = {}, std::source_location location = std::source_location::current())
 
-``register_test<Fixture>(suite, name, factory, body, tags)`` constructs a fixture
-with the supplied factory and calls ``body(Fixture&)`` between its annotated
-hooks. Factories return ``std::unique_ptr<Fixture>`` and may accept
-``test_context&``. Registrations carry the caller's source location. Suite hooks are shared across
-registrations with the same fixture type and suite name; annotated tests of that
-type in the same suite share them too. Repeat the
-same registration in each worker invocation when using subprocess execution.
+   Register a nullary callable before execution. Body must be invocable as Body&; move-only callables are retained through shared ownership.
 
-.. index::
-   single: test_result
-   single: test_info
-   single: assertion_event
-   single: suite_result
+   :param suite: Suite display name.
+   :param name: Case display name.
+   :param body: Case callable.
+   :param tags: Optional selection labels.
+   :param location: Registration source location.
+   :returns: Nothing.
 
-Reporter data and output options
---------------------------------
+   Names must be nonempty with no tabs or line breaks. Repeat registration in each worker invocation when using isolation.
 
-``test_result`` includes individual failure details, properties, captured stdout
-and stderr, source location, parameters, and tags. ``on_test_discovered`` receives
-``test_info``; ``on_suite_result`` receives final suite counts and timing.
+.. cpp:function:: template <typename Fixture, typename Factory, typename Body> void register_test(std::string suite, std::string name, Factory factory, Body body, std::vector<std::string> tags = {}, std::source_location location = std::source_location::current())
 
-``--json-output FILE`` writes structured results with suite and test metadata,
-statuses, timings, failure diagnostics, skip reasons, properties, and output.
-It can be combined with ``--xml-output``. Malformed captured bytes use visible
-hexadecimal escapes. ``--brief`` prints failed cases and a run summary.
-``--break-on-failure`` triggers a debugger breakpoint when a failure is recorded.
+   Register a fixture-backed case with annotated lifecycle hooks.
+
+   :param suite: Suite display name.
+   :param name: Case display name.
+   :param factory: Callable returning std::unique_ptr<Fixture>, accepting no arguments or test_context&.
+   :param body: Callable accepting Fixture&.
+   :param tags: Optional selection labels.
+   :param location: Registration source location.
+   :returns: Nothing.
+
+   Registrations of the same fixture type and suite name share suite hooks, including annotated cases of that type in the same suite.
+
+.. cpp:function:: void clear_registered_tests()
+
+   Remove all runtime registrations. Call before a later runner invocation to discard retained callables.
+
+Skipping
+--------
+
+.. cpp:function:: [[noreturn]] inline void skip(std::string reason = "Assumption not met")
+
+   Abort the current body with a skip reason. Cleanup still runs; cleanup failure overrides the skip.
+
+   :param reason: Reported skip reason.
+   :returns: Does not return normally.
+
+.. cpp:function:: void assume(bool condition, std::string reason = "Assumption not met")
+
+   Continue if the condition is true; otherwise call skip(reason).
+
+   :param condition: Required runtime prerequisite.
+   :param reason: Reported skip reason.
+   :returns: Nothing when the condition is true.
+
+Helper threads
+--------------
+
+.. cpp:function:: std::jthread test_thread(std::function<void()> body)
+
+   Create a jthread wrapping a test callable. Fatal assertions unwind that callable; unexpected exceptions become active-case failures. Nonfatal expectations continue.
+
+   :param body: Nullary callable.
+   :returns: Owning std::jthread; its destructor joins.
+
+   Join every helper thread before the test returns. Failures attach to the active case in arrival order. Traces remain thread-local and assertion callbacks are serialized.
+
+Fixtures, nested suites, lifecycle hooks, repetitions, and runtime conditions
+are specified in :doc:`annotations`. For their execution order and process
+boundaries, see :doc:`/explanation/execution`.

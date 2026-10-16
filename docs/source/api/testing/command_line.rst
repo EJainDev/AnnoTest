@@ -148,7 +148,7 @@ Reporting
 
 XML and JSON output can be enabled together. Reports include test metadata,
 timings, failure details, skipped cases, properties, and captured output.
-See :doc:`execution` for report structures and listener callbacks.
+See :doc:`results` for report structures and :doc:`listeners` for callbacks.
 
 .. code-block:: sh
 

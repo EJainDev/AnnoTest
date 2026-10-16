@@ -1,13 +1,16 @@
 Explanation
 ===========
 
-Understand the execution model and the scope of performance measurements.
+These pages describe the model behind AnnoTest's behavior. For a procedure,
+choose a :doc:`/examples/index`; for exact declarations and options, use
+:doc:`/api/index`.
 
 .. toctree::
    :maxdepth: 1
 
+   discovery
    execution
-   /performance
+   failures
 
-For instructions, use the :doc:`/examples/index`. For declarations and supported
-options, use the :doc:`/api/index`.
+Compile-time measurements, methodology, and workload sources are in the
+:doc:`benchmark reference </performance>`.

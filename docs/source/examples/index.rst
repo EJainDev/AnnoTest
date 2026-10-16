@@ -58,11 +58,10 @@ Control execution and collect results
    execution
    reporting
 
-Maintain a project
-------------------
+Set up a project
+----------------
 
 .. toctree::
    :maxdepth: 1
 
    /installation
-   /testing

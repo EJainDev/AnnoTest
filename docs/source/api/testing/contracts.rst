@@ -1,39 +1,103 @@
 .. _contract_handling:
 
-.. index::
-   single: contracts
-   single: assert_contract_violation
-   single: expect_contract_violation
-   single: assert_no_contract_violation
-   single: expect_no_contract_violation
-   single: annotest_contract.h
-   single: observe semantics
-   single: custom_handler
-   single: contract_violation_occurred
+Contract checks
+===============
 
-Contract Handling
-=================
+.. cpp:namespace:: annotest
 
-For contract checks, include ``<annotest_contract.h>`` in exactly one translation
-unit per executable. It imports the library and installs its violation handler.
-Enable GCC observe semantics on code containing contracts:
+Include ``<annotest_contract.h>`` in exactly one translation unit per
+executable to install the contract violation handler. That header imports
+AnnoTest. Code containing contracts must use GCC observe semantics:
 
 .. code-block:: cmake
 
-    target_compile_options(my_tests PRIVATE
-      -fcontracts -fcontract-evaluation-semantic=observe)
+   target_compile_options(my_tests PRIVATE
+     -fcontracts -fcontract-evaluation-semantic=observe)
 
-``assert_contract_violation`` and ``expect_contract_violation`` check that a
-callable violates a contract. ``assert_no_contract_violation`` and
-``expect_no_contract_violation`` check that it does not. Callables may return a
-value or void; value-returning checks return the callable's result.
+Observe semantics continue after violations. The callable must remain safe
+when its contracts are violated. Unexpected violations fail the active case.
 
-Observe semantics continue after a violation. The callable must remain safe
-with inputs that violate its contracts.
-Unexpected violations fail the test. A custom callback can be installed through
-``annotest::custom_handler``; the default handler sets
-``annotest::contract_violation_occurred`` before invoking it. The runner resets
-this flag before each case.
+.. cpp:function:: template <typename Func> auto assert_contract_violation(Func f, const std::source_location& loc = std::source_location::current())
 
-.. literalinclude:: ../../../../examples/example06_contracts.cpp
-   :language: cpp
+   Invoke a callable once and require an observed violation. The violation flag is reset before the call and consumed afterward. A mismatch records a fatal assertion and unwinds.
+
+   :param f: Nullary callable returning void or a value.
+   :returns: The callable's result by value, or void for a void callable.
+
+   Exceptions from the callable propagate.
+
+.. cpp:function:: template <typename F> decltype(auto) assert_contract_violation(F&& callable, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload with the same check behavior.
+
+   :param callable: Nullary callable.
+   :param message: Diagnostic context.
+   :param location: Call-site source location.
+   :returns: The underlying check's result.
+
+.. cpp:function:: template <typename Func> auto assert_no_contract_violation( Func f, const std::source_location& loc = std::source_location::current())
+
+   Invoke a callable once and require no observed violation. The violation flag is reset before the call and consumed afterward. A mismatch records a fatal assertion and unwinds.
+
+   :param f: Nullary callable returning void or a value.
+   :returns: The callable's result by value, or void for a void callable.
+
+   Exceptions from the callable propagate.
+
+.. cpp:function:: template <typename F> decltype(auto) assert_no_contract_violation(F&& callable, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload with the same check behavior.
+
+   :param callable: Nullary callable.
+   :param message: Diagnostic context.
+   :param location: Call-site source location.
+   :returns: The underlying check's result.
+
+.. cpp:function:: template <typename Func> auto expect_contract_violation(Func f, const std::source_location& loc = std::source_location::current())
+
+   Invoke a callable once and require an observed violation. The violation flag is reset before the call and consumed afterward. A mismatch records a nonfatal expectation.
+
+   :param f: Nullary callable returning void or a value.
+   :returns: The callable's result by value, or void for a void callable.
+
+   Exceptions from the callable propagate.
+
+.. cpp:function:: template <typename F> decltype(auto) expect_contract_violation(F&& callable, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload with the same check behavior.
+
+   :param callable: Nullary callable.
+   :param message: Diagnostic context.
+   :param location: Call-site source location.
+   :returns: The underlying check's result.
+
+.. cpp:function:: template <typename Func> auto expect_no_contract_violation( Func f, const std::source_location& loc = std::source_location::current())
+
+   Invoke a callable once and require no observed violation. The violation flag is reset before the call and consumed afterward. A mismatch records a nonfatal expectation.
+
+   :param f: Nullary callable returning void or a value.
+   :returns: The callable's result by value, or void for a void callable.
+
+   Exceptions from the callable propagate.
+
+.. cpp:function:: template <typename F> decltype(auto) expect_no_contract_violation(F&& callable, std::string_view message, std::source_location location = std::source_location::current())
+
+   Message overload with the same check behavior.
+
+   :param callable: Nullary callable.
+   :param message: Diagnostic context.
+   :param location: Call-site source location.
+   :returns: The underlying check's result.
+
+Handler state
+-------------
+
+.. cpp:var:: inline bool contract_violation_occurred = false
+
+   Flag set by the installed handler before calling custom_handler. The runner resets it before each case. Contract-check helpers reset and consume it around their callable.
+
+.. cpp:var:: inline std::atomic<void (*)(const std::contracts::contract_violation&)> custom_handler
+
+   Optional callback, initially null. Called with the violation after the default handler sets the flag. Assign a compatible function pointer through the atomic.
+
+For a runnable procedure, see :doc:`/examples/contracts`.
