@@ -191,3 +191,64 @@ class ExecutionTests(RunnerTest):
     def test_successful_groups_outside_runner(self):
         result = self.run_binary('ExecutionTests', scenario='outside-group')
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_cli_repetitions_preserve_condition_context_in_workers(self):
+        for execution in ([], ['--isolate'], ['--jobs', '2']):
+            with self.subTest(execution=execution):
+                _, cases, data = self.invoke('ExecutionTests.conditional_repeat',
+                                             options=['--repeat', '2', *execution])
+                self.assertEqual(len(cases), 6)
+                self.assertEqual([c.find('skipped') is not None for c in cases],
+                                 [False, True, False, True, False, True])
+                for index, case in enumerate(cases):
+                    repetition = case.find("properties/property[@name='repetition']")
+                    self.assertEqual(repetition.attrib['value'], str(index + 1))
+                    output = case.findtext('system-out', '')
+                    self.assertEqual('constructed' in output, index % 2 == 0)
+                    if index % 2 == 0:
+                        self.assertIn('destroyed', output)
+                        self.assertEqual(case.find("properties/property[@name='index']").attrib['value'],
+                                         str(index))
+                    else:
+                        self.assertIsNone(case.find("properties/property[@name='index']"))
+                self.assertEqual(data['skipped'], 3)
+
+    def test_fail_fast_ignores_skips_and_stops_after_first_failed_repetition(self):
+        for execution in ([], ['--isolate']):
+            with self.subTest(execution=execution):
+                _, cases, _ = self.invoke(code=1, options=[
+                    '--test-name', 'ExecutionTests.disabled', 'ExecutionTests.repeated_failure',
+                    'ExecutionTests.group_success', '--repeat', '2', '--fail-fast', *execution])
+                self.assertEqual([c.attrib['name'] for c in cases], ['disabled', 'repeated_failure'])
+                self.assertIsNotNone(cases[0].find('skipped'))
+                self.assertEqual(len(cases[1].findall('failure')), 1)
+
+    def test_xml_and_json_agree_for_mixed_statuses_and_error_counts(self):
+        for execution in ([], ['--isolate'], ['--jobs', '2']):
+            with self.subTest(execution=execution):
+                _, cases, data = self.invoke(code=1, options=[
+                    '--test-name', 'ExecutionTests.group_success', 'ExecutionTests.group_nonfatal',
+                    'ExecutionTests.group_exceptions', 'ExecutionTests.disabled',
+                    '--repeat', '2', *execution])
+                reported = [c for suite in data['suites'] for c in suite['tests']]
+                self.assertEqual(len(cases), 8)
+                self.assertEqual(data['tests'], 8)
+                self.assertEqual(data['failed'], 4)
+                self.assertEqual(data['skipped'], 2)
+                self.assertEqual(len(reported), len(cases))
+                self.assertEqual(sum(int(c.attrib['errors']) for c in cases), 4)
+                for xml, record in zip(cases, reported):
+                    self.assertEqual(record['name'], xml.attrib['name'])
+                    status = ('failed' if xml.findall('failure') else
+                              'skipped' if xml.find('skipped') is not None else 'passed')
+                    self.assertEqual(record['status'], status)
+                    self.assertEqual(record['stdout'], xml.findtext('system-out', ''))
+                    self.assertEqual(record['stderr'], xml.findtext('system-err', ''))
+                    skipped = xml.find('skipped')
+                    self.assertEqual(record['skip_reason'],
+                                     skipped.attrib['message'] if skipped is not None else '')
+                    self.assertEqual(len(record['failures']), len(xml.findall('failure')))
+                    for failure, node in zip(record['failures'], xml.findall('failure')):
+                        self.assertEqual(failure['type'], node.attrib['type'])
+                        self.assertEqual(failure['phase'], node.attrib['phase'])
+                        self.assertEqual(failure['message'], node.attrib['message'])

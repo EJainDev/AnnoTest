@@ -28,6 +28,15 @@ continuation, and independently parse reports with `xml.etree.ElementTree`.
 Running a fixture without filters may therefore return 1; run CTest to verify
 that both success and failure behavior match expectations.
 
+The CLI checks include integer limits, overflow, whitespace, malformed numeric
+values, nonfinite deadlines, strict Boolean values, and preservation of existing
+reports when argument validation fails. Selection checks cover intersecting
+filters and tags, exclusion precedence, and disjoint, complete shard partitions
+across repeated, shuffled, nested, dynamic, disabled, and worker-executed cases.
+Execution checks compare XML and JSON for mixed passing, failing, error, and
+skipped results, verify condition context across repetitions and workers, and
+check continuation after worker crashes and timeouts.
+
 The coverage audit is `tools/coverage_audit.py`. Linux CI enforces `--minimum-percent 95`
 and uploads its JSON report. The default threshold is 100%; `--report-only` disables
 the threshold for local inspection. It measures reachable runtime

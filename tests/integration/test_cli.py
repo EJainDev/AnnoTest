@@ -1,3 +1,7 @@
+import json
+from pathlib import Path
+import tempfile
+
 from support import RunnerTest
 
 
@@ -75,3 +79,64 @@ class CliTests(RunnerTest):
         result = self.run_binary("UtilityTests", ["--"])
         self.assertEqual(result.returncode, 0)
         self.assertIn("enums: Passed", result.stdout)
+
+    def test_numeric_options_reject_noncanonical_and_out_of_range_values(self):
+        values = ("", " ", " 1", "1 ", "+1", "-1", "1.0", "1e2", "0x10",
+                  "1_000", "١", "4294967296", "9" * 100)
+        for option in ("--repeat", "--jobs", "--seed", "--shard-count", "--shard-index"):
+            for value in values:
+                with self.subTest(option=option, value=value):
+                    result = self.run_binary("AnnotationTests", [f"{option}={value}", "--list"])
+                    self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                    self.assertIn("Error:", result.stderr)
+                    self.assertNotIn("AnnotationTests.", result.stdout)
+
+    def test_numeric_option_boundaries_are_accepted_without_executing(self):
+        # Listing validates the maximum counts without launching workers or repetitions.
+        for options in (("--repeat=1",), ("--repeat=1000000",),
+                        ("--jobs=1",), ("--jobs=256",),
+                        ("--seed=0",), ("--seed=4294967295",),
+                        ("--shard-count=1", "--shard-index=0"),
+                        ("--shard-count=4294967295", "--shard-index=4294967294"),
+                        ("--timeout=0.000001",), ("--timeout=1e3",)):
+            with self.subTest(options=options):
+                result = self.run_binary("AnnotationTests", [*options, "--list-json"])
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertTrue(json.loads(result.stdout)["suites"])
+
+    def test_boolean_options_only_accept_zero_or_one(self):
+        for option in ("--run-disabled", "--shuffle", "--fail-fast", "--isolate",
+                       "--brief", "--break-on-failure"):
+            for value in ("", "2", "-1", "true", "false", "yes", "01", " 1", "1 "):
+                with self.subTest(option=option, value=value):
+                    result = self.run_binary("AnnotationTests", [f"{option}={value}", "--list"])
+                    self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                    self.assertIn("accepts only 0 or 1", result.stderr)
+            for value in ("0", "1"):
+                with self.subTest(option=option, value=value):
+                    result = self.run_binary("AnnotationTests", [f"{option}={value}", "--list-json"])
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertTrue(json.loads(result.stdout)["suites"])
+
+    def test_timeout_rejects_nonfinite_underflow_and_trailing_input(self):
+        for value in ("nan", "NaN", "inf", "-inf", "1e309", "1e-9999", "0", "-0",
+                      "-0.1", "+1", " 1", "1 ", "1s", "1.2.3", ""):
+            with self.subTest(value=value):
+                result = self.run_binary("AnnotationTests", [f"--timeout={value}", "--list"])
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn("Error:", result.stderr)
+
+    def test_invalid_cli_does_not_overwrite_existing_reports(self):
+        with tempfile.TemporaryDirectory() as directory:
+            xml = Path(directory) / "result.xml"
+            report = Path(directory) / "result.json"
+            for options in (("--repeat=0",), ("--jobs=257",), ("--shard-count=2", "--shard-index=2"),
+                            ("--help", "--unknown"), ("--list-json=1",)):
+                with self.subTest(options=options):
+                    xml.write_text("existing XML")
+                    report.write_text("existing JSON")
+                    result = self.run_binary("AnnotationTests", ["--xml-output", str(xml),
+                                             "--json-output", str(report), *options])
+                    self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                    self.assertEqual(xml.read_text(), "existing XML")
+                    self.assertEqual(report.read_text(), "existing JSON")

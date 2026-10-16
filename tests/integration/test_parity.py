@@ -1,3 +1,4 @@
+from collections import Counter
 import json
 import os
 from pathlib import Path
@@ -266,3 +267,64 @@ class ParityTests(RunnerTest):
         self.assertEqual(len(cases),2)
         _,_,cases=self.invoke(['--filter','ParityTests.fresh_a*'])
         self.assertEqual(len(cases),1)
+
+    def test_shards_partition_repeated_dynamic_nested_and_disabled_cases(self):
+        selection = ['--filter', '*.fresh*', '--filter', '*.runtime_values.*',
+                     '--filter', '*.generated_cases.*', '--filter', '*.child',
+                     '--filter', '*.disabled']
+        def identities(cases):
+            return Counter((c.attrib['classname'], c.attrib['name']) for c in cases)
+
+        baseline = identities(self.invoke(selection)[2])
+        self.assertEqual(sum(baseline.values()), 10)
+        # More shards than cases also exercises empty shards. Membership must be
+        # independent of repetition, shuffle order, and the worker backend.
+        for count, execution in ((1, []), (3, []), (13, ['--jobs', '2'])):
+            partitions = []
+            for index in range(count):
+                with self.subTest(count=count, index=index):
+                    options = [*selection, '--shard-count', str(count), '--shard-index', str(index),
+                               '--repeat', '2', '--shuffle', '--seed', '42', *execution]
+                    cases = self.invoke(options)[2]
+                    partition = identities(cases)
+                    self.assertTrue(all(n == 2 for n in partition.values()))
+                    self.assertTrue(set(partition) <= set(baseline))
+                    for previous in partitions:
+                        self.assertFalse(set(previous) & set(partition))
+                    partitions.append(partition)
+            self.assertEqual(sum(partitions, Counter()), Counter({key: 2 for key in baseline}))
+            if count > len(baseline):
+                self.assertTrue(any(not partition for partition in partitions))
+
+    def test_selection_intersections_and_exclusion_precedence(self):
+        scenarios = (
+            (['--test-name', 'ParityTests.fresh_a', 'ParityTests.fresh_b',
+              '--filter', '*.fresh_a'], ['fresh_a']),
+            (['--filter', '*.fresh*', '--tag', 'fast'], ['fresh_a']),
+            (['--filter', '*.fresh*', '--tag', 'fast', '--tag', 'missing'], ['fresh_a']),
+            (['--test-name', 'ParityTests.fresh_a', '--exclude', '*.fresh_a'], []),
+            (['--filter', '*.fresh*', '--tag', 'fast', '--exclude-tag', 'fast'], []),
+            (['--filter', '*.fresh*', '--filter', '*.fresh_a', '--exclude', '*.fresh_values.*'],
+             ['fresh_a', 'fresh_b']),
+        )
+        for options, expected in scenarios:
+            with self.subTest(options=options):
+                _, root, cases = self.invoke(options)
+                self.assertEqual([c.attrib['name'] for c in cases], expected)
+                self.assertEqual(int(root.attrib['tests']), len(expected))
+
+    def test_worker_crash_and_timeout_do_not_prevent_next_case(self):
+        for name, env, phase in (('crashes', {'ANNOTEST_CRASH': '1'}, 'process'),
+                                 ('deadline', {'ANNOTEST_HANG': '1'}, 'timeout')):
+            for execution in (['--isolate'], ['--jobs', '2']):
+                with self.subTest(name=name, execution=execution):
+                    _, root, cases = self.invoke(['--test-name', 'ParityTests.' + name,
+                                                 'ParityTests.disabled', '--run-disabled',
+                                                 *execution], 1, env=env)
+                    self.assertEqual([c.attrib['name'] for c in cases], [name, 'disabled'])
+                    self.assertEqual(cases[0].find('failure').attrib['phase'], phase)
+                    self.assertFalse(cases[1].findall('failure'))
+                    self.assertIsNone(cases[1].find('skipped'))
+                    self.assertEqual(cases[1].find("properties/property[@name='ran']").attrib['value'],
+                                     'yes')
+                    self.assertEqual(root.attrib['failures'], '1')
