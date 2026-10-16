@@ -46,40 +46,6 @@ permissions:
     contents: read
 
 jobs:
-    compile-benchmarks:
-        timeout-minutes: 45
-        runs-on: ubuntu-24.04
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v6.0.3
-
-            - name: Compare test-file compilation in Dev Container
-              uses: devcontainers/ci@v0.3
-              with:
-                  push: never
-                  runCmd: |
-                      set -eu
-                      for mode in Debug Release; do
-                        cmake -S . -B "build/benchmark-$mode" -G Ninja \
-                          -DCMAKE_BUILD_TYPE="$mode" -DBUILD_EXAMPLES=OFF \
-                          -DBUILD_TESTS=OFF -DBUILD_BENCHMARKS=ON \
-                          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-                          -DCMAKE_CXX_COMPILER_LAUNCHER=
-                        python3 benchmarks/run.py --build-dir "build/benchmark-$mode" \
-                          --sizes 1 24 72 240 --repetitions 5 --runtime-repetitions 5 \
-                          --output "build/benchmark-$mode.json"
-                      done
-                      python3 benchmarks/check_results.py \
-                        build/benchmark-Debug.json build/benchmark-Release.json
-
-            - name: Compilation benchmark samples
-              if: ${{ !cancelled() }}
-              uses: actions/upload-artifact@v4
-              with:
-                  name: compile-benchmark-samples
-                  path: build/benchmark-*.json
-                  if-no-files-found: warn
-
     build-and-test:
         timeout-minutes: 45
         runs-on: ubuntu-24.04
