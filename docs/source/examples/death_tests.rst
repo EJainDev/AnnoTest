@@ -1,25 +1,44 @@
 Check process termination
 =========================
 
-Check a fatal path without terminating the parent test runner.
-See :ref:`howto-examples-build` for the example build setup.
+.. container:: guide-intro
 
-1. Put the operation inside the callable passed to ``assert_death``.
+   Check a fatal path without terminating the parent test runner.
+
+.. container:: guide-prerequisites
+
+   **Before you start** · An existing test project, or the :doc:`bundled-example build <build>`.
+
+Move the fatal path into a child
+--------------------------------
+
+Put the operation inside the callable passed to ``assert_death``.
 
 .. literalinclude:: ../../../examples/example05_death_tests.cpp
    :language: cpp
    :lines: 9-12
 
-2. Forward ``argc`` and ``argv`` to ``run_tests``. Keep setup and the code before the check deterministic: Windows workers replay the case to reach the callable.
+Make replay deterministic
+-------------------------
 
-3. Build the target and run the selected case or group:
+Forward ``argc`` and ``argv`` to ``run_tests``. Keep setup and the code before the check deterministic: Windows workers replay the case to reach the callable.
+
+Run the death check
+-------------------
+
+Build the target, then run the command below:
 
 .. code-block:: sh
 
    cmake --build build/docs-examples --target example5_death_tests
    ./build/docs-examples/examples/example5_death_tests --test-name DeathTests.nonzero_exit
 
-The child exits with status 2, so the assertion passes and the runner survives. Normal return or exit status zero fails the check. Consult the death-test reference before depending on inherited process state.
+.. admonition:: Expected result
+   :class: guide-result
 
-See :doc:`/api/testing/death` for API details.
-:download:`Runnable source <../../../examples/example05_death_tests.cpp>`.
+   The child exits with status 2, so the assertion passes and the runner survives. Normal return or exit status zero fails the check. Consult the death-test reference before depending on inherited process state.
+
+.. container:: guide-related
+
+   **Keep going** · :doc:`API details </api/testing/death>` ·
+   :download:`Complete runnable source <../../../examples/example05_death_tests.cpp>`

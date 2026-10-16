@@ -3,6 +3,10 @@
 Write and run your first test
 =============================
 
+.. container:: lesson-intro
+
+   **LESSON 1 OF 5** · Create a project, run one test, and inspect a failure.
+
 In this tutorial, create a small test executable, run it, and inspect a deliberate
 failure. By the end, the executable will also expose its case through CTest.
 
@@ -127,7 +131,5 @@ passing project.
 Continue
 --------
 
-Use :doc:`/examples/lifecycle` to prepare fixture state before each case, or
-:doc:`/examples/parameterized` to check several input sets.
-For the distinction between fixture instances and processes, read
-:doc:`/explanation/execution`.
+Continue with :doc:`/tutorials/fixtures` to grow this project into a basket
+suite with predictable state. The :doc:`/tutorials/index` shows all five lessons.

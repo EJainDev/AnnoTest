@@ -103,8 +103,12 @@ use CTest to run the self-test suite.
 
 ## Examples
 
-Each example has a runnable `main`. With both build options enabled, CTest runs all fifteen
-examples in addition to the library's self-tests.
+Follow the [five-lesson tutorial](https://annotest.readthedocs.io/en/latest/tutorials/index.html)
+for a progressive introduction. Its four later checkpoints are in
+[`examples/tutorials`](examples/tutorials).
+
+Each example has a runnable `main`. With both build options enabled, CTest runs the fifteen
+feature examples and four tutorial checkpoints in addition to the library's self-tests.
 
 | Source | Executable | Demonstrates |
 | --- | --- | --- |

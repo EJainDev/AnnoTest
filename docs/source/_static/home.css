@@ -22,3 +22,41 @@ dl.cpp > dt { padding: .65rem .8rem; border-left: 3px solid var(--color-brand-pr
 dl.cpp > dd { margin-left: .85rem; }
 dl.field-list { font-size: .92rem; }
 table.docutils { width: 100%; }
+
+/* Task directory and learning path use the theme's existing palette. */
+.directory-start { padding: 1rem 1.15rem; margin: 1.4rem 0 2rem; background: var(--color-background-secondary); border-radius: .5rem; border: 1px solid var(--color-background-border); font-size: .92rem; }
+.directory-start p { margin: 0; line-height: 1.7; }
+.task-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 1.3rem 0 2.5rem; }
+.task-card { display: flex; flex-direction: column; padding: 1.2rem 1.25rem; border: 1px solid var(--color-background-border); border-radius: .65rem; background: var(--color-background-primary); color: var(--color-content-foreground); text-decoration: none; transition: border-color .15s ease, background-color .15s ease; }
+.task-card:hover, .task-card:focus-visible { border-color: var(--color-brand-primary); background: var(--color-background-secondary); text-decoration: none; }
+.task-card strong { font-size: 1.05rem; line-height: 1.4; color: var(--color-brand-primary); margin-bottom: .6rem; }
+.task-card > span { font-size: .91rem; line-height: 1.65; color: var(--color-content-secondary); }
+.task-card em { font-size: .82rem; font-style: normal; font-weight: 600; color: var(--color-brand-primary); padding-top: 1rem; margin-top: auto; }
+.learning-path { display: grid; gap: .85rem; margin: 1.5rem 0 2.5rem; }
+.lesson-link { display: grid; grid-template-columns: 2.6rem 1fr 1rem; gap: 1rem; align-items: start; padding: 1.25rem; border: 1px solid var(--color-background-border); border-radius: .65rem; text-decoration: none; color: var(--color-content-foreground); }
+.lesson-link:hover, .lesson-link:focus-visible { border-color: var(--color-brand-primary); background: var(--color-background-secondary); text-decoration: none; }
+.lesson-number { font-size: 1.35rem; font-weight: 700; color: var(--color-brand-primary); line-height: 1.4; }
+.lesson-link small { display: block; font-size: .68rem; letter-spacing: .08em; color: var(--color-content-secondary); margin-bottom: .35rem; }
+.lesson-link strong { display: block; font-size: 1.05rem; line-height: 1.45; margin-bottom: .4rem; color: var(--color-brand-primary); }
+.lesson-link strong + span { display: block; font-size: .92rem; line-height: 1.6; color: var(--color-content-secondary); }
+.lesson-arrow { color: var(--color-brand-primary); padding-top: 1.4rem; }
+.guide-intro, .lesson-intro { font-size: 1.05rem; line-height: 1.75; color: var(--color-content-secondary); margin: .9rem 0 1.4rem; }
+.lesson-intro p:first-child { font-size: .75rem; letter-spacing: .035em; }
+.guide-prerequisites { font-size: .85rem; padding: .8rem 1rem; background: var(--color-background-secondary); border-radius: .4rem; margin-bottom: 2rem; }
+.guide-prerequisites p { margin: 0; }
+.task-guide h2, .tutorial-lesson h2 { font-size: 1.35rem; line-height: 1.45; margin-top: 2.3rem; padding-top: 1rem; border-top: 1px solid var(--color-background-border); }
+.task-guide .highlight, .tutorial-lesson .highlight { border: 1px solid var(--color-background-border); border-radius: .45rem; }
+.task-guide div.highlight pre, .tutorial-lesson div.highlight pre { padding: 1rem 1.15rem; line-height: 1.65; }
+.task-guide .guide-result, .tutorial-lesson .lesson-result { box-shadow: none; border: 1px solid var(--color-background-border); border-left: 3px solid var(--color-brand-primary); border-radius: .45rem; background: var(--color-background-secondary); margin: 1.5rem 0; }
+.task-guide .guide-result > .admonition-title, .tutorial-lesson .lesson-result > .admonition-title { background: transparent; color: var(--color-brand-primary); font-size: .85rem; font-weight: 700; padding-left: 1rem; }
+.guide-result > .admonition-title::before, .lesson-result > .admonition-title::before { display: none; }
+.guide-related, .lesson-checkpoint { font-size: .88rem; padding: 1rem 1.15rem; margin-top: 2rem; background: var(--color-background-secondary); border-radius: .45rem; }
+.guide-related p, .lesson-checkpoint p { margin: 0; line-height: 1.75; }
+.guide-related .download, .lesson-checkpoint .download { font-family: inherit; font-size: inherit; }
+@media (max-width: 650px) {
+  .task-grid { grid-template-columns: 1fr; }
+  .lesson-link { grid-template-columns: 2rem 1fr; gap: .6rem; padding: 1rem; }
+  .lesson-arrow { display: none; }
+  .task-guide h2, .tutorial-lesson h2 { font-size: 1.2rem; }
+}
+@media (prefers-reduced-motion: reduce) { .task-card { transition: none; } }

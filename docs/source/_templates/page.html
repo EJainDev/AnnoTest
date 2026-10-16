@@ -18,5 +18,11 @@
   </ol>
 </nav>
 {% endif %}
+{% if pagename.startswith('examples/') and pagename != 'examples/index' %}
+<div class="task-guide">{{ super() }}</div>
+{% elif pagename.startswith('tutorials/') and pagename != 'tutorials/index' or pagename == 'usage/getting_started' %}
+<div class="tutorial-lesson">{{ super() }}</div>
+{% else %}
 {{ super() }}
+{% endif %}
 {% endblock %}

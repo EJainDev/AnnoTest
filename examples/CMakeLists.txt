@@ -60,3 +60,13 @@ if(BUILD_TESTS)
     COMMAND $<TARGET_FILE:example15_execution> --jobs 2 --timeout 5 --repeat 2)
   set_tests_properties(examples.parallel_execution PROPERTIES TIMEOUT 30 LABELS examples)
 endif()
+
+# Compiled checkpoints for the documentation's learning sequence.
+foreach(lesson IN ITEMS 02_fixtures 03_parameters 04_diagnostics 05_reports)
+  add_executable(tutorial${lesson} tutorials/${lesson}.cpp)
+  target_link_libraries(tutorial${lesson} PRIVATE annotest)
+  if(BUILD_TESTS)
+    add_test(NAME tutorials.${lesson} COMMAND $<TARGET_FILE:tutorial${lesson}>)
+    set_tests_properties(tutorials.${lesson} PROPERTIES TIMEOUT 30 LABELS tutorials)
+  endif()
+endforeach()
